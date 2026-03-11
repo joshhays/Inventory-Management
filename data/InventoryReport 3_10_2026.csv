@@ -1,0 +1,349 @@
+ProductName,SKU,PrimaryBinLocation,PrimaryBinQuantity,SecondaryBinLocation,SecondaryBinQuantity,NumberOnHand,NumberAvailable
+Bucktown #10 Office Envelopes BU101-01,BU101-01,,0,0,0,0,0
+Elmhurst #10 Office Envelopes EL101-01,EL101-01,,0,0,0,0,0
+Evanston #10 Office Envelopes EV101-01,EV101-01,,0,0,0,0,0
+Highland Park #10 Office Envelopes HP101-01,HP101-01,,0,0,0,0,0
+Lake Forest #10 Office Envelopes LF101-01,LF101-01,,0,0,0,0,0
+Libertyville #10 Office Envelopes LI101-01,LI101-01,,0,0,0,0,0
+New Buffalo #10 Office Envelopes NB101-02,NB101-02,,0,0,0,0,0
+St. Joseph #10 Office Envelopes SJ101-01,SJ101-01,,0,0,0,0,0
+Winnetka #10 Office Envelopes WI101-01,WI101-01,,0,0,0,0,0
+Elmhurst A6 Notecard Envelopes EL102-01,EL102-01,,0,0,0,0,0
+Evanston A6 Notecard Envelopes EV102-01,EV102-01,,0,0,0,0,0
+Highland Park A6 Notecard Envelopes HP102-01,HP102-01,,0,0,0,0,0
+Lake Forest A6 Notecard Envelopes LF102-01,LF102-01,,0,0,0,0,0
+Libertyville A6 Notecard Envelopes LI102-01,LI102-01,,0,0,0,0,0
+New Buffalo A6 Notecard Envelopes NB102-02,NB102-02,,0,0,0,0,0
+St. Joseph A6 Notecard Envelopes SJ102-01,SJ102-01,,0,0,0,0,0
+Winnetka A6 Notecard Envelopes WI102-01,WI102-01,,0,0,0,0,0
+General Letterhead GE103-01,GE103-01,,0,0,0,0,0
+Bucktown Mailing Labels BU105-01,BU105-01,,0,0,0,0,0
+Elmhurst Mailing Labels EL015-01,EL015-01,,0,0,0,0,0
+Evanston Mailing Labels EV105-01,EV105-01,,0,0,0,0,0
+Highland Park Mailing Labels HP105-01,HP105-01,,0,0,0,0,0
+Lake Forest Mailing Labels LF105-01,LF105-01,,0,0,0,0,0
+Libertyville Mailing Labels LI105-01,LI105-01,,0,0,0,0,0
+New Buffalo Mailing Labels NB105-02,NB105-02,,0,0,0,0,0
+St. Joseph Mailing Labels SJ105-01,SJ105-01,,0,0,0,0,0
+Winnetka Mailing Labels WI105-01,WI105-01,,0,0,0,0,0
+North Shore School Guide NS110-03,NS110-03,,0,0,0,0,0
+City Neighborhood Guide CH114-05,CH114-05,,0,0,0,0,0
+North Shore Neighborhood Guide NS114-04,NS114-04,,0,0,0,0,0
+North Suburbs Neighborhood Guide NO114-04,NO114-04,,0,0,0,0,0
+West Suburbs Neighborhood Guide WS114-04,WS114-04,,0,0,0,0,0
+General Large Notepads GE117-01,GE117-01,,0,0,0,0,0
+General Small Notepads GE118-01,GE118-01,,0,0,0,0,0
+General Post-It Notes GE119-01,GE119-01,,0,0,0,0,0
+North Shore Recruiting Kit NSKT02-01,NSKT02-01,,0,0,0,0,0
+Monthly Mailer GE128-01,GE128-01,,0,0,0,0,0
+EDDM Postcard GE129-01,GE129-01,,0,0,0,0,0
+Bucktown A6 Notecard Envelopes BU102-01,BU102-01,,0,0,0,0,0
+North Suburbs Recruiting Kit NOKT02-01,NOKT02-01,,0,0,0,0,0
+Touche Folders GE137-01,GE137-01,,0,0,0,0,0
+East Lincoln Park #10 Office Envelopes AL101-01,AL101-01,,0,0,0,0,0
+Barrington Mailing Labels BA105-01,BA105-01,,0,0,0,0,0
+East Lincoln Park Mailing Labels AL105-01,AL105-01,,0,0,0,0,0
+General Buyer Book GE113-02 (DEACTIVATED),GE113-02,,0,0,0,0,0
+East Lincoln Park A6 Notecard Envelopes AL102-01,AL102-01,,0,0,0,0,0
+City Recruiting Kit CHKT02-01,CHKT02-01,,0,0,0,0,0
+West Suburbs Recruiting Kit WSKT02-01,WSKT02-01,,0,0,0,0,0
+Barrington A6 Notecard Envelopes BA102-01,BA102-01,,0,0,0,0,0
+Listing Brochure City  GE126-01,GE126-01,,0,0,0,0,0
+Listing Brochure Suburb GE127-01,GE127-01,,0,0,0,0,0
+Red Handle Tote GE145-01,GE145-01,,0,0,0,0,0
+Residential Real Property Disclosure Forms GE146-02,GE146-02,,0,0,0,0,0
+Lead Disclosure Form Sale GE147-02,GE147-02,,0,0,0,0,0
+Radon Disclosure Forms GE148-02,GE148-02,,0,0,0,0,0
+Broker Handbook GE142-09,GE142-09,,0,0,0,0,0
+Oak Park #10 Office Envelopes OP101-01,OP101-01,,0,0,0,0,0
+Oak Park Mailing Labels OP105-01,OP105-01,,0,0,0,0,0
+Oak Park A6 Notecard Envelopes OP102-01,OP102-01,,0,0,0,0,0
+Lake Geneva #10 Office Envelopes LG101-01,LG101-01,,0,0,0,0,0
+Lake Geneva A6 Notecard Envelopes LG102-02,LG102-02,,0,0,0,0,0
+Lake Geneva Mailing Labels LG105-01,LG105-01,,0,0,0,0,0
+Northbrook #10 Office Envelopes NN101-02,NN101-02,,0,0,0,0,0
+Northbrook A6 Notecard Envelopes NN102-02,NN102-02,,0,0,0,0,0
+Northbrook Mailing Labels NN105-02,NN105-02,,0,0,0,0,0
+6 Panel Gift Card Holder GE155-01,GE155-01,,0,0,0,0,0
+A1 Gift Card Envelope GE157-01,GE157-01,,0,0,0,0,0
+Commercial Folder CM106-01,CM106-01,,0,0,0,0,0
+Commercial A6 Envelope CM102-01,CM102-01,,0,0,0,0,0
+Commercial Letterhead CM103-01,CM103-01,,0,0,0,0,0
+Commercial #10 Envelope CM101-01,CM101-01,,0,0,0,0,0
+Commercial Notecard CM104-01,CM104-01,,0,0,0,0,0
+Commercial Mailing Labels CM105-01,CM105-01,,0,0,0,0,0
+Lead Disclosure Form Rent GE160-02,GE160-02,,0,0,0,0,0
+Burlington #10 Office Envelopes RR101-01,RR101-01,,0,0,0,0,0
+Burlington A6 Notecard Envelopes RR102-01,RR102-01,,0,0,0,0,0
+Burlington Mailing Labels RR105-01,RR105-01,,0,0,0,0,0
+Goose Island #10 Office Envelopes RP101-01,RP101-01,,0,0,0,0,0
+Goose Island A6 Notecard Envelopes RP102-01,RP102-01,,0,0,0,0,0
+Goose Island Mailing Labels RP105-01,RP105-01,,0,0,0,0,0
+Love Car Magnet GE121-02,GE121-02,,0,0,0,0,0
+Be Back Soon Cards GE163-01,GE163-01,,0,0,0,0,0
+Rainbow Car Magnet GE121-04,GE121-04,,0,0,0,0,0
+Bannockburn #10 Office Envelopes BN101-01,BN101-01,,0,0,0,0,0
+Bannockburn A6 Notecard Envelopes BN102-02,BN102-02,,0,0,0,0,0
+Bannockburn Mailing Labels BN105-05,BN105-05,,0,0,0,0,0
+Gold Coast Mailing Labels GD105-01,GD105-01,,0,0,0,0,0
+Gold Coast A6 Notecard Envelopes GD102-01,GD102-01,,0,0,0,0,0
+Gold Coast #10 Office Envelopes GD101-01,GD101-01,,0,0,0,0,0
+Stylus Pens GE120-03,GE120-03,,0,0,0,0,0
+Luxury Brochure City GE150-02,GE150-02,,0,0,0,0,0
+Long Beach #10 Office Envelopes LB101-01,LB101-01,,0,0,0,0,0
+Long Beach A6 Notecard Envelopes LB102-01,LB102-01,,0,0,0,0,0
+Long Beach Mailing Labels LB105-01,LB105-01,,0,0,0,0,0
+Arlington Heights Mailing Labels AR105-01,AR105-01,,0,0,0,0,0
+Arlington Heights #10 Office Envelopes AR101-01,AR101-01,,0,0,0,0,0
+Arlington Heights A6 Notecard Envelopes AR102-01,AR102-01,,0,0,0,0,0
+St. Charles #10 Office Envelopes SC101-01,SC101-01,,0,0,0,0,0
+St. Charles A6 Notecard Envelopes SC102-01,SC102-01,,0,0,0,0,0
+St. Charles Mailing Labels SC105-01,SC105-01,,0,0,0,0,0
+Red Belly Band GE166-01,GE166-01,,0,0,0,0,0
+Glenview North #10 Office Envelopes GN101-01,GN101-01,,0,0,0,0,0
+Glenview North A6 Notecard Envelopes GN102-01,GN102-01,,0,0,0,0,0
+Glenview North Mailing Labels GN103-01,GN103-01,,0,0,0,0,0
+Logan Square #10 Office Envelopes LS101-01,LS101-01,,0,0,0,0,0
+Logan Square A6 Notecard Envelopes LS102-01,LS102-01,,0,0,0,0,0
+Logan Square Mailing Labels LS103-01,LS103-01,,0,0,0,0,0
+Western Springs #10 Office Envelopes WS101-01,WS101-01,,0,0,0,0,0
+Western Springs A6 Notecard Envelopes WS102-01,WS102-01,,0,0,0,0,0
+Western Springs Mailing Labels WS103-01,WS103-01,,0,0,0,0,0
+Wisconsin Neighborhood Guide WI114-01,WI114-01,,0,0,0,0,0
+MichiganNeighborhood Guide MI114-02,MI114-02,,0,0,0,0,0
+Michigan Buyer Portfolio Kit MIKT01-01 (DEACTIVATED),MIKT01-01,,0,0,0,0,0
+Luxury Brochure Suburban GE164-01,GE164-01,,0,0,0,0,0
+Consumer Guide Disclosure Form GE167-01,GE167-01,,0,0,0,0,0
+Hinsdale #10 Office Envelopes HD101-01,HD101-01,,0,0,0,0,0
+Hinsdale A6 Notecard Envelopes HD102-01,HD102-01,,0,0,0,0,0
+Park Ridge #10 Office Envelopes PR101-01,PR101-01,,0,0,0,0,0
+Park Ridge A6 Notecard Envelopes PR102-01,PR102-01,,0,0,0,0,0
+Park Ridge Mailing Labels PR103-01,PR103-01,,0,0,0,0,0
+Love Where You Work Envelopes GE170-01,GE170-01,,0,0,0,0,0
+Do Not Let Out Cat Sign - GE172-01,GE172-01,,0,0,0,0,0
+Do Not Let Out Dog Sign - GE173-01,GE173-01,,0,0,0,0,0
+Remove Shoes Sign - GE174-01,GE174-01,,0,0,0,0,0
+Leave Your Card Sign - GE175-01,GE175-01,,0,0,0,0,0
+Downers Grove #10 Office Envelopes DG101-01,DG101-01,,0,0,0,0,0
+Downers Grove A6 Notecard Envelopes DG102-01,DG102-01,,0,0,0,0,0
+Downers Grove Mailing Labels DG103-01,DG103-01,,0,0,0,0,0
+Black/White Love Sticker Sheet-GE176-01,GE176-01,,0,0,0,0,0
+Black Individual Sticker-GE179-01,GE179-01,,0,0,0,0,0
+Hinsdale Mailing Labels HD103-01,HD103-01,,0,0,0,0,0
+Glencoe #10 Office Envelopes GP101-01,GP101-01,,0,0,0,0,0
+Glencoe A6 Notecard Envelopes GP102-01,GP102-01,,0,0,0,0,0
+Glencoe Mailing Labels GP103-01,GP103-01,,0,0,0,0,0
+Orland Park #10 Office Envelopes OR101-01,OR101-01,,0,0,0,0,0
+Orland Park A6 Notecard Envelopes OR102-01,OR102-01,,0,0,0,0,0
+Orland Park Mailing Labels OR103-01,OR103-01,,0,0,0,0,0
+South Suburban Neighborhood Guide SO114-01,SO114-01,,0,0,0,0,0
+North Center #10 Office Envelopes NC101-01,NC101-01,,0,0,0,0,0
+North Center A6 Notecard Envelopes NC102-01,NC102-01,,0,0,0,0,0
+North Center Mailing Labels NC103-01,NC103-01,,0,0,0,0,0
+Michigan Ave #10 Office Envelopes MA101-01,MA101-01,,0,0,0,0,0
+Michigan Ave A6 Notecard Envelopes MA102-01,MA102-01,,0,0,0,0,0
+Michigan Ave Mailing Labels MA103-01,MA103-01,,0,0,0,0,0
+Naperville #10 Office Envelopes NV101-01,NV101-01,,0,0,0,0,0
+Naperville A6 Notecard Envelopes NV102-01,NV102-01,,0,0,0,0,0
+Naperville Mailing Labels NV103-01,NV103-01,,0,0,0,0,0
+Document Bag GE181-01,GE181-01,,0,0,0,0,0
+IN Listing Brochure Suburb GE182-01,GE182-01,,0,0,0,0,0
+Algonquin #10 Office Envelopes AQ 101-01,AQ101-01,,0,0,0,0,0
+Algonquin A6 Notecard Envelopes AQ102-01,AQ102-01,,0,0,0,0,0
+Algonquin Mailing Labels AQ103-01,AQ103-01,,0,0,0,0,0
+Michigan City IN #10 Office Envelopes MC101-01,MC101-01,,0,0,0,0,0
+Michigan City IN A6 Notecard Envelopes MC102-01,MC102-01,,0,0,0,0,0
+Michigan City IN Mailing Labels MC103-01,MC103-01,,0,0,0,0,0
+Indiana Neighborhood Guide IN114-01,IN114-01,,0,0,0,0,0
+Seller Presentation Folio Camel GE183-01 (deactivated),GE183-01,,0,0,0,0,0
+Seller Presentation Folio Black GE184-01 (deactivated),GE184-01,,0,0,0,0,0
+Seller Presentation Folio Black Tote GE185-01,GE185-01,,0,0,0,0,0
+Seller Presentation Folio Camel Tote GE185-02,GE185-02,,0,0,0,0,0
+Crown Point #10 Office Envelopes CP101-01,CP101-01,,0,0,0,0,0
+Crown Point A6 Notecard Envelopes CP102-01,CP102-01,,0,0,0,0,0
+Crown Point Mailing Labels CP103-01,CP103-01,,0,0,0,0,0
+Document Bag Cards - GE181-02,GE181-02,,0,0,0,0,0
+Hello Neighbor Gatefold GE186-01,GE186-01,,0,0,0,0,0
+The Agent Gatefold GE186-02,GE186-02,,0,0,0,0,0
+The Featured Listing Gatefold GE186-04,GE186-04,,0,0,0,0,0
+Barrington #10 Office Envelopes BA101-01,BA101-01,,0,0,0,0,0
+Laptop Bags Black GE190-01,GE190-01,,0,0,0,0,0
+North Shore Just Listed Postcard GE193-01,GE193-01,,0,0,0,0,0
+Pocket Folder Black  GE188-01,GE188-01,,0,0,0,0,0
+Love Notecard GE187-02,GE187-02,,0,0,0,0,0
+Stop Looking. Start Finding. Notecard (Deativated)GE187-01,GE187-01,,0,0,0,0,0
+Flat @ Notecard GE187-03,GE187-03,,0,0,0,0,0
+Love Keychains - GE191-01,GE191-01,,0,0,0,0,0
+Seller Notebooks - GE192-03,GE192-03,,0,0,0,0,0
+Valparaiso #10 Office Envelopes VO101-01,VO101-01,,0,0,0,0,0
+Valparaiso A6 Notecard Envelopes VO102-01,VO102-01,,0,0,0,0,0
+Valparaiso Mailing Labels VO103-01,VO103-01,,0,0,0,0,0
+Laptop Bags Camel GE190-02,GE190-02,,0,0,0,0,0
+LPC Option 1 Corporate - GE194-01,GE194-01,,0,0,0,0,0
+LPC Option 1 Affiliate - FR101-01,FR101-01,,0,0,0,0,0
+LPC Option 2 Corporate - GE195-01,GE195-01,,0,0,0,0,0
+LPC Option 2 Affiliate - FR102-01,FR102-01,,0,0,0,0,0
+LPC Option 3 Corporate - GE196-01,GE196-01,,0,0,0,0,0
+LPC Option 3 Affiliate - FR103-01,FR103-01,,0,0,0,0,0
+LPC Option 4 Corporate - GE197-01,GE197-01,,0,0,0,0,0
+LPC Option 4 Affiliate - FR104-01,FR104-01,,0,0,0,0,0
+Indiana Gatefold GE186-05,GE186-05,,0,0,0,0,0
+Seller Presentation Box GE192-02,GE192-02,,0,0,0,0,0
+General Seller Presentation Book GE192-04(Deactivated),GE192-04,,0,0,0,0,0
+Affiliate Love Where You Work Book FR100-01,FR100-01,,0,0,0,0,0
+Listing Brochure Michigan GE199-01,GE199-01,,0,0,0,0,0
+Listing Brochure Wisconsin GE200-01,GE200-01,,0,0,0,0,0
+Brochure Fold Over Portrait FR107-01,FR107-01,,0,0,0,0,0
+Brochure Fold Over Landscape FR108-01,FR108-01,,0,0,0,0,0
+Brochure 8.5X11 FR105-01,FR105-01,,0,0,0,0,0
+Indiana Recruiting Kit INKT02-01,INKT02-01,,0,0,0,0,0
+Wisconsin Recruiting Kit WIKT02-01,WIKT02-01,,0,0,0,0,0
+Michigan Recruiting Kit MIKT02-01,MIKT02-01,,0,0,0,0,0
+Affiliate Recruiting Kit (@properties) FRKT02-01,FRKT02-01,,0,0,0,0,0
+Seller Presentation Kit SPKT01-01,SPKT01-01,,0,0,0,0,0
+Affiliate Buyer Portfolio Kit (@properties) FRKT01-01,FRKT01-01,,0,0,0,0,0
+Luxury Brochure 8.5X11 (@properties) FR109-01,FR109-01,,0,0,0,0,0
+Affiliate Buyer Book FR110-02,FR110-02,,0,0,0,0,0
+Welcome Kit Box (empty) GE999-01,GE999-01,,0,0,0,0,0
+Balloon GE221-01,GE221-01,,0,0,0,0,0
+Love Tumbler Black GE213-01,GE213-01,,0,0,0,0,0
+Red Notebook GE219-01,GE219-01,,0,0,0,0,0
+Mug GE209-01,GE209-01,,0,0,0,0,0
+Tissue Paper GE206-01,GE206-01,,0,0,0,0,0
+Gift Bag White GE205-01,GE205-01,,0,0,0,0,0
+Welcome Agent Kit GE211-01,GE211-01,,0,0,0,0,0
+One Page Listing Presentation Insert-Chicagoland GE215-01,GE215-01,,0,0,0,0,0
+One Page Listing Presentation Insert-Luxury GE216-01,GE216-01,,0,0,0,0,0
+One Page Listing Presentation Insert-North Shore GE217-01,GE217-01,,0,0,0,0,0
+One Page Listing Presentation Insert-Michigan GE218-01,GE218-01,,0,0,0,0,0
+2in White @ sticker GE224-01,GE224-01,,0,0,0,0,0
+2in Black @ sticker GE222-01,GE222-01,,0,0,0,0,0
+4in White @ sticker GE225-01(DEACTIVATED),GE225-01,,0,0,0,0,0
+4in Black @ sticker GE223-01,GE223-01,,0,0,0,0,0
+Red @ Tabs GE227-01,GE227-01,,0,0,0,0,0
+Shoe Cover and Box Kit BBKT-01,BBKT-01,,0,0,0,0,0
+Shoe Cover GE226-01,GE226-01,,0,0,0,0,0
+Shoe Cover Box GE226-02,GE226-02,,0,0,0,0,0
+ESW Navy Vegan Tote GE230-01,GE230-01,,0,0,0,0,0
+Notebook for SP Only Sign GE228-01,GE228-01,,0,0,0,0,0
+One Page Listing Presentation Insert-St Joseph GE229-01,GE229-01,,0,0,0,0,0
+Recruiting Briefcase GE232-01,GE232-01,,0,0,0,0,0
+Vegan Seller Presentation Folio GE231-01,GE231-01,,0,0,0,0,0
+Fence Sign GE214-01,GE214-01,,0,0,0,0,0
+Post Sign Frame (2 pieces) GE220-01,GE220-01,,0,0,0,0,0
+Pocket Folder White GE188-02,GE188-02,,0,0,0,0,0
+CMA Front and Cover Black GE233-01,GE233- 01,,0,0,0,0,0
+CMA Front and Cover White GE234-01,GE234- 01,,0,0,0,0,0
+Creative Studio Brochure FR111-01,FR111-01,,0,0,0,0,0
+Managing Broker Starter Kit FR112-01,FR112-01,,0,0,0,0,0
+Generic Birthday Gift GE168-02,GE168-02,,0,0,0,0,0
+Black Small General Car Magnet GE121-05,GE121-05,,0,0,0,0,0
+White Small General Car Magnet GE121-06,GE121-06,,0,0,0,0,0
+"Highland, IN #10 Office Envelopes HI101-01",HI101-01,,0,0,0,0,0
+"Highland, IN A6 Notecard Envelopes HI102-01",HI102-01,,0,0,0,0,0
+"Highland, IN Mailing Labels HI103-1",HI103-1,,0,0,0,0,0
+ParkRidge_Devon_10envelope-PRD101-01,PRD101-01,,0,0,0,0,0
+ParkRidge_Devon_A6envelope-PRD102-01,PRD102-01,,0,0,0,0,0
+Park Ridge Devon Label-PRD103-01,PRD103-01,,0,0,0,0,0
+Affiliate Love Notecard FR187-01,FR187-01,,0,0,0,0,0
+Elkhorn Mailing Labels EK105-01,EK105-01,,0,0,0,0,0
+Elkhorn A6 Notecard Envelopes EK102-01,EK102-01,,0,0,0,0,0
+Elkhorn #10 Office Envelopes EK101-01,EK101-01,,0,0,0,0,0
+Affiliate Hello Neighbor Gatefold (@properties) FR186-01,FR186-01,,0,0,0,0,0
+Affiliate The Agent Gatefold (@properties) FR186-02,FR186-02,,0,0,0,0,0
+New Staff Kit GE211-02,GE211-02,,0,0,0,0,0
+Christie's International Real Estate Laptop Bags Camel CIRE190-01,CIRE190-01,,0,0,0,0,0
+Christie's International Real Estate Seller Presentation Folio Camel CIRE183-01,CIRE183-01,,0,0,0,0,0
+Christie's International Real Estate Moleskin Notebook CIRE219-01,CIRE219-01,,0,0,0,0,0
+Christie's International Real Estate Keychains CIRE191-01,CIRE191-01,,0,0,0,0,0
+Christie's International Real Estate Box White CIRE192-01,CIRE192-01,,0,0,0,0,0
+Affiliate A1 Gift Card Envelope (@properties) FR157-01,FR157-01,,0,0,0,0,0
+Luxury Brochure 8.5X11 (@|CIRE) FR109-02,FR109-02,,0,0,0,0,0
+Affiliate Hello Neighbor Gatefold (@|CIRE) FR186-03,FR186-03,,0,0,0,0,0
+Affiliate The Agent Gatefold (@|CIRE) FR186-04,FR186-04,,0,0,0,0,0
+Affiliate Recruiting Kit (@|CIRE) FRKT02-02,FRKT02-02,,0,0,0,0,0
+Proper Title Sales Flyer - Broker Indiana,PTFlyerBrokerIndy,,0,0,0,0,0
+Proper Title Sales Flyer - Broker @ Version,PTFlyerBroker@,,0,0,0,0,0
+Christie's International Real Estate Pens CIRE120-01,CIRE120-01,,0,0,0,0,0
+Christie's International Real Estate  Notecard Envelope Red CIRE188-01,CIRE188-01,,0,0,0,0,0
+Christie's International Real Estate  Notecard Envelope White CIRE188-02,CIRE188-02,,0,0,0,0,0
+Christie's International Real  Estate Notecard CIRE187-01,CIRE187-01,,0,0,0,0,0
+Christie's International Real Estate #10 Office Envelopes CIRE101-01,CIRE101-01,,0,0,0,0,0
+Christie's International Real Estate Letterhead CIRE103-01,CIRE103-01,,0,0,0,0,0
+Affiliate Touche Folders (@properties) FR137-02,FR137-02,,0,0,0,0,0
+Affiliate CMA Front and Cover Black (@properties) FR233-01,FR233-01,,0,0,0,0,0
+Christie's International Real Estate Seller Notebook CIRE194-01,CIRE194-01,,0,0,0,0,0
+Christie's International Real Estate Seller Presentation Book CIRE193-01,CIRE193-01,,0,0,0,0,0
+Affiliate General Seller Presentation Book (@properties) FR192-01,FR192-01,,0,0,0,0,0
+Affiliate Seller Presentation Kit (@properties) FR106-01,FR106-01,,0,0,0,0,0
+Agent Branding Book GE132-01,GE132-01,,0,0,0,0,0
+Wisconsin Listing Presentation Book WI192-02 (deactivated),WI192-02,,0,0,0,0,0
+Christie's International Real Folder CIRE186-01,CIRE186-01,,0,0,0,0,0
+IN Listing Brochure St. John GE192-01,GE192-01,,0,0,0,0,0
+Luxury Brochure Indiana GE151-01,GE151-01,,0,0,0,0,0
+Christie's International Real Estate Small Gift Bag CIRE204-01,CIRE204-01,,0,0,0,0,0
+Christie's International Real Estate Large Gift Bag CIRE205-01,CIRE205-01,,0,0,0,0,0
+Affiliate General Letterhead FR116-01,FR116-01,,0,0,0,0,0
+Christie's International Real Estate Luggage Tag CIRE104-01,CIRE104-01,,0,0,0,0,0
+Wisconsin Seller Presentation Kit WIKT03-01,WIKT03-01,,0,0,0,0,0
+Affiliate Seller Notebooks FR191-01,FR191-01,,0,0,0,0,0
+Luxury Laptop Bag Camel – Christie's International Real Estate GE198-01 (deactivated),GE198-01,,0,0,0,0,0
+Luxury Seller Presentation Folio Camel – Christie's International Real Estate GE240-01 (deactivated),GE240-01,,0,0,0,0,0
+Luxury Seller Presentation Book – Christie's International Real Estate GE241-01 (deactivated),GE241-01,,0,0,0,0,0
+Luxury Seller Notebook – Christie's International Real Estate GE242-01 (deactivated),GE242-01,,0,0,0,0,0
+Luxury Keychain – Christie's International Real Estate GE243-01(deactivated),GE243-01,,0,0,0,0,0
+Affiliate General Small Notepads FR118-01,FR118-01,,0,0,0,0,0
+Christie's International Real Estate Local Luxury Presentation Insert LU101-01,LU101-01,,0,0,0,0,0
+Affiliate Seller Presentation Folio Camel FR183-01,FR183-01,,0,0,0,0,0
+Affiliate Seller Presentation Folio Black FR184-01,FR184-01,,0,0,0,0,0
+Bronzeville #10 Office Envelopes BV101-01,BV101-01,,0,0,0,0,0
+Bronzeville A6 Notecard Envelopes BV102-01,BV102-01,,0,0,0,0,0
+Welcome To Our World Box (Empty) CIRE999-01,CIRE999-01,,0,0,0,0,0
+Social Society Box (Empty) SS999-01,SS999-01,,0,0,0,0,0
+Post Sign Frame Christie's International Real Estate (3 pieces) GE116-01,GE116-01,,0,0,0,0,0
+Post Sign Crossbar Christie's International Real Estate (1 piece) GE115-01,GE115-01,,0,0,0,0,0
+Christie's International Real Estate Marketing Brochure CIRE197-01,CIRE197-01,,0,0,0,0,0
+Christie's Auction House Brochure CIRE199-01,CIRE199-01,,0,0,0,0,0
+Christie's International Real Estate Technology Brochure CIRE196-01,CIRE196-01,,0,0,0,0,0
+Christie's International Real Estate French Door Box CIRE198-01,CIRE198-01,,0,0,0,0,0
+Christie's International Real Estate 3-Brochure Recruiting Kit CIRE200-01,CIRE200-01,,0,0,0,0,0
+Christie's International Real Estate 2-Brochure Recruiting Kit CIRE201-01,CIRE201-01,,0,0,0,0,0
+CIRE Auction House Booklet CIRE195-01,CIRE195-01,,0,0,0,0,0
+Birthday Card and Envelope Set (2025-2026) GE159-05,GE159-05,,0,0,0,0,0
+Christie's International Real Estate Birthday Card and Envelope Set (2025-2026) CIRE159-03,CIRE159-03,,0,0,0,0,0
+Affiliate Buyer Portfolio Kit (@|CIRE) FRKT01-02,FRKT01-02,,0,0,0,0,0
+Affiliate Stylus Pens FR120-01,FR120-01,,0,0,0,0,0
+Affiliate Pocket Folder White FR188-02,FR188-02,,0,0,0,0,0
+Affiliate Pocket Folder Black FR188-01,FR188-01,,0,0,0,0,0
+New Agent Gift GE189-01,GE189-01,,0,0,0,0,0
+Affiliate General Large Notepads FR117-01,FR117-01,,0,0,0,0,0
+Affiliate Flat Notecard FR187-03,FR187-03,,0,0,0,0,0
+Listing Presentation Book GE192-05 (Deactivated),GE192-05,,0,0,0,0,0
+Affilliate Post-It Notes FR119-02,FR119-02,,0,0,0,0,0
+Goose Island #10 Office Envelopes with window RP101-04,RP101-04,,0,0,0,0,0
+2024-2025 Birthday Gift GE168-05,GE168-05,,0,0,0,0,0
+Affiliate Love Keychains - FR191-02,FR191-02,,0,0,0,0,0
+@propertiers Christie's International Real Estate Buyer Sleeve GE138-01,GE138-01,,0,0,0,0,0
+Christie's International Real Estate Large Presentation Sleeve CIRE138-02,CIRE138-02,,0,0,0,0,0
+Christie's International Real Estate Small Presentation Sleeve CIRE138-03,CIRE138-03,,0,0,0,0,0
+Buyer Presentation Kit GE138-06,GE138-06,,0,0,0,0,0
+Buyer Book GE138-07,GE138-07,,0,0,0,0,0
+"Spotted"" Black @ 5.5"" Magnet GE121-08""",GE121-08,,0,0,0,0,0
+"Spotted"" White @ 5.5"" Magnet GE121-07""",GE121-07,,0,0,0,0,0
+One Page Listing Presentation Insert-SW Michigan Luxury GE218-02,GE218-02,,0,0,0,0,0
+2025 Masters Circle Card Sets CIRE170-01,CIRE170-01,,0,0,0,0,0
+Christie's International Real Estate Brand Book CIRE180-01,CIRE180-01,,0,0,0,0,0
+Expo Love Note Card Sets GE157-02,GE157-02,,0,0,0,0,0
+Buyer Presentation Kit Bubble Mailer GE138-10,GE138-10,,0,0,0,0,0
+2025-2026 Birthday Gift GE168-06,GE168-06,,0,0,0,0,0
+Christie's International Real Estate Blanket CIRE105-01,CIRE105-01,,0,0,0,0,0
+Christie's International Real Estate Empty Blanket Boxes CIRE105-02,CIRE105-02,,0,0,0,0,0
+Moving Bags Gift Set GE169-01,GE169-01,,0,0,0,0,0
+Christie's International Real Estate Listing Presentation Book CIRE193-02,CIRE193-02,,0,0,0,0,0
+Christie's International Real Estate Buyer Book CIRE193-05,CIRE193-05,,0,0,0,0,0
+Listing Presentation Book GE192-07,GE192-07,,0,0,0,0,0
+Listing Presentation Kit GE192-08,GE192-08,,0,0,0,0,0
+Christie's International Real Estate Listing Presentation Kit GE242-04,GE242-04,,0,0,0,0,0
+Christie's International Real Estate Buyer Presentation Kit GE242-02,GE242-02,,0,0,0,0,0
+Bronzeville Mailing Labels BV105-01,BV105-01,,0,0,0,0,0
+Affiliate Black Sleeve FR138-03,FR183-03,,0,0,0,0,0

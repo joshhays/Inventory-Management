@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transaction Log - Inventory</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; min-height: 100vh; }
+    .app-layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 240px; background: #1e293b; color: white; flex-shrink: 0; transition: transform 0.2s, width 0.2s; z-index: 50; }
+    .sidebar.collapsed { width: 64px; }
+    .sidebar.collapsed .sidebar-header-text, .sidebar.collapsed .sidebar-nav span { opacity: 0; width: 0; overflow: hidden; padding: 0; margin: 0; }
+    .sidebar.collapsed .sidebar-header { justify-content: center; padding: 1rem 0.5rem; }
+    .sidebar.collapsed .sidebar-nav a { justify-content: center; padding: 0.6rem; }
+    .sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; font-weight: 700; font-size: 1.1rem; border-bottom: 1px solid #334155; }
+    .sidebar-nav { padding: 0.75rem 0; }
+    .sidebar-nav a { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1.25rem; color: #94a3b8; text-decoration: none; transition: background 0.15s, color 0.15s; }
+    .sidebar-nav a:hover { background: #334155; color: white; }
+    .sidebar-nav a.active { background: #334155; color: white; }
+    .sidebar-nav a::before { content: "▸"; font-size: 0.75rem; opacity: 0.6; flex-shrink: 0; }
+    .collapse-btn { width: 28px; height: 28px; padding: 0; border: none; border-radius: 4px; background: #334155; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .collapse-btn:hover { background: #475569; }
+    .sidebar.collapsed .collapse-btn { position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); opacity: 1; width: 28px; }
+    .main-content { flex: 1; padding: 1rem; min-width: 0; }
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40; }
+    .sidebar-overlay.open { display: block; }
+    .menu-btn { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 60; width: 40px; height: 40px; padding: 0; border: none; border-radius: 6px; background: #1e293b; color: white; cursor: pointer; align-items: center; justify-content: center; }
+    .menu-btn span { display: block; width: 20px; height: 2px; background: currentColor; position: relative; }
+    .menu-btn span::before, .menu-btn span::after { content: ""; position: absolute; left: 0; width: 20px; height: 2px; background: currentColor; }
+    .menu-btn span::before { top: -6px; }
+    .menu-btn span::after { bottom: -6px; }
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; top: 0; left: 0; height: 100vh; width: 240px !important; transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar.collapsed { width: 240px !important; }
+      .sidebar.collapsed .sidebar-header-text, .sidebar.collapsed .sidebar-nav span, .sidebar.collapsed .collapse-btn { opacity: 1; width: auto; padding: inherit; margin: inherit; }
+      .sidebar.collapsed .sidebar-header { justify-content: space-between; }
+      .sidebar.collapsed .sidebar-nav a { justify-content: flex-start; padding: 0.6rem 1.25rem; }
+      .collapse-btn { display: none; }
+      .menu-btn { display: flex; }
+      .main-content { padding-top: 3.5rem; }
+    }
+    @media (min-width: 769px) { .sidebar { position: relative; } .sidebar-overlay { display: none !important; } }
+    h1 { margin: 0 0 1rem 0; font-size: 1.5rem; font-weight: 600; }
+    .logs-toolbar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .logs-toolbar input, .logs-toolbar select {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.9rem;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+    }
+    .logs-toolbar input[type="search"] { min-width: 200px; }
+    .logs-table-wrap { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: auto; max-height: calc(100vh - 180px); }
+    .logs-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    .logs-table th, .logs-table td { padding: 0.5rem 0.75rem; text-align: left; border: 1px solid #e5e7eb; }
+    .logs-table th { background: #f8fafc; font-weight: 600; }
+    .logs-table tr:nth-child(even) { background: #fafafa; }
+    .logs-table tr:hover { background: #f0f9ff; }
+    .logs-table .num { text-align: right; }
+    .badge { display: inline-block; padding: 0.2rem 0.5rem; font-size: 0.7rem; border-radius: 4px; font-weight: 500; }
+    .badge-deduct { background: #fee2e2; color: #b91c1c; }
+    .badge-add { background: #dcfce7; color: #166534; }
+    .badge-hard_count { background: #e0e7ff; color: #3730a3; }
+    .badge-import { background: #fef3c7; color: #92400e; }
+    .badge-receive { background: #ede9fe; color: #5b21b6; }
+    .badge-default { background: #e5e7eb; color: #374151; }
+    .empty { padding: 2rem; text-align: center; color: #64748b; }
+    .logs-toolbar button { padding: 0.4rem 0.75rem; font-size: 0.9rem; border-radius: 4px; border: none; background: #0ea5e9; color: white; cursor: pointer; }
+    .logs-toolbar button:hover { background: #0284c7; }
+    .pagination { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
+    .pagination-info { color: #64748b; font-size: 0.875rem; margin-right: 0.5rem; }
+    .pagination button { padding: 0.35rem 0.6rem; font-size: 0.85rem; border-radius: 4px; border: 1px solid #e5e7eb; background: white; cursor: pointer; }
+    .pagination button:hover:not(:disabled) { background: #f1f5f9; }
+    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pagination button.active { background: #0ea5e9; color: white; border-color: #0ea5e9; }
+    .pagination .page-nums { display: flex; gap: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-header-text">Inventory</span>
+        <button class="collapse-btn" id="collapseBtn" aria-label="Collapse sidebar" title="Collapse">‹</button>
+      </div>
+      <nav class="sidebar-nav">
+        <a href="/"><span>Products</span></a>
+        <a href="/products-manage.html"><span>Manage Products</span></a>
+        <a href="/orders.html"><span>Orders</span></a>
+        <a href="/logs.html" class="active"><span>Transaction Log</span></a>
+      </nav>
+    </aside>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu"><span></span></button>
+    <main class="main-content">
+      <h1>Transaction Log</h1>
+      <div class="logs-toolbar">
+        <input type="search" id="searchInput" placeholder="Search SKU or product name...">
+        <select id="actionFilter">
+          <option value="">All actions</option>
+        </select>
+        <select id="pageSize">
+          <option value="25">25 per page</option>
+          <option value="50" selected>50 per page</option>
+          <option value="100">100 per page</option>
+        </select>
+        <button id="searchBtn">Search</button>
+      </div>
+      <div class="logs-table-wrap">
+        <div class="empty" id="loading">Loading…</div>
+        <table class="logs-table" id="logsTable" style="display:none">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>SKU</th>
+              <th>Product</th>
+              <th>Action</th>
+              <th class="num">Before</th>
+              <th class="num">After</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody id="logsBody"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination" style="display:none">
+        <span class="pagination-info" id="paginationInfo"></span>
+        <button id="prevBtn">Previous</button>
+        <div class="page-nums" id="pageNums"></div>
+        <button id="nextBtn">Next</button>
+      </div>
+    </main>
+  </div>
+  <script>
+    const searchInput = document.getElementById("searchInput");
+    const actionFilter = document.getElementById("actionFilter");
+    const pageSize = document.getElementById("pageSize");
+    const searchBtn = document.getElementById("searchBtn");
+    const loading = document.getElementById("loading");
+    const logsTable = document.getElementById("logsTable");
+    const logsBody = document.getElementById("logsBody");
+    const pagination = document.getElementById("pagination");
+    const paginationInfo = document.getElementById("paginationInfo");
+    const pageNums = document.getElementById("pageNums");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    let currentPage = 1;
+
+    async function loadActions() {
+      const res = await fetch("/api/logs/actions");
+      const actions = await res.json();
+      actionFilter.innerHTML = '<option value="">All actions</option>' + actions.map(a => `<option value="${a}">${a}</option>`).join("");
+    }
+
+    async function loadLogs(page = 1) {
+      currentPage = page;
+      loading.style.display = "block";
+      logsTable.style.display = "none";
+      pagination.style.display = "none";
+      const params = new URLSearchParams();
+      if (searchInput.value.trim()) params.set("search", searchInput.value.trim());
+      if (actionFilter.value) params.set("action", actionFilter.value);
+      params.set("page", page);
+      params.set("limit", pageSize.value);
+      try {
+        const res = await fetch("/api/logs?" + params);
+        const data = await res.json();
+        const { logs, total, page: p, limit, totalPages } = data;
+        if (logs.length === 0) {
+          loading.textContent = "No transactions found.";
+          loading.style.display = "block";
+        } else {
+          loading.style.display = "none";
+          logsTable.style.display = "table";
+          logsBody.innerHTML = logs.map(l => `
+            <tr>
+              <td>${new Date(l.createdAt).toLocaleString()}</td>
+              <td>${escapeHtml(l.sku)}</td>
+              <td>${escapeHtml(l.productName)}</td>
+              <td><span class="badge badge-${l.action}">${l.action}</span></td>
+              <td class="num">${l.quantityBefore}</td>
+              <td class="num">${l.quantityAfter}</td>
+              <td>${escapeHtml(l.source)}</td>
+            </tr>
+          `).join("");
+          const start = (p - 1) * limit + 1;
+          const end = Math.min(p * limit, total);
+          paginationInfo.textContent = `Showing ${start}–${end} of ${total}`;
+          prevBtn.disabled = p <= 1;
+          nextBtn.disabled = p >= totalPages;
+          prevBtn.onclick = () => loadLogs(p - 1);
+          nextBtn.onclick = () => loadLogs(p + 1);
+          pageNums.innerHTML = "";
+          const maxVisible = 5;
+          let from = Math.max(1, p - Math.floor(maxVisible / 2));
+          let to = Math.min(totalPages, from + maxVisible - 1);
+          if (to - from < maxVisible - 1) from = Math.max(1, to - maxVisible + 1);
+          for (let i = from; i <= to; i++) {
+            const btn = document.createElement("button");
+            btn.textContent = i;
+            if (i === p) btn.classList.add("active");
+            btn.onclick = () => loadLogs(i);
+            pageNums.appendChild(btn);
+          }
+          pagination.style.display = "flex";
+        }
+      } catch (e) {
+        loading.textContent = "Error: " + e.message;
+        loading.className = "empty error";
+      }
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s || "";
+      return div.innerHTML;
+    }
+
+    searchBtn.addEventListener("click", () => loadLogs(1));
+    searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loadLogs(1); });
+    actionFilter.addEventListener("change", () => loadLogs(1));
+    pageSize.addEventListener("change", () => loadLogs(1));
+
+    const sidebar = document.getElementById("sidebar");
+    const sidebarOverlay = document.getElementById("sidebarOverlay");
+    const menuBtn = document.getElementById("menuBtn");
+    const collapseBtn = document.getElementById("collapseBtn");
+
+    function toggleSidebar() { sidebar.classList.toggle("open"); sidebarOverlay.classList.toggle("open"); }
+    function closeSidebar() { sidebar.classList.remove("open"); sidebarOverlay.classList.remove("open"); }
+    menuBtn.addEventListener("click", toggleSidebar);
+    sidebarOverlay.addEventListener("click", closeSidebar);
+
+    if (localStorage.getItem("sidebar-collapsed") === "true") {
+      sidebar.classList.add("collapsed");
+      collapseBtn.textContent = "›";
+      collapseBtn.title = "Expand";
+    }
+    collapseBtn.addEventListener("click", () => {
+      sidebar.classList.toggle("collapsed");
+      const isCollapsed = sidebar.classList.contains("collapsed");
+      collapseBtn.textContent = isCollapsed ? "›" : "‹";
+      collapseBtn.title = isCollapsed ? "Expand" : "Collapse";
+      localStorage.setItem("sidebar-collapsed", isCollapsed);
+    });
+
+    loadActions().then(() => loadLogs(1));
+  </script>
+</body>
+</html>
