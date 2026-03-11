@@ -509,6 +509,7 @@ td {
 .badge-hard_count { background: #e0e7ff; color: #3730a3; }
 .badge-import { background: #fef3c7; color: #92400e; }
 .badge-receive { background: #ede9fe; color: #5b21b6; }
+.badge-offline_ship { background: #fef3c7; color: #92400e; }
 
 /* Modals */
 .modal-overlay {
@@ -1128,4 +1129,129 @@ tr:nth-child(even) .product-thumb-cell {
 .qty-zero {
   color: var(--danger);
   font-weight: 700;
+}
+
+/* Kit modal */
+.kit-modal-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.kit-items-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.kit-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.kit-item-row:last-child {
+  border-bottom: none;
+}
+
+.kit-item-row span {
+  flex: 1;
+}
+
+.kit-item-row .kit-item-qty {
+  margin: 0 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.kit-add-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.kit-add-row select {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.badge-kit {
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  margin-left: 0.25rem;
+}
+
+.kit-contents {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  line-height: 1.3;
+}
+
+.kit-preview-list {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: #f8fafc;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  margin-top: 0.25rem;
+}
+
+.offline-ship-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.offline-ship-row input[type="text"] {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.btn-kit {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  margin-right: 0.25rem;
+  background: #5b21b6;
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-kit:hover {
+  background: #4c1d95;
+}
+
+.kit-item-row .btn-del-small {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kit-item-row .btn-del-small:hover {
+  background: var(--danger-hover);
 }

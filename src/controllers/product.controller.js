@@ -16,7 +16,7 @@ const getProducts = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
-    const { name, sku, quantity, price, description, groupId } = req.body;
+    const { name, sku, quantity, price, description, groupId, productType } = req.body;
 
     if (!name || !sku || price === undefined) {
       return res.status(400).json({
@@ -31,6 +31,7 @@ const createProduct = async (req, res, next) => {
       price,
       description,
       groupId,
+      productType,
     });
 
     return res.status(201).json(product);
@@ -59,6 +60,9 @@ const updateQuantity = async (req, res, next) => {
     const withFiles = await productService.getProductWithFiles(id);
     return res.status(200).json(withFiles || product);
   } catch (error) {
+    if (error.message?.includes("Kit has no components")) {
+      return res.status(400).json({ message: error.message });
+    }
     return next(error);
   }
 };
@@ -66,7 +70,7 @@ const updateQuantity = async (req, res, next) => {
 const updateProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, sku, quantity, price, description, groupId } = req.body;
+    const { name, sku, quantity, price, description, groupId, productType } = req.body;
 
     if (!name || !sku || price === undefined) {
       return res.status(400).json({
@@ -81,6 +85,7 @@ const updateProduct = async (req, res, next) => {
       price,
       description,
       groupId,
+      productType,
     });
     if (!product) {
       return res.status(404).json({ message: "Product not found." });

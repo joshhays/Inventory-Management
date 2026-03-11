@@ -70,9 +70,16 @@
         <label>SKU</label>
         <input type="text" id="productSku" required placeholder="SKU">
       </div>
-      <div class="form-row">
+      <div class="form-row" id="quantityRow">
         <label>Quantity</label>
         <input type="number" id="productQuantity" min="0" value="0" placeholder="0">
+      </div>
+      <div class="form-row">
+        <label>Product Type</label>
+        <select id="productType">
+          <option value="regular">Regular Product</option>
+          <option value="kit">Kit (bundle of products)</option>
+        </select>
       </div>
       <div class="form-row">
         <label>Price</label>
@@ -87,6 +94,18 @@
         <select id="productGroup">
           <option value="">All groups (global)</option>
         </select>
+      </div>
+      <div class="form-row" id="kitComponentsRow" style="display: none;">
+        <label>Kit Components</label>
+        <p class="kit-modal-hint" style="margin: 0 0 0.5rem;">Add products that make up this kit. Select a product and quantity per kit, then click Add.</p>
+        <div class="kit-items-list" id="formKitItemsList"></div>
+        <div class="kit-add-row">
+          <select id="formKitAddProduct">
+            <option value="">Select product...</option>
+          </select>
+          <input type="number" id="formKitAddQty" min="1" value="1" placeholder="Qty" style="width: 70px;">
+          <button type="button" class="btn-apply" id="formKitAddBtn">Add</button>
+        </div>
       </div>
       <div class="form-actions">
         <button type="submit" class="btn-apply">Save</button>
@@ -106,6 +125,25 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" id="btnCloseFiles">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kit modal -->
+  <div class="modal-overlay" id="kitModal">
+    <div class="modal" style="min-width: 400px;">
+      <h3 id="kitModalTitle">Kit Components</h3>
+      <p class="kit-modal-hint">Add products that make up this kit. Quantity = how many of each product per kit. Kit inventory is auto-calculated from child product stock.</p>
+      <div class="kit-items-list" id="kitItemsList"></div>
+      <div class="kit-add-row">
+        <select id="kitAddProduct">
+          <option value="">Select product to add...</option>
+        </select>
+        <input type="number" id="kitAddQty" min="1" value="1" placeholder="Qty per kit" style="width: 80px;">
+        <button type="button" class="btn-apply" id="kitAddBtn">Add</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="btnCloseKit">Close</button>
       </div>
     </div>
   </div>
@@ -223,12 +261,13 @@
         return `
         <tr data-id="${p.id}">
           <td class="product-thumb-cell">${thumbHtml}</td>
-          <td>${escape(p.name)}</td>
+          <td>${escape(p.name)}${p.productType === "kit" ? ' <span class="badge badge-kit">Kit</span>' : ""}${p.productType === "kit" && p.kitItems?.length ? `<div class="kit-contents">Contains: ${(p.kitItems || []).map(i => `${i.quantity}× ${escape(i.product?.name || "?")}`).join(", ")}</div>` : ""}</td>
           <td>${escape(p.sku)}</td>
-          <td class="num">${p.quantity}</td>
+          <td class="num">${p.productType === "kit" ? (p.kitItems?.length ? p.quantity : "—") : p.quantity}</td>
           <td class="num">${formatPrice(p.price)}</td>
           <td>${p.group ? escape(p.group.name) : "—"}</td>
           <td class="actions-col">
+            ${p.productType === "kit" ? `<button class="btn-kit" data-id="${p.id}">Kit</button>` : ""}
             <button class="btn-edit" data-id="${p.id}">Edit</button>
             <button class="btn-files${filesClass}" data-id="${p.id}">Files${fileCount > 0 ? ` (${fileCount})` : ""}</button>
             <a href="/api/products/${p.id}/label" class="btn-label" target="_blank" download>Print Label</a>
@@ -237,6 +276,9 @@
       `}).join("");
       body.querySelectorAll(".btn-edit").forEach(btn => {
         btn.addEventListener("click", () => openForm(Number(btn.dataset.id)));
+      });
+      body.querySelectorAll(".btn-kit").forEach(btn => {
+        btn.addEventListener("click", () => openKitModal(Number(btn.dataset.id)));
       });
       body.querySelectorAll(".btn-files").forEach(btn => {
         btn.addEventListener("click", () => openFilesModal(Number(btn.dataset.id)));
@@ -292,6 +334,8 @@
       document.getElementById("productPrice").value = p.price;
       document.getElementById("productDescription").value = p.description || "";
       document.getElementById("productGroup").value = p.groupId ?? "";
+      document.getElementById("productType").value = p.productType || "regular";
+      toggleQuantityRow();
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
     }
@@ -302,9 +346,23 @@
       productForm.reset();
       document.getElementById("productQuantity").value = "0";
       document.getElementById("productGroup").value = "";
+      document.getElementById("productType").value = "regular";
+      toggleQuantityRow();
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
     }
+
+    function toggleQuantityRow() {
+      const isKit = document.getElementById("productType").value === "kit";
+      document.getElementById("quantityRow").style.display = isKit ? "none" : "block";
+      const kitRow = document.getElementById("kitComponentsRow");
+      kitRow.style.display = isKit && editingId ? "block" : "none";
+      if (isKit && editingId) {
+        refreshFormKitItems();
+        populateFormKitDropdown();
+      }
+    }
+    document.getElementById("productType").addEventListener("change", toggleQuantityRow);
 
     function closeForm() {
       formSidebar.classList.remove("open");
@@ -318,13 +376,15 @@
 
     productForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const isKit = document.getElementById("productType").value === "kit";
       const payload = {
         name: document.getElementById("productName").value.trim(),
         sku: document.getElementById("productSku").value.trim(),
-        quantity: Math.max(0, parseInt(document.getElementById("productQuantity").value, 10) || 0),
+        quantity: isKit ? 0 : (Math.max(0, parseInt(document.getElementById("productQuantity").value, 10) || 0)),
         price: parseFloat(document.getElementById("productPrice").value) || 0,
         description: document.getElementById("productDescription").value.trim() || null,
         groupId: document.getElementById("productGroup").value || null,
+        productType: isKit ? "kit" : "regular",
       };
       if (!payload.name || !payload.sku || payload.price === undefined) {
         alert("Name, SKU, and price are required.");
@@ -356,6 +416,12 @@
           }
           const created = await res.json();
           data.push(created);
+          if (isKit) {
+            closeForm();
+            await load();
+            openKitModal(created.id);
+            return;
+          }
         }
         render(data);
         closeForm();
@@ -464,6 +530,174 @@ filesList.innerHTML = files.length === 0
       if (e.key === "Escape" && filesModal.classList.contains("open")) {
         filesModal.classList.remove("open");
         filesProductId = null;
+      }
+    });
+
+    // Kit modal
+    let kitProductId = null;
+    const kitModal = document.getElementById("kitModal");
+    const kitItemsList = document.getElementById("kitItemsList");
+    const kitAddProduct = document.getElementById("kitAddProduct");
+    const kitAddQty = document.getElementById("kitAddQty");
+    const kitAddBtn = document.getElementById("kitAddBtn");
+
+    async function openKitModal(id) {
+      kitProductId = id;
+      const p = data.find(x => x.id === id);
+      document.getElementById("kitModalTitle").textContent = `Kit: ${p ? escape(p.name) : id}`;
+      await refreshKitItems();
+      populateKitProductDropdown();
+      kitModal.classList.add("open");
+    }
+
+    async function refreshKitItems() {
+      if (!kitProductId) return;
+      try {
+        const res = await fetch(`/api/products/${kitProductId}/kit-items`);
+        const items = await res.json();
+        kitItemsList.innerHTML = items.length === 0
+          ? "<p style='color:#64748b;font-size:0.85rem;padding:0.5rem;'>No components yet. Add products below.</p>"
+          : items.map(item => `
+            <div class="kit-item-row" data-item-id="${item.id}">
+              <span>${escape(item.product?.name || "?")} <span class="kit-item-qty">(${item.quantity} per kit)</span></span>
+              <button type="button" class="btn-del-small" data-item-id="${item.id}">Remove</button>
+            </div>
+          `).join("");
+        kitItemsList.querySelectorAll(".btn-del-small").forEach(btn => {
+          btn.addEventListener("click", () => removeKitItem(Number(btn.dataset.itemId)));
+        });
+      } catch (e) {
+        kitItemsList.innerHTML = "<p class='error'>Error loading kit items.</p>";
+      }
+    }
+
+    function populateKitProductDropdown() {
+      const p = data.find(x => x.id === kitProductId);
+      const currentIds = (p?.kitItems || []).map(i => i.productId);
+      const available = data.filter(x => (x.productType || "regular") !== "kit" && x.id !== kitProductId && !currentIds.includes(x.id));
+      if (available.length === 0) {
+        kitAddProduct.innerHTML = '<option value="">No products to add (create regular products first)</option>';
+      } else {
+        kitAddProduct.innerHTML = '<option value="">Select product to add...</option>' + available.map(x => `<option value="${x.id}">${escape(x.name)} (${x.sku})</option>`).join("");
+      }
+      kitAddQty.value = "1";
+    }
+
+    async function addKitItemToKit() {
+      const productId = kitAddProduct.value;
+      const quantity = Math.max(1, parseInt(kitAddQty.value, 10) || 1);
+      if (!productId || !kitProductId) return;
+      try {
+        const res = await fetch(`/api/products/${kitProductId}/kit-items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId: Number(productId), quantity }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "Failed");
+        }
+        await refreshKitItems();
+        populateKitProductDropdown();
+        load();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+    async function removeKitItem(itemId) {
+      if (!kitProductId) return;
+      try {
+        const res = await fetch(`/api/products/${kitProductId}/kit-items/${itemId}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed");
+        await refreshKitItems();
+        populateKitProductDropdown();
+        load();
+      } catch (e) {
+        alert("Error removing item.");
+      }
+    }
+
+    kitAddBtn.addEventListener("click", addKitItemToKit);
+    async function refreshFormKitItems() {
+      if (!editingId) return;
+      try {
+        const res = await fetch(`/api/products/${editingId}/kit-items`);
+        const items = await res.json();
+        const list = document.getElementById("formKitItemsList");
+        list.innerHTML = items.length === 0
+          ? "<p style='color:#64748b;font-size:0.85rem;padding:0.5rem;'>No components yet.</p>"
+          : items.map(item => `
+            <div class="kit-item-row" data-item-id="${item.id}">
+              <span>${escape(item.product?.name || "?")} <span class="kit-item-qty">(${item.quantity} per kit)</span></span>
+              <button type="button" class="btn-del-small form-kit-remove" data-item-id="${item.id}">Remove</button>
+            </div>
+          `).join("");
+        list.querySelectorAll(".form-kit-remove").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            try {
+              const res = await fetch(`/api/products/${editingId}/kit-items/${btn.dataset.itemId}`, { method: "DELETE" });
+              if (!res.ok) throw new Error("Failed");
+              await refreshFormKitItems();
+              populateFormKitDropdown();
+              load();
+            } catch (e) { alert("Error removing item."); }
+          });
+        });
+      } catch (e) {
+        document.getElementById("formKitItemsList").innerHTML = "<p class='error'>Error loading.</p>";
+      }
+    }
+
+    function populateFormKitDropdown() {
+      const p = data.find(x => x.id === editingId);
+      const currentIds = (p?.kitItems || []).map(i => i.productId);
+      const available = data.filter(x => (x.productType || "regular") !== "kit" && x.id !== editingId && !currentIds.includes(x.id));
+      const sel = document.getElementById("formKitAddProduct");
+      if (available.length === 0) {
+        sel.innerHTML = '<option value="">No other products to add (create regular products first)</option>';
+      } else {
+        sel.innerHTML = '<option value="">Select product...</option>' + available.map(x => `<option value="${x.id}">${escape(x.name)} (${x.sku})</option>`).join("");
+      }
+      document.getElementById("formKitAddQty").value = "1";
+    }
+
+    document.getElementById("formKitAddBtn").addEventListener("click", async () => {
+      const productId = document.getElementById("formKitAddProduct").value;
+      const quantity = Math.max(1, parseInt(document.getElementById("formKitAddQty").value, 10) || 1);
+      if (!productId || !editingId) return;
+      try {
+        const res = await fetch(`/api/products/${editingId}/kit-items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ productId: Number(productId), quantity }),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || "Failed");
+        }
+        await refreshFormKitItems();
+        populateFormKitDropdown();
+        load();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    });
+
+    document.getElementById("btnCloseKit").addEventListener("click", () => {
+      kitModal.classList.remove("open");
+      kitProductId = null;
+    });
+    kitModal.addEventListener("click", (e) => {
+      if (e.target === kitModal) {
+        kitModal.classList.remove("open");
+        kitProductId = null;
+      }
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && kitModal.classList.contains("open")) {
+        kitModal.classList.remove("open");
+        kitProductId = null;
       }
     });
 

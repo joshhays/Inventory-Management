@@ -25,6 +25,7 @@
     <main class="main-content">
   <div class="toolbar">
     <h1>Products</h1>
+    <button type="button" class="btn-upload" id="btnAddInventory">Add inventory</button>
     <select id="groupFilter" title="Filter by user group">
       <option value="">All products</option>
     </select>
@@ -64,6 +65,30 @@
   </div>
   </main>
   </div>
+  <div class="modal-overlay" id="addInventoryModal">
+    <div class="modal" style="min-width: 360px;">
+      <h3>Add inventory</h3>
+      <p class="kit-modal-hint">Select a product to receive, or a kit to build. Building kits deducts the required quantities from each component.</p>
+      <div class="modal-row">
+        <label>Product or kit</label>
+        <select id="addInventoryProduct">
+          <option value="">Select...</option>
+        </select>
+      </div>
+      <div class="modal-row" id="addInventoryKitPreview" style="display: none;">
+        <label>Will deduct from components:</label>
+        <div class="kit-preview-list" id="addInventoryKitPreviewList"></div>
+      </div>
+      <div class="modal-row">
+        <label id="addInventoryQtyLabel">Quantity to receive</label>
+        <input type="number" id="addInventoryQty" min="1" value="1" placeholder="1">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-apply" id="btnAddInventorySubmit">Receive</button>
+        <button type="button" class="btn-cancel" id="btnAddInventoryCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="modal">
     <div class="modal">
       <h3 id="modalTitle">Adjust inventory</h3>
@@ -72,8 +97,19 @@
         <input type="number" id="deductInput" min="1" placeholder="Amount to deduct">
       </div>
       <div class="modal-row">
-        <label>Receive (add to current)</label>
+        <label>Offline ship (deduct for offline order)</label>
+        <div class="offline-ship-row">
+          <input type="number" id="offlineShipQty" min="1" placeholder="Qty" style="width: 70px;">
+          <input type="text" id="offlineShipName" placeholder="Customer / ordered by (required)" style="flex: 1;">
+        </div>
+      </div>
+      <div class="modal-row" id="receiveRow">
+        <label id="receiveLabel">Receive (add to current)</label>
         <input type="number" id="receiveInput" min="1" placeholder="Quantity received">
+      </div>
+      <div class="modal-row" id="kitBuildRow" style="display: none;">
+        <label>Kit (build from components – deducts child inventory)</label>
+        <input type="number" id="kitBuildInput" min="1" placeholder="Kits to build">
       </div>
       <div class="modal-row">
         <label>Hard count (set to exact quantity)</label>
@@ -132,9 +168,9 @@
     function render(rows) {
       body.innerHTML = rows.map(p => `
         <tr data-id="${p.id}">
-          <td>${escape(p.name)}</td>
+          <td>${escape(p.name)}${p.productType === "kit" ? ' <span class="badge badge-kit">Kit</span>' : ""}${p.productType === "kit" && p.kitItems?.length ? `<div class="kit-contents">Contains: ${(p.kitItems || []).map(i => `${i.quantity}× ${escape(i.product?.name || "?")}`).join(", ")}</div>` : ""}</td>
           <td>${escape(p.sku)}</td>
-          <td class="num qty-cell ${p.quantity === 0 ? 'qty-zero' : p.quantity <= 5 ? 'qty-low' : ''}">${p.quantity}</td>
+          <td class="num qty-cell ${p.productType === "kit" ? "" : p.quantity === 0 ? "qty-zero" : p.quantity <= 5 ? "qty-low" : ""}">${p.productType === "kit" ? (p.kitItems?.length ? p.quantity : "—") : p.quantity}</td>
           <td class="num">${formatPrice(p.price)}</td>
           <td>${p.group ? escape(p.group.name) : "—"}</td>
           <td class="actions-col">
@@ -158,13 +194,20 @@
       editingId = id;
       const p = data.find(x => x.id === id);
       if (!p) return;
-      document.getElementById("modalTitle").textContent = `Adjust: ${p.name}`;
+      document.getElementById("modalTitle").textContent = `Adjust: ${p.name}${p.productType === "kit" ? " (kit – changes apply to components)" : ""}`;
       deductInput.value = "";
       receiveInput.value = "";
       hardCountInput.value = "";
+      document.getElementById("offlineShipQty").value = "";
+      document.getElementById("offlineShipName").value = "";
+      document.getElementById("kitBuildInput").value = "";
       deductInput.placeholder = `Current: ${p.quantity}`;
       receiveInput.placeholder = `Current: ${p.quantity}`;
       hardCountInput.placeholder = `Current: ${p.quantity}`;
+      document.getElementById("kitBuildInput").placeholder = `Current: ${p.quantity}`;
+      const isKit = p.productType === "kit" && p.kitItems?.length;
+      document.getElementById("receiveRow").style.display = isKit ? "none" : "block";
+      document.getElementById("kitBuildRow").style.display = isKit ? "block" : "none";
       modal.classList.add("open");
       deductInput.focus();
     }
@@ -180,20 +223,119 @@
       if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
     });
 
+    // Add inventory modal
+    const addInventoryModal = document.getElementById("addInventoryModal");
+    const addInventoryProduct = document.getElementById("addInventoryProduct");
+    const addInventoryQty = document.getElementById("addInventoryQty");
+    const addInventoryKitPreview = document.getElementById("addInventoryKitPreview");
+    const addInventoryKitPreviewList = document.getElementById("addInventoryKitPreviewList");
+
+    function populateAddInventoryDropdown() {
+      const groupId = document.getElementById("groupFilter")?.value || "";
+      const filtered = groupId ? data.filter(p => !p.groupId || p.groupId == groupId) : data;
+      const regular = filtered.filter(p => (p.productType || "regular") !== "kit");
+      const kits = filtered.filter(p => p.productType === "kit" && p.kitItems?.length);
+      let html = '<option value="">Select...</option>';
+      if (regular.length) {
+        html += '<optgroup label="Products">' + regular.map(p => `<option value="${p.id}">${escape(p.name)} (${p.sku})</option>`).join("") + "</optgroup>";
+      }
+      if (kits.length) {
+        html += '<optgroup label="Kits">' + kits.map(p => `<option value="${p.id}" data-kit="1">${escape(p.name)} (${p.sku}) – Kit</option>`).join("") + "</optgroup>";
+      }
+      addInventoryProduct.innerHTML = html;
+      addInventoryKitPreview.style.display = "none";
+    }
+
+    function updateAddInventoryKitPreview() {
+      const opt = addInventoryProduct.selectedOptions[0];
+      const isKit = opt?.dataset?.kit;
+      const id = addInventoryProduct.value;
+      const qty = Math.max(1, parseInt(addInventoryQty.value, 10) || 1);
+      if (!id || !isKit) {
+        addInventoryKitPreview.style.display = "none";
+        return;
+      }
+      const p = data.find(x => x.id == id);
+      if (!p?.kitItems?.length) {
+        addInventoryKitPreview.style.display = "none";
+        return;
+      }
+      addInventoryKitPreview.style.display = "block";
+      addInventoryKitPreviewList.innerHTML = (p.kitItems || []).map(i => `${i.quantity * qty}× ${escape(i.product?.name || "?")}`).join(", ");
+    }
+    addInventoryProduct.addEventListener("change", () => {
+      updateAddInventoryKitPreview();
+      const opt = addInventoryProduct.selectedOptions[0];
+      const isKit = opt?.dataset?.kit;
+      document.getElementById("addInventoryQtyLabel").textContent = isKit ? "Kits to build" : "Quantity to receive";
+      document.getElementById("btnAddInventorySubmit").textContent = isKit ? "Build" : "Receive";
+    });
+    addInventoryQty.addEventListener("input", updateAddInventoryKitPreview);
+
+    document.getElementById("btnAddInventory").addEventListener("click", () => {
+      populateAddInventoryDropdown();
+      addInventoryQty.value = "1";
+      document.getElementById("addInventoryQtyLabel").textContent = "Quantity to receive";
+      document.getElementById("btnAddInventorySubmit").textContent = "Receive";
+      addInventoryModal.classList.add("open");
+    });
+
+    document.getElementById("btnAddInventorySubmit").addEventListener("click", async () => {
+      const productId = addInventoryProduct.value;
+      const qty = Math.max(1, parseInt(addInventoryQty.value, 10) || 1);
+      if (!productId) {
+        alert("Select a product or kit.");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/products/${productId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ adjust: qty, source: "receive" }),
+        });
+        if (!res.ok) throw new Error((await res.json()).message || res.statusText);
+        await load();
+        addInventoryModal.classList.remove("open");
+      } catch (e) {
+        alert("Error: " + e.message);
+      }
+    });
+
+    document.getElementById("btnAddInventoryCancel").addEventListener("click", () => addInventoryModal.classList.remove("open"));
+    addInventoryModal.addEventListener("click", (e) => { if (e.target === addInventoryModal) addInventoryModal.classList.remove("open"); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && addInventoryModal.classList.contains("open")) addInventoryModal.classList.remove("open");
+    });
+
     document.getElementById("groupFilter")?.addEventListener("change", () => { load(); updateExportLink(); });
 
     document.getElementById("btnApply").addEventListener("click", async () => {
       const deduct = deductInput.value.trim();
+      const offlineShipQty = document.getElementById("offlineShipQty").value.trim();
+      const offlineShipName = document.getElementById("offlineShipName").value.trim();
       const receive = receiveInput.value.trim();
+      const kitBuild = document.getElementById("kitBuildInput").value.trim();
       const hardCount = hardCountInput.value.trim();
-      const filled = [deduct, receive, hardCount].filter(Boolean);
+      const p = data.find(x => x.id === editingId);
+      const isKit = p?.productType === "kit" && p?.kitItems?.length;
+      const filled = [deduct, (offlineShipQty && offlineShipName), (isKit ? kitBuild : receive), hardCount].filter(Boolean);
       if (filled.length === 0) return;
       if (filled.length > 1) {
-        alert("Use only one option: Deduct, Receive, or Hard count.");
+        alert("Use only one option: Deduct, Offline ship, " + (isKit ? "Kit" : "Receive") + ", or Hard count.");
+        return;
+      }
+      if (offlineShipQty && !offlineShipName) {
+        alert("Customer / ordered by name is required for offline ship.");
+        return;
+      }
+      if (offlineShipName && !offlineShipQty) {
+        alert("Enter quantity for offline ship.");
         return;
       }
       let payload;
       if (deduct) payload = { adjust: -Math.abs(Number(deduct)) };
+      else if (offlineShipQty && offlineShipName) payload = { adjust: -Math.abs(Number(offlineShipQty)), source: `offline_ship: ${offlineShipName.trim()}` };
+      else if (isKit && kitBuild) payload = { adjust: Math.abs(Number(kitBuild)), source: "receive" };
       else if (receive) payload = { adjust: Math.abs(Number(receive)), source: "receive" };
       else payload = { quantity: Math.max(0, Number(hardCount)) };
       try {
@@ -203,10 +345,15 @@
           body: JSON.stringify(payload),
         });
         if (!res.ok) throw new Error((await res.json()).message || res.statusText);
-        const updated = await res.json();
-        const idx = data.findIndex(x => x.id === editingId);
-        if (idx >= 0) data[idx] = { ...data[idx], ...updated };
-        render(data);
+        const p = data.find(x => x.id === editingId);
+        const isKit = p?.productType === "kit" && p?.kitItems?.length;
+        if (isKit) await load();
+        else {
+          const updated = await res.json();
+          const idx = data.findIndex(x => x.id === editingId);
+          if (idx >= 0) data[idx] = { ...data[idx], ...updated };
+          render(data);
+        }
         closeModal();
       } catch (e) {
         alert("Error: " + e.message);

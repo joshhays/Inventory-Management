@@ -1,7 +1,24 @@
 const prisma = require("../lib/prisma");
 const inventoryLog = require("./inventoryLog.service");
 
-const getAllProducts = (options = {}) => {
+/** Calculate kit quantity from child products: min(floor(child.qty / qtyPerKit)) */
+const calculateKitQuantity = async (kitId) => {
+  const items = await prisma.kitItem.findMany({
+    where: { kitId: Number(kitId) },
+    include: { product: true },
+  });
+  if (items.length === 0) return 0;
+  let minAvailable = Infinity;
+  for (const item of items) {
+    const childQty = item.product.quantity;
+    const qtyPerKit = Math.max(1, item.quantity);
+    const available = Math.floor(childQty / qtyPerKit);
+    minAvailable = Math.min(minAvailable, available);
+  }
+  return minAvailable === Infinity ? 0 : minAvailable;
+};
+
+const getAllProducts = async (options = {}) => {
   const { groupId } = options;
   const where = {};
   if (groupId != null && groupId !== "") {
@@ -13,35 +30,45 @@ const getAllProducts = (options = {}) => {
       ];
     }
   }
-  return prisma.product.findMany({
+  const products = await prisma.product.findMany({
     where,
-    include: { files: true, group: true },
-    orderBy: {
-      createdAt: "desc",
+    include: {
+      files: true,
+      group: true,
+      kitItems: { include: { product: true } },
     },
+    orderBy: { createdAt: "desc" },
   });
+
+  return products;
 };
 
 const createProduct = (productData) => {
+  const isKit = productData.productType === "kit";
   return prisma.product.create({
     data: {
       name: productData.name,
       sku: productData.sku,
-      quantity: Number(productData.quantity) || 0,
+      quantity: isKit ? 0 : (Number(productData.quantity) || 0),
       price: Number(productData.price) || 0,
       description: productData.description,
+      productType: isKit ? "kit" : "regular",
       ...(productData.groupId != null && productData.groupId !== "" && {
         groupId: Number(productData.groupId) || null,
       }),
     },
-    include: { files: true, group: true },
+    include: { files: true, group: true, kitItems: { include: { product: true } } },
   });
 };
 
 const updateProduct = async (id, productData) => {
-  const product = await prisma.product.findUnique({ where: { id: Number(id) } });
+  const product = await prisma.product.findUnique({
+    where: { id: Number(id) },
+    include: { kitItems: true },
+  });
   if (!product) return null;
 
+  const isKit = product.productType === "kit";
   const qtyBefore = product.quantity;
   const newQty = productData.quantity !== undefined
     ? Math.max(0, Math.floor(Number(productData.quantity)))
@@ -52,16 +79,17 @@ const updateProduct = async (id, productData) => {
     data: {
       ...(productData.name != null && { name: productData.name }),
       ...(productData.sku != null && { sku: productData.sku }),
-      ...(productData.quantity !== undefined && { quantity: newQty }),
+      ...(productData.quantity !== undefined && !isKit && { quantity: newQty }),
       ...(productData.price !== undefined && { price: Number(productData.price) }),
       ...(productData.description !== undefined && { description: productData.description }),
+      ...(productData.productType !== undefined && { productType: productData.productType }),
       ...(productData.groupId !== undefined && {
         groupId: productData.groupId == null || productData.groupId === "" ? null : Number(productData.groupId),
       }),
     },
   });
 
-  if (qtyBefore !== newQty) {
+  if (!isKit && qtyBefore !== newQty) {
     await inventoryLog.create({
       productId: product.id,
       sku: updated.sku,
@@ -75,13 +103,20 @@ const updateProduct = async (id, productData) => {
 
   return prisma.product.findUnique({
     where: { id: Number(id) },
-    include: { files: true, group: true },
+    include: { files: true, group: true, kitItems: { include: { product: true } } },
   });
 };
 
 const updateQuantity = async (id, { quantity, adjust }, source = "manual") => {
-  const product = await prisma.product.findUnique({ where: { id: Number(id) } });
+  const product = await prisma.product.findUnique({
+    where: { id: Number(id) },
+    include: { kitItems: { include: { product: true } } },
+  });
   if (!product) return null;
+
+  if (product.productType === "kit") {
+    return updateKitQuantity(product, { quantity, adjust }, source);
+  }
 
   let newQty = product.quantity;
   let action = "hard_count";
@@ -90,7 +125,9 @@ const updateQuantity = async (id, { quantity, adjust }, source = "manual") => {
   } else if (adjust !== undefined) {
     const delta = Math.floor(Number(adjust));
     newQty = Math.max(0, product.quantity + delta);
-    action = delta < 0 ? "deduct" : source === "receive" ? "receive" : "add";
+    action = delta < 0
+      ? (source.startsWith("offline_ship") ? "offline_ship" : "deduct")
+      : source === "receive" ? "receive" : "add";
   }
 
   const updated = await prisma.product.update({
@@ -111,11 +148,92 @@ const updateQuantity = async (id, { quantity, adjust }, source = "manual") => {
   return updated;
 };
 
-const getProductWithFiles = (id) => {
-  return prisma.product.findUnique({
-    where: { id: Number(id) },
-    include: { files: true, group: true },
+/** Apply kit quantity change.
+ * Build kit (positive/receive) = deduct from children (consume components), add to kit quantity.
+ * Deduct/sell (negative) = deduct from kit's stored quantity only (shipping built kits). */
+const updateKitQuantity = async (kit, { quantity, adjust }, source = "manual") => {
+  const items = kit.kitItems || [];
+  if (items.length === 0) {
+    throw new Error("Kit has no components. Add products to the kit first.");
+  }
+
+  let kitDelta = 0;
+  if (quantity !== undefined) {
+    const currentQty = kit.quantity ?? 0;
+    kitDelta = Math.floor(Number(quantity)) - currentQty;
+  } else if (adjust !== undefined) {
+    kitDelta = Math.floor(Number(adjust));
+  }
+  if (kitDelta === 0) {
+    return prisma.product.findUnique({
+      where: { id: kit.id },
+      include: { files: true, group: true, kitItems: { include: { product: true } } },
+    });
+  }
+
+  const isBuilding = kitDelta > 0;
+  const action = isBuilding ? "kit" : (kitDelta < 0 ? (source.startsWith("offline_ship") ? "offline_ship" : "deduct") : "add");
+  const childSource = source.startsWith("offline_ship") ? source : `kit:${kit.sku}`;
+  const kitsToProcess = Math.abs(kitDelta);
+
+  if (isBuilding) {
+    for (const item of items) {
+      const qtyPerKit = Math.max(1, Math.floor(Number(item.quantity) || 1));
+      const amountToDeduct = kitsToProcess * qtyPerKit;
+
+      const child = await prisma.product.findUnique({ where: { id: item.productId } });
+      if (!child) continue;
+      if (child.quantity < amountToDeduct) {
+        throw new Error(
+          `Not enough "${child.name}" (${child.sku}): need ${amountToDeduct}, have ${child.quantity}. ` +
+          `Cannot build ${kitsToProcess} kit(s) requiring ${qtyPerKit}× each.`
+        );
+      }
+      const newChildQty = child.quantity - amountToDeduct;
+
+      await prisma.product.update({
+        where: { id: child.id },
+        data: { quantity: newChildQty },
+      });
+      await inventoryLog.create({
+        productId: child.id,
+        sku: child.sku,
+        productName: child.name,
+        action,
+        quantityBefore: child.quantity,
+        quantityAfter: newChildQty,
+        source: childSource,
+      });
+    }
+  }
+
+  const newKitQty = Math.max(0, (kit.quantity ?? 0) + kitDelta);
+  await prisma.product.update({
+    where: { id: kit.id },
+    data: { quantity: newKitQty },
   });
+  await inventoryLog.create({
+    productId: kit.id,
+    sku: kit.sku,
+    productName: kit.name,
+    action: isBuilding ? "kit" : (source.startsWith("offline_ship") ? "offline_ship" : "deduct"),
+    quantityBefore: kit.quantity ?? 0,
+    quantityAfter: newKitQty,
+    source,
+  });
+
+  return prisma.product.findUnique({
+    where: { id: kit.id },
+    include: { files: true, group: true, kitItems: { include: { product: true } } },
+  });
+};
+
+const getProductWithFiles = async (id) => {
+  const product = await prisma.product.findUnique({
+    where: { id: Number(id) },
+    include: { files: true, group: true, kitItems: { include: { product: true } } },
+  });
+  return product;
 };
 
 const importFromCsv = async (rows) => {
@@ -178,4 +296,5 @@ module.exports = {
   updateQuantity,
   getProductWithFiles,
   importFromCsv,
+  calculateKitQuantity,
 };

@@ -26,11 +26,25 @@ model Product {
   quantity    Int          @default(0)
   price       Float
   description String?
+  productType String       @default("regular") // "regular" | "kit"
   groupId     Int?
   group       UserGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   files       ProductFile[]
+  kitItems    KitItem[]    @relation("KitChildren")
+  parentKits  KitItem[]    @relation("KitParent")
+}
+
+model KitItem {
+  id           Int     @id @default(autoincrement())
+  kitId        Int     // The kit product
+  productId    Int     // The child product
+  quantity     Int     @default(1) // How many of this product per kit
+  kit          Product @relation("KitChildren", fields: [kitId], references: [id], onDelete: Cascade)
+  product      Product @relation("KitParent", fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([kitId, productId])
 }
 
 model ProductFile {
