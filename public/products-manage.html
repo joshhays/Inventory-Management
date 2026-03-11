@@ -10,20 +10,15 @@
 </head>
 <body>
   <div class="app-layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <span class="sidebar-header-text">Inventory</span>
-        <button class="collapse-btn" id="collapseBtn" aria-label="Collapse sidebar" title="Collapse">‹</button>
-      </div>
-      <nav class="sidebar-nav">
-        <a href="/"><span>Products</span></a>
-        <a href="/products-manage.html" class="active"><span>Manage Products</span></a>
-        <a href="/orders.html"><span>Orders</span></a>
-        <a href="/logs.html"><span>Transaction Log</span></a>
+    <header class="top-nav">
+      <span class="top-nav-brand">Inventory</span>
+      <nav class="top-nav-tabs">
+        <a href="/">Products</a>
+        <a href="/products-manage.html" class="active">Manage Products</a>
+        <a href="/orders.html">Orders</a>
+        <a href="/logs.html">Transaction Log</a>
       </nav>
-    </aside>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu"><span></span></button>
+    </header>
     <main class="main-content">
       <div class="toolbar">
         <h1>Manage Products</h1>
@@ -728,7 +723,6 @@ filesList.innerHTML = files.length === 0
 
     document.getElementById("groupFilter")?.addEventListener("change", () => { load(); updateExportLink(); });
 
-    // Sortable columns
     document.querySelectorAll("th[data-col]").forEach(th => {
       th.addEventListener("click", () => {
         const col = th.dataset.col;
@@ -743,38 +737,6 @@ filesList.innerHTML = files.length === 0
         });
         render(data);
       });
-    });
-
-    // Sidebar collapse
-    const sidebar = document.getElementById("sidebar");
-    const sidebarOverlay = document.getElementById("sidebarOverlay");
-    const menuBtn = document.getElementById("menuBtn");
-    const collapseBtn = document.getElementById("collapseBtn");
-
-    function toggleSidebar() {
-      sidebar.classList.toggle("open");
-      sidebarOverlay.classList.toggle("open");
-    }
-    function closeSidebar() {
-      sidebar.classList.remove("open");
-      sidebarOverlay.classList.remove("open");
-    }
-    menuBtn.addEventListener("click", toggleSidebar);
-    sidebarOverlay.addEventListener("click", closeSidebar);
-
-    const collapsedKey = "sidebar-collapsed";
-    if (localStorage.getItem(collapsedKey) === "true") {
-      sidebar.classList.add("collapsed");
-      collapseBtn.textContent = "›";
-      collapseBtn.title = "Expand";
-    }
-    collapseBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("collapsed");
-      const isCollapsed = sidebar.classList.contains("collapsed");
-      collapseBtn.textContent = isCollapsed ? "›" : "‹";
-      collapseBtn.title = isCollapsed ? "Expand" : "Collapse";
-      collapseBtn.setAttribute("aria-label", isCollapsed ? "Expand sidebar" : "Collapse sidebar");
-      localStorage.setItem(collapsedKey, isCollapsed);
     });
 
     loadGroups().then(load);

@@ -8,20 +8,15 @@
 </head>
 <body>
   <div class="app-layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <span class="sidebar-header-text">Inventory</span>
-        <button class="collapse-btn" id="collapseBtn" aria-label="Collapse sidebar" title="Collapse">‹</button>
-      </div>
-      <nav class="sidebar-nav">
-        <a href="/" class="active"><span>Products</span></a>
-        <a href="/products-manage.html"><span>Manage Products</span></a>
-        <a href="/orders.html"><span>Orders</span></a>
-        <a href="/logs.html"><span>Transaction Log</span></a>
+    <header class="top-nav">
+      <span class="top-nav-brand">Inventory</span>
+      <nav class="top-nav-tabs">
+        <a href="/" class="active">Products</a>
+        <a href="/products-manage.html">Manage Products</a>
+        <a href="/orders.html">Orders</a>
+        <a href="/logs.html">Transaction Log</a>
       </nav>
-    </aside>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu"><span></span></button>
+    </header>
     <main class="main-content">
   <div class="toolbar">
     <h1>Products</h1>
@@ -425,37 +420,6 @@
       } catch (err) {
         alert("Error: " + err.message);
       }
-    });
-
-    const sidebar = document.getElementById("sidebar");
-    const sidebarOverlay = document.getElementById("sidebarOverlay");
-    const menuBtn = document.getElementById("menuBtn");
-
-    function toggleSidebar() {
-      sidebar.classList.toggle("open");
-      sidebarOverlay.classList.toggle("open");
-    }
-    function closeSidebar() {
-      sidebar.classList.remove("open");
-      sidebarOverlay.classList.remove("open");
-    }
-    menuBtn.addEventListener("click", toggleSidebar);
-    sidebarOverlay.addEventListener("click", closeSidebar);
-
-    const collapseBtn = document.getElementById("collapseBtn");
-    const collapsedKey = "sidebar-collapsed";
-    if (localStorage.getItem(collapsedKey) === "true") {
-      sidebar.classList.add("collapsed");
-      collapseBtn.textContent = "›";
-      collapseBtn.title = "Expand";
-    }
-    collapseBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("collapsed");
-      const isCollapsed = sidebar.classList.contains("collapsed");
-      collapseBtn.textContent = isCollapsed ? "›" : "‹";
-      collapseBtn.title = isCollapsed ? "Expand" : "Collapse";
-      collapseBtn.setAttribute("aria-label", isCollapsed ? "Expand sidebar" : "Collapse sidebar");
-      localStorage.setItem(collapsedKey, isCollapsed);
     });
 
     loadGroups().then(load);

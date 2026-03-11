@@ -8,20 +8,15 @@
 </head>
 <body>
   <div class="app-layout">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <span class="sidebar-header-text">Inventory</span>
-        <button class="collapse-btn" id="collapseBtn" aria-label="Collapse sidebar" title="Collapse">‹</button>
-      </div>
-      <nav class="sidebar-nav">
-        <a href="/"><span>Products</span></a>
-        <a href="/products-manage.html"><span>Manage Products</span></a>
-        <a href="/orders.html" class="active"><span>Orders</span></a>
-        <a href="/logs.html"><span>Transaction Log</span></a>
+    <header class="top-nav">
+      <span class="top-nav-brand">Inventory</span>
+      <nav class="top-nav-tabs">
+        <a href="/">Products</a>
+        <a href="/products-manage.html">Manage Products</a>
+        <a href="/orders.html" class="active">Orders</a>
+        <a href="/logs.html">Transaction Log</a>
       </nav>
-    </aside>
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
-    <button class="menu-btn" id="menuBtn" aria-label="Toggle menu"><span></span></button>
+    </header>
     <main class="main-content">
       <h1>Orders</h1>
       <div class="orders-toolbar">
@@ -39,7 +34,7 @@
           <option value="100">100 per page</option>
         </select>
       </div>
-      <div class="orders-table-wrap">
+      <div class="table-wrap">
         <div class="empty" id="loading">Loading…</div>
         <table class="orders-table" id="ordersTable" style="display:none">
           <thead>
@@ -254,29 +249,6 @@
 
     statusFilter.addEventListener("change", () => loadOrders(1));
     pageSize.addEventListener("change", () => loadOrders(1));
-
-    const sidebar = document.getElementById("sidebar");
-    const sidebarOverlay = document.getElementById("sidebarOverlay");
-    const menuBtn = document.getElementById("menuBtn");
-    const collapseBtn = document.getElementById("collapseBtn");
-
-    function toggleSidebar() { sidebar.classList.toggle("open"); sidebarOverlay.classList.toggle("open"); }
-    function closeSidebar() { sidebar.classList.remove("open"); sidebarOverlay.classList.remove("open"); }
-    menuBtn.addEventListener("click", toggleSidebar);
-    sidebarOverlay.addEventListener("click", closeSidebar);
-
-    if (localStorage.getItem("sidebar-collapsed") === "true") {
-      sidebar.classList.add("collapsed");
-      collapseBtn.textContent = "›";
-      collapseBtn.title = "Expand";
-    }
-    collapseBtn.addEventListener("click", () => {
-      sidebar.classList.toggle("collapsed");
-      const isCollapsed = sidebar.classList.contains("collapsed");
-      collapseBtn.textContent = isCollapsed ? "›" : "‹";
-      collapseBtn.title = isCollapsed ? "Expand" : "Collapse";
-      localStorage.setItem("sidebar-collapsed", isCollapsed);
-    });
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && orderDetailSidebar.classList.contains("open")) closeOrderDetail();
