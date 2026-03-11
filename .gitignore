@@ -6,3 +6,10 @@ generated
 prisma/*.db
 uploads/*
 !uploads/.gitkeep
+
+# Mobile (Expo)
+mobile/.expo
+mobile/ios
+mobile/android
+mobile/dist
+mobile/web-build

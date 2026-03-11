@@ -9,6 +9,7 @@ const router = express.Router();
 
 router.get("/", productController.getProducts);
 router.get("/export/csv", productController.exportCsv);
+router.get("/:id", productController.getProduct);
 router.post("/import", (req, res, next) => {
   uploadCsv(req, res, (err) => {
     if (err) return res.status(400).json({ message: err.message || "Upload failed." });

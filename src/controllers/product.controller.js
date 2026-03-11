@@ -14,6 +14,19 @@ const getProducts = async (req, res, next) => {
   }
 };
 
+const getProduct = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const product = await productService.getProductWithFiles(id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found." });
+    }
+    res.status(200).json(product);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const createProduct = async (req, res, next) => {
   try {
     const { name, sku, quantity, price, description, groupId, productType } = req.body;
@@ -171,6 +184,7 @@ const getLabel = async (req, res, next) => {
 
 module.exports = {
   getProducts,
+  getProduct,
   createProduct,
   updateQuantity,
   updateProduct,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,20 +10,31 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { InventoryCard } from '@/components/inventory-card';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { API_BASE } from '@/constants/api';
 import { WebTheme } from '@/constants/web-theme';
-import { fetchProducts, updateQuantity, type Product } from '@/lib/api';
+import {
+  createProduct,
+  fetchProducts,
+  type Product,
+} from '@/lib/api';
+
+const PAGE_BG = '#F5F7FA';
 
 export default function ProductsScreen() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
-  const [adjustValue, setAdjustValue] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', sku: '', price: '', quantity: '0' });
   const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
@@ -55,30 +66,34 @@ export default function ProductsScreen() {
     load();
   }, [load]);
 
-  const openAdjust = (product: Product) => {
-    setAdjustingProduct(product);
-    setAdjustValue('');
-  };
+  const filteredProducts = useMemo(() => {
+    if (!searchQuery.trim()) return products;
+    const q = searchQuery.toLowerCase();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.sku.toLowerCase().includes(q) ||
+        p.group?.name?.toLowerCase().includes(q)
+    );
+  }, [products, searchQuery]);
 
-  const closeAdjust = () => {
-    setAdjustingProduct(null);
-    setAdjustValue('');
-  };
-
-  const handleAdjust = async (action: 'deduct' | 'receive') => {
-    if (!adjustingProduct || !adjustValue.trim()) return;
-    const qty = Math.abs(parseInt(adjustValue, 10) || 0);
-    if (qty <= 0) return;
-
+  const handleAddProduct = async () => {
+    const name = addForm.name.trim();
+    const sku = addForm.sku.trim();
+    const price = parseFloat(addForm.price);
+    const quantity = parseInt(addForm.quantity, 10) || 0;
+    if (!name || !sku || isNaN(price)) {
+      Alert.alert('Error', 'Name, SKU, and price are required.');
+      return;
+    }
     setSubmitting(true);
     try {
-      const delta = action === 'deduct' ? -qty : qty;
-      const source = action === 'receive' ? 'receive' : 'manual';
-      await updateQuantity(adjustingProduct.id, { adjust: delta, source });
-      closeAdjust();
+      await createProduct({ name, sku, price, quantity });
+      setAddModalVisible(false);
+      setAddForm({ name: '', sku: '', price: '', quantity: '0' });
       load();
     } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Update failed');
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to add product');
     } finally {
       setSubmitting(false);
     }
@@ -87,75 +102,58 @@ export default function ProductsScreen() {
   const formatPrice = (n: number) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const renderItem = ({ item }: { item: Product }) => {
-    const isKit = item.productType === 'kit';
-    const qtyVal = isKit && item.kitItems?.length ? item.quantity : isKit ? null : item.quantity;
-    const qtyStyle =
-      qtyVal !== null && qtyVal === 0
-        ? [styles.qty, styles.qtyZero]
-        : qtyVal !== null && qtyVal <= 5
-          ? [styles.qty, styles.qtyLow]
-          : [styles.qty, styles.qtyOk];
-
-    return (
-      <Pressable
-        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-        onPress={() => openAdjust(item)}>
-        <View style={styles.cardContent}>
-          <View style={styles.cardMain}>
-            <ThemedText style={styles.name}>
-              {item.name}
-              {isKit && (
-                <ThemedText style={styles.kitBadge}> Kit</ThemedText>
-              )}
-            </ThemedText>
-            <ThemedText style={styles.meta}>
-              {item.sku} · {formatPrice(item.price)}
-              {item.group ? ` · ${item.group.name}` : ''}
-            </ThemedText>
-          </View>
-          <View style={[styles.qtyBadge, qtyVal === 0 && styles.qtyBadgeZero, qtyVal !== null && qtyVal > 0 && qtyVal <= 5 && styles.qtyBadgeLow]}>
-            <ThemedText style={qtyStyle}>
-              {qtyVal !== null ? qtyVal : '—'}
-            </ThemedText>
-          </View>
-        </View>
-      </Pressable>
-    );
-  };
+  const renderItem = ({ item }: { item: Product }) => (
+    <InventoryCard
+      product={item}
+      onPress={() => router.push(`/product/${item.id}`)}
+      formatPrice={formatPrice}
+    />
+  );
 
   if (loading) {
     return (
-      <ThemedView style={styles.centered}>
+      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color={WebTheme.accent} />
         <ThemedText style={styles.loadingText}>Loading products…</ThemedText>
-      </ThemedView>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <ThemedView style={styles.centered}>
+      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
         <ThemedText style={styles.errorTitle}>Connection Error</ThemedText>
         <ThemedText style={styles.errorText}>{error}</ThemedText>
         <Pressable style={styles.retryBtn} onPress={load}>
           <ThemedText style={styles.retryText}>Retry</ThemedText>
         </Pressable>
-      </ThemedView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title" style={styles.headerTitle}>Products</ThemedText>
-        <ThemedText style={styles.headerSub}>
-          Pull to refresh · Tap to adjust
-        </ThemedText>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Search / Filter bar with Scan icon */}
+      <View style={styles.searchBar}>
+        <View style={styles.searchInputWrap}>
+          <MaterialIcons name="search" size={20} color="#64748b" style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search products..."
+            placeholderTextColor="#94a3b8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        <Pressable
+          style={styles.scanBtn}
+          onPress={() => Alert.alert('Scan', 'Barcode scanner coming soon.')}>
+          <MaterialIcons name="qr-code-scanner" size={24} color="#fff" />
+        </Pressable>
       </View>
 
       <FlatList
-        data={products}
+        data={filteredProducts}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
@@ -167,59 +165,95 @@ export default function ProductsScreen() {
           />
         }
         ListEmptyComponent={
-          <ThemedText style={styles.empty}>No products yet.</ThemedText>
+          <ThemedText style={styles.empty}>
+            {searchQuery ? 'No matches.' : 'No products yet.'}
+          </ThemedText>
         }
       />
 
+      {/* FAB - Add New Item */}
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        onPress={() => setAddModalVisible(true)}>
+        <MaterialIcons name="add" size={28} color="#fff" />
+      </Pressable>
+
+      {/* Add New Item modal */}
       <Modal
-        visible={!!adjustingProduct}
+        visible={addModalVisible}
         transparent
         animationType="slide"
-        onRequestClose={closeAdjust}>
-        <Pressable style={styles.modalOverlay} onPress={closeAdjust}>
+        onRequestClose={() => setAddModalVisible(false)}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setAddModalVisible(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
             <ThemedText type="subtitle" style={styles.modalTitle}>
-              Adjust: {adjustingProduct?.name}
+              Add New Item
             </ThemedText>
             <TextInput
               style={styles.input}
-              placeholder="Quantity"
+              placeholder="Name"
+              placeholderTextColor={WebTheme.textMuted}
+              value={addForm.name}
+              onChangeText={(t) => setAddForm((f) => ({ ...f, name: t }))}
+              editable={!submitting}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="SKU"
+              placeholderTextColor={WebTheme.textMuted}
+              value={addForm.sku}
+              onChangeText={(t) => setAddForm((f) => ({ ...f, sku: t }))}
+              editable={!submitting}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Price"
+              placeholderTextColor={WebTheme.textMuted}
+              keyboardType="decimal-pad"
+              value={addForm.price}
+              onChangeText={(t) => setAddForm((f) => ({ ...f, price: t }))}
+              editable={!submitting}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Quantity (optional)"
               placeholderTextColor={WebTheme.textMuted}
               keyboardType="numeric"
-              value={adjustValue}
-              onChangeText={setAdjustValue}
+              value={addForm.quantity}
+              onChangeText={(t) => setAddForm((f) => ({ ...f, quantity: t }))}
               editable={!submitting}
             />
             <View style={styles.modalActions}>
               <Pressable
-                style={[styles.btn, styles.btnDeduct]}
-                onPress={() => handleAdjust('deduct')}
+                style={[styles.btn, styles.btnCancel]}
+                onPress={() => setAddModalVisible(false)}
                 disabled={submitting}>
-                <ThemedText style={styles.btnText}>Deduct</ThemedText>
+                <ThemedText style={styles.btnText}>Cancel</ThemedText>
               </Pressable>
               <Pressable
                 style={[styles.btn, styles.btnReceive]}
-                onPress={() => handleAdjust('receive')}
+                onPress={handleAddProduct}
                 disabled={submitting}>
                 <ThemedText style={styles.btnText}>
-                  {submitting ? '…' : 'Receive'}
+                  {submitting ? '…' : 'Add'}
                 </ThemedText>
               </Pressable>
             </View>
-            <Pressable style={styles.cancelBtn} onPress={closeAdjust}>
-              <ThemedText style={styles.cancelText}>Cancel</ThemedText>
-            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  centered: {
+  container: {
     flex: 1,
+    backgroundColor: PAGE_BG,
+  },
+  centered: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
@@ -234,71 +268,87 @@ const styles = StyleSheet.create({
     borderRadius: WebTheme.radiusSm,
   },
   retryText: { color: '#fff', fontWeight: '600' },
-  header: { padding: 20, paddingBottom: 12 },
-  headerTitle: { color: WebTheme.text },
-  headerSub: { color: WebTheme.textMuted, marginTop: 4 },
-  list: { padding: 16, paddingBottom: 24, gap: 12 },
-  card: {
-    backgroundColor: WebTheme.glassBg,
-    borderRadius: WebTheme.radius,
-    borderWidth: 1,
-    borderColor: WebTheme.glassBorder,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#1f2687',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  cardPressed: { opacity: 0.9 },
-  cardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardMain: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '600', color: WebTheme.text },
-  meta: { fontSize: 13, color: WebTheme.textMuted, marginTop: 4 },
-  kitBadge: { color: WebTheme.kit, fontWeight: '600' },
-  qtyBadge: {
-    backgroundColor: WebTheme.successBg,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: WebTheme.radiusSm,
-    minWidth: 44,
+  searchBar: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
   },
-  qtyBadgeZero: { backgroundColor: WebTheme.dangerBg },
-  qtyBadgeLow: { backgroundColor: WebTheme.warningBg },
-  qty: { fontSize: 16, fontWeight: '700', color: WebTheme.success },
-  qtyZero: { color: WebTheme.danger },
-  qtyLow: { color: WebTheme.warning },
-  qtyOk: { color: WebTheme.success },
+  searchInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#1e293b',
+  },
+  scanBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: WebTheme.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  list: {
+    padding: 16,
+    paddingBottom: 100,
+  },
   empty: { textAlign: 'center', padding: 24, color: WebTheme.textMuted },
+  fab: {
+    position: 'absolute',
+    bottom: 88,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: WebTheme.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabPressed: { opacity: 0.9 },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(15,23,42,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: WebTheme.glassBg,
+    backgroundColor: '#fff',
     borderTopLeftRadius: WebTheme.radiusLg,
     borderTopRightRadius: WebTheme.radiusLg,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    borderColor: WebTheme.glassBorder,
     padding: 24,
     paddingBottom: 40,
   },
   modalTitle: { marginBottom: 16, color: WebTheme.text },
   input: {
-    backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: WebTheme.glassBorder,
+    borderColor: '#e2e8f0',
     borderRadius: WebTheme.radiusSm,
     padding: 14,
     fontSize: 16,
     color: WebTheme.text,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  modalActions: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   btn: {
     flex: 1,
     paddingVertical: 14,
@@ -307,6 +357,7 @@ const styles = StyleSheet.create({
   },
   btnDeduct: { backgroundColor: WebTheme.danger },
   btnReceive: { backgroundColor: WebTheme.success },
+  btnCancel: { backgroundColor: '#94a3b8' },
   btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   cancelBtn: { alignItems: 'center', paddingVertical: 8 },
   cancelText: { color: WebTheme.textMuted, fontSize: 15 },

@@ -7,9 +7,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { API_BASE } from '@/constants/api';
 import { WebTheme } from '@/constants/web-theme';
 import { fetchOrders, type Order } from '@/lib/api';
@@ -84,27 +84,27 @@ export default function OrdersScreen() {
 
   if (loading) {
     return (
-      <ThemedView style={styles.centered}>
+      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color={WebTheme.accent} />
         <ThemedText style={styles.loadingText}>Loading orders…</ThemedText>
-      </ThemedView>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <ThemedView style={styles.centered}>
+      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
         <ThemedText style={styles.errorTitle}>Connection Error</ThemedText>
         <ThemedText style={styles.errorText}>{error}</ThemedText>
         <Pressable style={styles.retryBtn} onPress={load}>
           <ThemedText style={styles.retryText}>Retry</ThemedText>
         </Pressable>
-      </ThemedView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <ThemedText type="title" style={styles.headerTitle}>Orders</ThemedText>
         <ThemedText style={styles.headerSub}>Pull to refresh</ThemedText>
@@ -126,12 +126,12 @@ export default function OrdersScreen() {
           <ThemedText style={styles.empty}>No orders yet.</ThemedText>
         }
       />
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#F5F7FA' },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -153,17 +153,15 @@ const styles = StyleSheet.create({
   headerSub: { color: WebTheme.textMuted, marginTop: 4 },
   list: { padding: 16, paddingBottom: 24 },
   card: {
-    backgroundColor: WebTheme.glassBg,
+    backgroundColor: '#fff',
     borderRadius: WebTheme.radius,
-    borderWidth: 1,
-    borderColor: WebTheme.glassBorder,
     padding: 16,
     marginBottom: 12,
-    shadowColor: '#1f2687',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   cardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardMain: { flex: 1 },

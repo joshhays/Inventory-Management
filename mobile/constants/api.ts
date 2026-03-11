@@ -1,21 +1,22 @@
 /**
  * Backend API URL
  *
- * On a PHYSICAL DEVICE (Expo Go): localhost won't work!
- * Set DEVICE_IP to your computer's IP address (same Wi‑Fi as phone):
- *   Mac: run "ipconfig getifaddr en0" in Terminal
- *   Windows: run "ipconfig" and use the IPv4 Address
+ * RAILWAY_URL: Set to your Railway deployment URL (e.g. https://your-app.railway.app)
+ * to use the deployed backend. Use this when testing on a real device or in production.
  *
- * Leave DEVICE_IP empty when using iOS Simulator or Android Emulator.
+ * DEVICE_IP: Only used when RAILWAY_URL is empty. For local testing on a physical phone,
+ * set to your computer's IP (same Wi‑Fi as phone). Leave empty for simulator/emulator.
  */
-const DEVICE_IP = '192.168.1.133'; // your computer's IP for testing on a real phone
+const RAILWAY_URL = 'https://inventory-management-production-2079.up.railway.app';
+const DEVICE_IP = ''; // e.g. '192.168.1.133' for local testing on a real phone
 
-export const API_BASE =
-  __DEV__
-    ? DEVICE_IP
-      ? `http://${DEVICE_IP}:3000`
-      : 'http://localhost:3000'
-    : 'https://your-production-url.com';
+const base = RAILWAY_URL
+  ? RAILWAY_URL.replace(/\/$/, '')
+  : DEVICE_IP
+    ? `http://${DEVICE_IP}:3000`
+    : 'http://localhost:3000';
+
+export const API_BASE = base;
 
 export const api = {
   products: `${API_BASE}/api/products`,
