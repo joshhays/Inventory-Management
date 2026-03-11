@@ -4,7 +4,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -23,7 +23,8 @@ const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
 const PAGE_BG = '#F5F7FA';
 
 function getImageUrl(file: { path: string }): string {
-  return `${API_BASE}/uploads/${file.path}`;
+  const encodedPath = file.path.split('/').map(encodeURIComponent).join('/');
+  return `${API_BASE}/uploads/${encodedPath}`;
 }
 
 function getFirstImageFile(product: Product) {
@@ -40,6 +41,7 @@ export default function ProductDetailScreen() {
   const [adjustModalVisible, setAdjustModalVisible] = useState(false);
   const [adjustValue, setAdjustValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -58,6 +60,10 @@ export default function ProductDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [product?.id]);
 
   const handleAdjust = async (action: 'deduct' | 'receive') => {
     if (!product || !adjustValue.trim()) return;
@@ -104,6 +110,7 @@ export default function ProductDetailScreen() {
 
   const imageFile = getFirstImageFile(product);
   const imageUrl = imageFile ? getImageUrl(imageFile) : null;
+  const isImageFile = imageFile && IMAGE_EXT.test(imageFile.filename);
   const isKit = product.productType === 'kit';
   const qtyDisplay = isKit && product.kitItems?.length ? product.quantity : isKit ? '—' : product.quantity;
 
@@ -115,11 +122,12 @@ export default function ProductDetailScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Large image preview */}
         <View style={styles.imageContainer}>
-          {imageUrl && IMAGE_EXT.test(imageFile!.filename) ? (
+          {imageUrl && isImageFile && !imageError ? (
             <Image
               source={{ uri: imageUrl }}
               style={styles.image}
-              resizeMode="contain"
+              contentFit="contain"
+              onError={() => setImageError(true)}
             />
           ) : (
             <View style={styles.imagePlaceholder}>
