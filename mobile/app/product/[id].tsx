@@ -22,17 +22,23 @@ import { WebTheme } from '@/constants/web-theme';
 import { fetchProduct, updateQuantity, type Product } from '@/lib/api';
 
 const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
+const PDF_EXT = /\.pdf$/i;
 const PAGE_BG = '#F5F7FA';
 
-function getImageUrl(file: { path: string }): string {
-  const encodedPath = file.path.split('/').map(encodeURIComponent).join('/');
-  return `${API_BASE}/uploads/${encodedPath}`;
-}
-
-/** Only use image files for preview - PDFs cannot be displayed as images */
-function getFirstImageFile(product: Product) {
+/** Returns preview URL: for images use direct file URL, for PDFs use backend preview (first page only) */
+function getPreviewUrl(product: Product): string | null {
   const files = product.files || [];
-  return files.find((f) => IMAGE_EXT.test(f.filename)) || null;
+  const imageFile = files.find((f) => IMAGE_EXT.test(f.filename));
+  const pdfFile = files.find((f) => PDF_EXT.test(f.filename));
+
+  if (imageFile) {
+    const encodedPath = imageFile.path.split('/').map(encodeURIComponent).join('/');
+    return `${API_BASE}/uploads/${encodedPath}`;
+  }
+  if (pdfFile && product.id) {
+    return `${API_BASE}/api/products/${product.id}/preview`;
+  }
+  return null;
 }
 
 export default function ProductDetailScreen() {
@@ -111,9 +117,7 @@ export default function ProductDetailScreen() {
     );
   }
 
-  const imageFile = getFirstImageFile(product);
-  const imageUrl = imageFile ? getImageUrl(imageFile) : null;
-  const isImageFile = imageFile && IMAGE_EXT.test(imageFile.filename);
+  const previewUrl = getPreviewUrl(product);
   const isKit = product.productType === 'kit';
   const qtyDisplay = isKit && product.kitItems?.length ? product.quantity : isKit ? '—' : product.quantity;
 
@@ -125,9 +129,9 @@ export default function ProductDetailScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Large image preview */}
         <View style={styles.imageContainer}>
-          {imageUrl && isImageFile && !imageError ? (
+          {previewUrl && !imageError ? (
             <Image
-              source={{ uri: imageUrl }}
+              source={{ uri: previewUrl }}
               style={styles.image}
               contentFit="contain"
               onError={() => setImageError(true)}
@@ -174,19 +178,19 @@ export default function ProductDetailScreen() {
               <ThemedText style={styles.debugText}>
                 Files: {(product.files?.length ?? 0)}
               </ThemedText>
-              {imageUrl ? (
+              {previewUrl ? (
                 <>
                   <ThemedText style={styles.debugText} numberOfLines={2}>
-                    URL: {imageUrl}
+                    URL: {previewUrl}
                   </ThemedText>
                   <View style={styles.debugBtnRow}>
                     <Pressable
                       style={styles.debugBtn}
                       onPress={async () => {
                         try {
-                          await WebBrowser.openBrowserAsync(imageUrl);
+                          await WebBrowser.openBrowserAsync(previewUrl);
                         } catch {
-                          Alert.alert('URL', imageUrl, [{ text: 'OK' }]);
+                          Alert.alert('URL', previewUrl, [{ text: 'OK' }]);
                         }
                       }}>
                       <ThemedText style={styles.debugBtnText}>Open in browser</ThemedText>
@@ -195,9 +199,9 @@ export default function ProductDetailScreen() {
                       style={[styles.debugBtn, styles.debugBtnSecondary]}
                       onPress={() =>
                         Share.share({
-                          message: imageUrl,
-                          url: imageUrl,
-                          title: 'Image URL',
+                          message: previewUrl,
+                          url: previewUrl,
+                          title: 'Preview URL',
                         })
                       }>
                       <ThemedText style={styles.debugBtnText}>Share / Copy</ThemedText>
@@ -211,7 +215,7 @@ export default function ProductDetailScreen() {
                 </>
               ) : (
                 <ThemedText style={styles.debugText}>
-                  No image file. Upload via web Manage Products.
+                  No image or PDF. Upload via web Manage Products.
                 </ThemedText>
               )}
             </View>

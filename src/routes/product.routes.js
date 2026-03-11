@@ -20,6 +20,7 @@ router.post("/", productController.createProduct);
 router.patch("/:id", productController.updateQuantity);
 router.put("/:id", productController.updateProduct);
 
+router.get("/:id/preview", productFileController.getPreview);
 router.get("/:id/label", productController.getLabel);
 router.get("/:id/files", productFileController.getFiles);
 router.get("/:id/kit-items", kitItemController.getKitItems);
