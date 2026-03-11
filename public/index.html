@@ -14,6 +14,7 @@
   <div class="app-layout">
     <header class="top-nav top-nav-simple">
       <span class="top-nav-brand">Inventory</span>
+      <a href="#" id="logoutLink" class="top-nav-back">Log out</a>
     </header>
     <main class="main-content bento-main">
       <h1 class="bento-title">Dashboard</h1>
@@ -41,5 +42,12 @@
       </div>
     </main>
   </div>
+  <script>
+    document.getElementById("logoutLink").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/login.html";
+    });
+  </script>
 </body>
 </html>

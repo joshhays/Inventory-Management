@@ -19,17 +19,28 @@ const calculateKitQuantity = async (kitId) => {
 };
 
 const getAllProducts = async (options = {}) => {
-  const { groupId } = options;
-  const where = {};
+  const { groupId, allowedGroupIds } = options;
+  const conditions = [];
+
+  if (allowedGroupIds !== null && allowedGroupIds !== undefined) {
+    conditions.push({
+      OR: [
+        { groupId: null },
+        ...(allowedGroupIds.length ? [{ groupId: { in: allowedGroupIds } }] : []),
+      ],
+    });
+  }
+
   if (groupId != null && groupId !== "") {
     const gid = Number(groupId);
     if (!isNaN(gid)) {
-      where.OR = [
-        { groupId: null },
-        { groupId: gid },
-      ];
+      conditions.push({
+        OR: [{ groupId: null }, { groupId: gid }],
+      });
     }
   }
+
+  const where = conditions.length ? { AND: conditions } : {};
   const products = await prisma.product.findMany({
     where,
     include: {

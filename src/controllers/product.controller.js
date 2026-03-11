@@ -3,11 +3,19 @@ const csv = require("csv-parser");
 const productService = require("../services/product.service");
 const labelService = require("../services/label.service");
 const { mapRowToProduct } = require("../lib/csvParser");
+const { canAccessProduct } = require("../lib/auth-helpers");
 
 const getProducts = async (req, res, next) => {
   try {
     const groupId = req.query.groupId ?? req.get("X-User-Group-Id");
-    const products = await productService.getAllProducts({ groupId });
+    const user = req.user;
+    const allowedGroupIds = user?.isAdmin ? null : (user?.groupIds || []);
+
+    if (groupId && !user?.isAdmin && allowedGroupIds?.length && !allowedGroupIds.includes(Number(groupId))) {
+      return res.status(403).json({ message: "You do not have access to this group." });
+    }
+
+    const products = await productService.getAllProducts({ groupId, allowedGroupIds });
     res.status(200).json(products);
   } catch (error) {
     next(error);
@@ -20,6 +28,13 @@ const getProduct = async (req, res, next) => {
     const product = await productService.getProductWithFiles(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
+    }
+    const user = req.user;
+    if (!user?.isAdmin && product.groupId != null) {
+      const allowedGroupIds = user?.groupIds || [];
+      if (!allowedGroupIds.includes(product.groupId)) {
+        return res.status(403).json({ message: "You do not have access to this product." });
+      }
     }
     res.status(200).json(product);
   } catch (error) {
@@ -35,6 +50,19 @@ const createProduct = async (req, res, next) => {
       return res.status(400).json({
         message: "name, sku, and price are required.",
       });
+    }
+
+    if (!req.user?.isAdmin) {
+      const allowedGroupIds = req.user?.groupIds || [];
+      if (allowedGroupIds.length === 0) {
+        return res.status(403).json({ message: "You must be assigned to at least one group to create products." });
+      }
+      if (groupId != null && groupId !== "" && !allowedGroupIds.includes(Number(groupId))) {
+        return res.status(403).json({ message: "You cannot create products in this group." });
+      }
+      if (!groupId || groupId === "") {
+        return res.status(403).json({ message: "You must assign a group when creating products." });
+      }
     }
 
     const product = await productService.createProduct({
@@ -64,6 +92,12 @@ const updateQuantity = async (req, res, next) => {
       });
     }
 
+    const existing = await productService.getProductWithFiles(id);
+    if (!existing) return res.status(404).json({ message: "Product not found." });
+    if (!canAccessProduct(req.user, existing)) {
+      return res.status(403).json({ message: "You do not have access to this product." });
+    }
+
     const source = req.body.source || "manual";
     const product = await productService.updateQuantity(id, { quantity, adjust }, source);
     if (!product) {
@@ -91,6 +125,12 @@ const updateProduct = async (req, res, next) => {
       });
     }
 
+    const existing = await productService.getProductWithFiles(id);
+    if (!existing) return res.status(404).json({ message: "Product not found." });
+    if (!canAccessProduct(req.user, existing)) {
+      return res.status(403).json({ message: "You do not have access to this product." });
+    }
+
     const product = await productService.updateProduct(id, {
       name,
       sku,
@@ -112,7 +152,12 @@ const updateProduct = async (req, res, next) => {
 const exportCsv = async (req, res, next) => {
   try {
     const groupId = req.query.groupId ?? req.get("X-User-Group-Id");
-    const products = await productService.getAllProducts({ groupId });
+    const user = req.user;
+    const allowedGroupIds = user?.isAdmin ? null : (user?.groupIds || []);
+    if (groupId && !user?.isAdmin && allowedGroupIds?.length && !allowedGroupIds.includes(Number(groupId))) {
+      return res.status(403).json({ message: "You do not have access to this group." });
+    }
+    const products = await productService.getAllProducts({ groupId, allowedGroupIds });
     const header = "name,sku,quantity,price,description\n";
     const rows = products.map((p) => {
       const desc = (p.description || "").replace(/"/g, '""');
@@ -129,6 +174,9 @@ const exportCsv = async (req, res, next) => {
 
 const importCsv = async (req, res, next) => {
   try {
+    if (!req.user?.isAdmin) {
+      return res.status(403).json({ message: "Admin access required for CSV import." });
+    }
     const file = req.file;
     if (!file) {
       return res.status(400).json({ message: "No file uploaded." });
@@ -169,6 +217,9 @@ const getLabel = async (req, res, next) => {
     const product = await productService.getProductWithFiles(id);
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
+    }
+    if (!canAccessProduct(req.user, product)) {
+      return res.status(403).json({ message: "You do not have access to this product." });
     }
     const pdf = await labelService.generateLabel(product);
     res.setHeader("Content-Type", "application/pdf");

@@ -2,14 +2,24 @@ const fs = require("fs");
 const path = require("path");
 const productFileService = require("../services/productFile.service");
 const productService = require("../services/product.service");
+const { canAccessProduct } = require("../lib/auth-helpers");
 
 const UPLOAD_DIR = path.join(__dirname, "../../uploads");
+
+async function checkProductAccess(req, res, productId) {
+  const product = await productService.getProductWithFiles(productId);
+  if (!product) return { status: 404, message: "Product not found." };
+  if (!canAccessProduct(req.user, product)) return { status: 403, message: "You do not have access to this product." };
+  return { product };
+}
 const PDF_EXT = /\.pdf$/i;
 const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
 
 const getFiles = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const access = await checkProductAccess(req, res, id);
+    if (access.status) return res.status(access.status).json({ message: access.message });
     const files = await productFileService.getByProductId(id);
     res.status(200).json(files);
   } catch (error) {
@@ -20,10 +30,9 @@ const getFiles = async (req, res, next) => {
 const getPreview = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await productService.getProductWithFiles(id);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found." });
-    }
+    const access = await checkProductAccess(req, res, id);
+    if (access.status) return res.status(access.status).json({ message: access.message });
+    const product = access.product;
 
     const files = product.files || [];
     const pdfFile = files.find((f) => PDF_EXT.test(f.filename));
@@ -69,6 +78,8 @@ const getPreview = async (req, res, next) => {
 const uploadFile = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const access = await checkProductAccess(req, res, id);
+    if (access.status) return res.status(access.status).json({ message: access.message });
     const file = req.file;
     if (!file) {
       return res.status(400).json({ message: "No file uploaded." });
@@ -85,7 +96,9 @@ const uploadFile = async (req, res, next) => {
 
 const deleteFile = async (req, res, next) => {
   try {
-    const { fileId } = req.params;
+    const { id, fileId } = req.params;
+    const access = await checkProductAccess(req, res, id);
+    if (access.status) return res.status(access.status).json({ message: access.message });
     const file = await productFileService.remove(fileId);
     if (!file) {
       return res.status(404).json({ message: "File not found." });
