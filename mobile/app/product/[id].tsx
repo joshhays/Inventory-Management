@@ -207,7 +207,7 @@ export default function ProductDetailScreen() {
 }
 
 const { width } = Dimensions.get('window');
-const IMAGE_SIZE = Math.min(width - 32, 320);
+const IMAGE_SIZE = Math.min(width - 32, 240);
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: PAGE_BG },
@@ -278,17 +278,16 @@ const styles = StyleSheet.create({
   qtySection: {
     backgroundColor: '#f8fafc',
     borderRadius: 12,
-    padding: 20,
+    padding: 16,
     marginBottom: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 100,
   },
   qtyValue: {
-    fontSize: 42,
+    fontSize: 24,
     fontWeight: '700',
     color: WebTheme.accent,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   qtyLabel: {
     fontSize: 13,
