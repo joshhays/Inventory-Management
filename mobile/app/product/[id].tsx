@@ -4,14 +4,15 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Linking,
   Modal,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   TextInput,
   View,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -177,13 +178,30 @@ export default function ProductDetailScreen() {
                   <ThemedText style={styles.debugText} numberOfLines={2}>
                     URL: {imageUrl}
                   </ThemedText>
-                  <Pressable
-                    style={styles.debugBtn}
-                    onPress={() => Linking.openURL(imageUrl)}>
-                    <ThemedText style={styles.debugBtnText}>
-                      Open URL in browser
-                    </ThemedText>
-                  </Pressable>
+                  <View style={styles.debugBtnRow}>
+                    <Pressable
+                      style={styles.debugBtn}
+                      onPress={async () => {
+                        try {
+                          await WebBrowser.openBrowserAsync(imageUrl);
+                        } catch {
+                          Alert.alert('URL', imageUrl, [{ text: 'OK' }]);
+                        }
+                      }}>
+                      <ThemedText style={styles.debugBtnText}>Open in browser</ThemedText>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.debugBtn, styles.debugBtnSecondary]}
+                      onPress={() =>
+                        Share.share({
+                          message: imageUrl,
+                          url: imageUrl,
+                          title: 'Image URL',
+                        })
+                      }>
+                      <ThemedText style={styles.debugBtnText}>Share / Copy</ThemedText>
+                    </Pressable>
+                  </View>
                   {imageError && (
                     <ThemedText style={styles.debugError}>
                       Image failed to load
@@ -387,14 +405,14 @@ const styles = StyleSheet.create({
   },
   debugTitle: { fontSize: 12, fontWeight: '700', marginBottom: 6, color: '#92400e' },
   debugText: { fontSize: 11, color: '#78350f', marginBottom: 4 },
+  debugBtnRow: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
   debugBtn: {
-    marginTop: 8,
     paddingVertical: 8,
     paddingHorizontal: 12,
     backgroundColor: '#f59e0b',
     borderRadius: 6,
-    alignSelf: 'flex-start',
   },
+  debugBtnSecondary: { backgroundColor: '#94a3b8' },
   debugBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
   debugError: { fontSize: 11, color: '#b91c1c', marginTop: 4 },
 });
