@@ -8,20 +8,14 @@
   <link rel="prefetch" href="/">
   <link rel="prefetch" href="/orders.html">
   <link rel="prefetch" href="/logs.html">
-  <script src="/app-nav.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
 </head>
 <body>
   <div class="app-layout">
-    <header class="top-nav">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
       <span class="top-nav-brand">Inventory</span>
-      <nav class="top-nav-tabs">
-        <a href="/">Products</a>
-        <a href="/products-manage.html" class="active">Manage Products</a>
-        <a href="/orders.html">Orders</a>
-        <a href="/logs.html">Transaction Log</a>
-      </nav>
     </header>
     <main class="main-content">
       <div class="toolbar">
