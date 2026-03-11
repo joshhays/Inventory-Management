@@ -29,9 +29,10 @@ function getImageUrl(file: { path: string }): string {
   return `${API_BASE}/uploads/${encodedPath}`;
 }
 
+/** Only use image files for preview - PDFs cannot be displayed as images */
 function getFirstImageFile(product: Product) {
   const files = product.files || [];
-  return files.find((f) => IMAGE_EXT.test(f.filename)) || files[0];
+  return files.find((f) => IMAGE_EXT.test(f.filename)) || null;
 }
 
 export default function ProductDetailScreen() {
