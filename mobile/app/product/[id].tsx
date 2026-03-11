@@ -143,8 +143,8 @@ export default function ProductDetailScreen() {
 
           {/* Current quantity - prominent */}
           <View style={styles.qtySection}>
-            <ThemedText style={styles.qtyLabel}>Current quantity</ThemedText>
             <ThemedText style={styles.qtyValue}>{qtyDisplay}</ThemedText>
+            <ThemedText style={styles.qtyLabel}>Current quantity</ThemedText>
           </View>
 
           <Pressable
@@ -278,19 +278,21 @@ const styles = StyleSheet.create({
   qtySection: {
     backgroundColor: '#f8fafc',
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
     marginBottom: 16,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
+  },
+  qtyValue: {
+    fontSize: 42,
+    fontWeight: '700',
+    color: WebTheme.accent,
+    marginBottom: 6,
   },
   qtyLabel: {
     fontSize: 13,
     color: '#64748b',
-    marginBottom: 4,
-  },
-  qtyValue: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: WebTheme.accent,
   },
   adjustBtn: {
     backgroundColor: WebTheme.accent,
