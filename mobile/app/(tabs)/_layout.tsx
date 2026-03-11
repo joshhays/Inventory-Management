@@ -24,7 +24,9 @@ export default function TabLayout() {
         },
         sceneStyle: { backgroundColor: '#F5F7FA' },
         tabBarLabelStyle: { fontSize: 12, fontWeight: '500' },
-      }}>
+        lazy: false,
+      }}
+      detachInactiveScreens={false}>
       <Tabs.Screen
         name="index"
         options={{
