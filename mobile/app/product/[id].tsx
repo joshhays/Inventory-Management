@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -163,6 +164,39 @@ export default function ProductDetailScreen() {
             }}>
             <ThemedText style={styles.adjustBtnText}>Adjust stock</ThemedText>
           </Pressable>
+
+          {/* Debug: helps diagnose why images don't show */}
+          {__DEV__ && (
+            <View style={styles.debugSection}>
+              <ThemedText style={styles.debugTitle}>Image debug</ThemedText>
+              <ThemedText style={styles.debugText}>
+                Files: {(product.files?.length ?? 0)}
+              </ThemedText>
+              {imageUrl ? (
+                <>
+                  <ThemedText style={styles.debugText} numberOfLines={2}>
+                    URL: {imageUrl}
+                  </ThemedText>
+                  <Pressable
+                    style={styles.debugBtn}
+                    onPress={() => Linking.openURL(imageUrl)}>
+                    <ThemedText style={styles.debugBtnText}>
+                      Open URL in browser
+                    </ThemedText>
+                  </Pressable>
+                  {imageError && (
+                    <ThemedText style={styles.debugError}>
+                      Image failed to load
+                    </ThemedText>
+                  )}
+                </>
+              ) : (
+                <ThemedText style={styles.debugText}>
+                  No image file. Upload via web Manage Products.
+                </ThemedText>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -343,4 +377,24 @@ const styles = StyleSheet.create({
   btnText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   cancelBtn: { alignItems: 'center', paddingVertical: 8 },
   cancelText: { color: WebTheme.textMuted, fontSize: 15 },
+  debugSection: {
+    marginTop: 20,
+    padding: 12,
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  debugTitle: { fontSize: 12, fontWeight: '700', marginBottom: 6, color: '#92400e' },
+  debugText: { fontSize: 11, color: '#78350f', marginBottom: 4 },
+  debugBtn: {
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f59e0b',
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  debugBtnText: { fontSize: 12, color: '#fff', fontWeight: '600' },
+  debugError: { fontSize: 11, color: '#b91c1c', marginTop: 4 },
 });
