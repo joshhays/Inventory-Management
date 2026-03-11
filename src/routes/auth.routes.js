@@ -8,4 +8,13 @@ router.post("/login", authController.login);
 router.post("/logout", authController.logout);
 router.get("/me", requireAuth, authController.me);
 
+router.get("/debug", (req, res) => {
+  res.json({
+    hasSession: !!req.session,
+    hasUser: !!req.session?.user,
+    cookie: req.headers.cookie ? "present" : "missing",
+    env: process.env.NODE_ENV || "development",
+  });
+});
+
 module.exports = router;

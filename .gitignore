@@ -4,6 +4,7 @@ node_modules
 generated
 *.db
 prisma/*.db
+prisma/sessions.db
 uploads/*
 !uploads/.gitkeep
 
