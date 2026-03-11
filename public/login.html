@@ -52,7 +52,8 @@
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          throw new Error(data.message || "Login failed.");
+          const msg = data.message || (res.status === 500 ? "Server error. Check the terminal for details." : "Login failed.");
+          throw new Error(msg);
         }
 
         window.location.href = "/";

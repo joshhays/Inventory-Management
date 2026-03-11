@@ -7,7 +7,18 @@ const login = async (req, res, next) => {
       return res.status(400).json({ message: "Email and password are required." });
     }
 
-    const user = await authService.findByEmail(email);
+    let user;
+    try {
+      user = await authService.findByEmail(email);
+    } catch (dbError) {
+      if (dbError.message?.includes("findUnique") || dbError.message?.includes("prisma")) {
+        return res.status(500).json({
+          message: "Database not ready. Run: npx prisma generate && npx prisma migrate deploy",
+        });
+      }
+      throw dbError;
+    }
+
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password." });
     }
