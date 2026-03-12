@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -41,6 +42,7 @@ function getStatusLabel(status: string): string {
 export default function OrdersByStatusScreen() {
   const { status: slug } = useLocalSearchParams<{ status: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const apiStatus = slug ? SLUG_TO_STATUS[slug] ?? slug : null;
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +98,7 @@ export default function OrdersByStatusScreen() {
   }, [router]);
 
   useLayoutEffect(() => {
-    router.setOptions({
+    navigation.setOptions({
       headerLeft: () => (
         <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginLeft: 4 }}>
           <MaterialIcons name="arrow-back" size={24} color={WebTheme.navText} />
@@ -108,7 +110,7 @@ export default function OrdersByStatusScreen() {
         </Pressable>
       ),
     });
-  }, [router, handleBackToOrders]);
+  }, [navigation, handleBackToOrders]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

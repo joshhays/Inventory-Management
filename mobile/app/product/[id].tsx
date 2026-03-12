@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
@@ -47,6 +48,7 @@ function getPreviewUrl(product: Product): string | null {
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export default function ProductDetailScreen() {
   }, [router]);
 
   useLayoutEffect(() => {
-    router.setOptions({
+    navigation.setOptions({
       headerLeft: () => (
         <Pressable onPress={handleBack} hitSlop={12} style={{ padding: 8, marginLeft: 4 }}>
           <MaterialIcons name="arrow-back" size={24} color={WebTheme.navText} />
@@ -98,7 +100,7 @@ export default function ProductDetailScreen() {
         </Pressable>
       ),
     });
-  }, [router, handleBack]);
+  }, [navigation, handleBack]);
 
   const handleAdjust = async (action: 'deduct' | 'receive') => {
     if (!product || !adjustValue.trim()) return;

@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
@@ -45,6 +46,7 @@ function barcodeMatchesItem(scannedData: string, item: OrderItem): boolean {
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const navigation = useNavigation();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +82,7 @@ export default function OrderDetailScreen() {
   }, [router]);
 
   useLayoutEffect(() => {
-    router.setOptions({
+    navigation.setOptions({
       headerLeft: () => (
         <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginLeft: 4 }}>
           <MaterialIcons name="arrow-back" size={24} color={WebTheme.navText} />
@@ -92,7 +94,7 @@ export default function OrderDetailScreen() {
         </Pressable>
       ),
     });
-  }, [router, handleBackToOrders]);
+  }, [navigation, handleBackToOrders]);
 
   const handleStartPicking = async () => {
     if (!permission?.granted) {
