@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reports - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="prefetch" href="/">
+  <link rel="prefetch" href="/orders.html">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Inventory" class="nav-logo"></a>
+    </header>
+    <main class="main-content reports-main">
+      <h1>AI Reports</h1>
+      <p class="reports-intro">Ask for any report in plain English. Try: "Show me pending orders", "What are our top selling products?", "How long does picking take on average?"</p>
+
+      <div class="reports-chat" id="reportsChat">
+        <div class="reports-messages" id="reportsMessages">
+          <div class="reports-welcome" id="reportsWelcome">
+            <p>Type your report request below. Examples:</p>
+            <ul>
+              <li>How many orders are pending?</li>
+              <li>Show me sales by month</li>
+              <li>What products are low on stock?</li>
+              <li>Average pick time for orders</li>
+              <li>Top 10 best-selling products</li>
+            </ul>
+          </div>
+        </div>
+        <div class="reports-input-wrap">
+          <textarea id="reportsInput" placeholder="Ask for a report..." rows="2"></textarea>
+          <button type="button" id="reportsSend" class="btn-apply">Send</button>
+        </div>
+      </div>
+
+      <div class="reports-config-warning" id="reportsConfigWarning" style="display:none">
+        <p>AI reports require an OpenAI API key. Add <code>OPENAI_API_KEY</code> to your environment variables (e.g. in Railway Variables) to enable this feature.</p>
+      </div>
+    </main>
+  </div>
+  <script>
+    const messagesEl = document.getElementById("reportsMessages");
+    const welcomeEl = document.getElementById("reportsWelcome");
+    const inputEl = document.getElementById("reportsInput");
+    const sendBtn = document.getElementById("reportsSend");
+    const configWarning = document.getElementById("reportsConfigWarning");
+
+    let messages = [];
+    let aiConfigured = true;
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    function renderMarkdown(text) {
+      if (!text) return "";
+      let out = text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/^### (.*)$/gim, "<h4>$1</h4>")
+        .replace(/^## (.*)$/gim, "<h3>$1</h3>")
+        .replace(/^# (.*)$/gim, "<h3>$1</h3>")
+        .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*(.*?)\*/g, "<em>$1</em>")
+        .replace(/`([^`]+)`/g, "<code>$1</code>");
+      out = out.replace(/((?:\|[^\n]+\|\n?)+)/g, (match) => {
+        const rows = match.trim().split("\n").filter(Boolean);
+        if (rows.length < 1) return match;
+        const isSeparator = (r) => /^\|[\s\-:]+\|/.test(r);
+        let html = "<table class=\"reports-table\"><thead><tr>";
+        const firstRow = rows[0].split("|").filter(Boolean).map((c) => c.trim());
+        firstRow.forEach((c) => { html += "<th>" + c + "</th>"; });
+        html += "</tr></thead><tbody>";
+        for (let i = 1; i < rows.length; i++) {
+          if (isSeparator(rows[i])) continue;
+          html += "<tr>";
+          rows[i].split("|").filter(Boolean).forEach((c) => {
+            html += "<td>" + c.trim() + "</td>";
+          });
+          html += "</tr>";
+        }
+        html += "</tbody></table>";
+        return html;
+      });
+      return out.replace(/\n/g, "<br>");
+    }
+
+    function addMessage(role, content) {
+      messages.push({ role, content });
+      if (welcomeEl) welcomeEl.style.display = "none";
+      const div = document.createElement("div");
+      div.className = "reports-msg reports-msg-" + role;
+      const inner = document.createElement("div");
+      inner.className = "reports-msg-inner";
+      if (role === "user") {
+        inner.textContent = content;
+      } else {
+        inner.innerHTML = renderMarkdown(content);
+      }
+      div.appendChild(inner);
+      messagesEl.appendChild(div);
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      inputEl.value = "";
+      inputEl.style.height = "auto";
+      addMessage("user", text);
+      sendBtn.disabled = true;
+      sendBtn.textContent = "…";
+
+      try {
+        const res = await fetch("/api/reports/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            messages: [...messages.map((m) => ({ role: m.role, content: m.content }))],
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          addMessage("assistant", "Error: " + (data.message || res.statusText));
+          if (res.status === 503 && data.message?.includes("OPENAI")) {
+            configWarning.style.display = "block";
+          }
+          return;
+        }
+        addMessage("assistant", data.message?.content || "No response.");
+      } catch (e) {
+        addMessage("assistant", "Error: " + (e.message || "Could not connect"));
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send";
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    inputEl.addEventListener("input", () => {
+      inputEl.style.height = "auto";
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+    });
+
+    async function checkConfig() {
+      try {
+        const res = await fetch("/api/reports/config", { credentials: "include" });
+        const data = await res.json();
+        if (!data.configured) {
+          configWarning.style.display = "block";
+        }
+      } catch (_) {}
+    }
+    checkConfig();
+  </script>
+</body>
+</html>
