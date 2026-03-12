@@ -5,6 +5,8 @@
 const OpenAI = require("openai").default;
 const reportService = require("../services/report.service");
 
+const CHARTABLE_REPORTS = ["getSalesByPeriod", "getOrdersSummary", "getTopProductsByQuantity", "getLowStockProducts", "getPickTimeStats"];
+
 const REPORT_TOOLS = [
   {
     type: "function",
@@ -126,6 +128,26 @@ const SYSTEM_PROMPT = `You are a helpful report assistant for an inventory and o
 The user can ask for reports in plain English. Use the available tools to fetch data, then format a clear, readable report.
 Format numbers nicely (e.g. $1,234.56 for money). Use tables for lists when helpful. Be concise but informative.`;
 
+async function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Retry OpenAI call on 429 rate limit (up to 3 attempts). */
+async function withRetry(fn, maxAttempts = 3) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err?.status === 429 && attempt < maxAttempts) {
+        const waitMs = 2000 * attempt;
+        await sleep(waitMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 async function chat(req, res, next) {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -150,15 +172,18 @@ async function chat(req, res, next) {
       })),
     ];
 
-    let response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-      messages: fullMessages,
-      tools: REPORT_TOOLS,
-      tool_choice: "auto",
-    });
+    let response = await withRetry(() =>
+      openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        messages: fullMessages,
+        tools: REPORT_TOOLS,
+        tool_choice: "auto",
+      })
+    );
 
     let choice = response.choices?.[0];
     const resultMessages = [...messages];
+    let lastChartData = null;
 
     while (choice?.message?.tool_calls?.length) {
       const toolCalls = choice.message.tool_calls;
@@ -180,6 +205,12 @@ async function chat(req, res, next) {
         } catch (err) {
           result = { error: err.message };
         }
+        if (CHARTABLE_REPORTS.includes(name) && result && !result.error) {
+          const chartConfig = reportService.toChartConfig(name, result);
+          if (chartConfig) {
+            lastChartData = { ...chartConfig, reportName: name, reportParams: args };
+          }
+        }
         resultMessages.push({
           role: "tool",
           tool_call_id: tc.id,
@@ -187,21 +218,24 @@ async function chat(req, res, next) {
         });
       }
 
-      response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...resultMessages,
-        ],
-        tools: REPORT_TOOLS,
-        tool_choice: "auto",
-      });
+      response = await withRetry(() =>
+        openai.chat.completions.create({
+          model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...resultMessages,
+          ],
+          tools: REPORT_TOOLS,
+          tool_choice: "auto",
+        })
+      );
       choice = response.choices?.[0];
     }
 
     const content = choice?.message?.content || "I couldn't generate a report for that request.";
     return res.json({
       message: { role: "assistant", content },
+      chartData: lastChartData || undefined,
       usage: response.usage,
     });
   } catch (error) {
@@ -225,7 +259,33 @@ function getConfig(req, res) {
   });
 }
 
+async function runReport(req, res, next) {
+  try {
+    const { name, params } = req.query;
+    if (!name) {
+      return res.status(400).json({ message: "name is required (e.g. getSalesByPeriod)" });
+    }
+    let parsedParams = {};
+    if (params) {
+      try {
+        parsedParams = JSON.parse(params);
+      } catch (_) {
+        return res.status(400).json({ message: "params must be valid JSON" });
+      }
+    }
+    const result = await reportService.runReport(name, parsedParams);
+    const chartConfig = reportService.toChartConfig(name, result);
+    return res.json({
+      data: result,
+      chartData: chartConfig || undefined,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   chat,
   getConfig,
+  runReport,
 };

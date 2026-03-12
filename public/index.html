@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inventory</title>
   <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="prefetch" href="/products.html">
   <link rel="prefetch" href="/products-manage.html">
   <link rel="prefetch" href="/orders.html">
@@ -21,6 +22,7 @@
     </header>
     <main class="main-content bento-main">
       <h1 class="bento-title">Dashboard</h1>
+      <div class="dashboard-widgets" id="dashboardWidgets"></div>
       <div class="bento-grid">
         <a href="/products.html" class="bento-card bento-card-large">
           <span class="bento-icon">📦</span>
@@ -66,6 +68,64 @@
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
       window.location.href = "/login.html";
     });
+
+    async function loadDashboardWidgets() {
+      const el = document.getElementById("dashboardWidgets");
+      try {
+        const res = await fetch("/api/dashboard-widgets", { credentials: "include" });
+        if (!res.ok) return;
+        const { widgets } = await res.json();
+        if (!widgets || widgets.length === 0) return;
+        el.innerHTML = "";
+        const charts = [];
+        widgets.forEach((w) => {
+          const div = document.createElement("div");
+          div.className = "dashboard-widget";
+          div.innerHTML = `
+            <button type="button" class="dashboard-widget-remove" data-id="${w.id}" title="Remove">✕</button>
+            <h3>${escapeHtml(w.title)}</h3>
+            <div class="dashboard-widget-chart" style="height:200px"></div>
+          `;
+          if (w.error) {
+            div.querySelector(".dashboard-widget-chart").innerHTML = "<p style='color:var(--text-muted);font-size:0.9rem'>" + escapeHtml(w.error) + "</p>";
+          } else if (w.chartData && window.Chart) {
+            const chartEl = div.querySelector(".dashboard-widget-chart");
+            const canvas = document.createElement("canvas");
+            chartEl.appendChild(canvas);
+            const ctx = canvas.getContext("2d");
+            const config = {
+              type: w.chartData.type || "bar",
+              data: {
+                labels: w.chartData.labels || [],
+                datasets: (w.chartData.datasets || []).map((ds) => ({
+                  ...ds,
+                  borderColor: ds.backgroundColor,
+                  borderWidth: 1,
+                })),
+              },
+              options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: w.chartData.type === "pie" } },
+                scales: w.chartData.type === "pie" ? {} : { y: { beginAtZero: true } },
+              },
+            };
+            charts.push(new Chart(ctx, config));
+          }
+          el.appendChild(div);
+          div.querySelector(".dashboard-widget-remove").addEventListener("click", async () => {
+            await fetch("/api/dashboard-widgets/" + w.id, { method: "DELETE", credentials: "include" });
+            loadDashboardWidgets();
+          });
+        });
+      } catch (_) {}
+    }
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s ?? "";
+      return d.innerHTML;
+    }
+    loadDashboardWidgets();
   </script>
 </body>
 </html>

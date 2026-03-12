@@ -204,8 +204,71 @@ async function runReport(name, params = {}) {
   return fn(params);
 }
 
+/** Convert report result to chart config for Chart.js */
+function toChartConfig(reportName, result, chartType = "bar") {
+  if (!result) return null;
+  if (Array.isArray(result) && result.length === 0) return null;
+
+  if (reportName === "getSalesByPeriod" && Array.isArray(result)) {
+    const labels = result.map((r) => r.period);
+    const data = result.map((r) => r.total);
+    return {
+      type: chartType === "line" ? "line" : "bar",
+      title: "Sales by Period",
+      labels,
+      datasets: [{ label: "Revenue ($)", data, backgroundColor: "rgba(227, 24, 55, 0.6)" }],
+    };
+  }
+  if (reportName === "getOrdersSummary" && result.byStatus) {
+    const labels = Object.keys(result.byStatus);
+    const data = Object.values(result.byStatus);
+    return {
+      type: "pie",
+      title: "Orders by Status",
+      labels,
+      datasets: [{ data, backgroundColor: ["#e31837", "#64748b", "#10b981", "#f59e0b", "#6366f1"] }],
+    };
+  }
+  if (reportName === "getTopProductsByQuantity" && Array.isArray(result)) {
+    const labels = result.slice(0, 10).map((r) => (r.productName || r.sku || "").slice(0, 20));
+    const data = result.slice(0, 10).map((r) => r.quantity);
+    return {
+      type: "bar",
+      title: "Top Products by Quantity",
+      labels,
+      datasets: [{ label: "Quantity Sold", data, backgroundColor: "rgba(16, 185, 129, 0.6)" }],
+    };
+  }
+  if (reportName === "getLowStockProducts" && Array.isArray(result)) {
+    const labels = result.slice(0, 10).map((r) => (r.name || r.sku || "").slice(0, 20));
+    const data = result.slice(0, 10).map((r) => r.quantity);
+    return {
+      type: "bar",
+      title: "Low Stock Products",
+      labels,
+      datasets: [{ label: "Quantity", data, backgroundColor: "rgba(245, 158, 11, 0.6)" }],
+    };
+  }
+  if (reportName === "getPickTimeStats" && result.count > 0) {
+    return {
+      type: "bar",
+      title: "Pick Time Stats",
+      labels: ["Avg (sec)", "Min (sec)", "Max (sec)"],
+      datasets: [
+        {
+          label: "Seconds",
+          data: [result.averageSeconds, result.minSeconds, result.maxSeconds],
+          backgroundColor: ["rgba(99, 102, 241, 0.6)", "rgba(16, 185, 129, 0.6)", "rgba(245, 158, 11, 0.6)"],
+        },
+      ],
+    };
+  }
+  return null;
+}
+
 module.exports = {
   runReport,
+  toChartConfig,
   getOrders,
   getOrdersSummary,
   getSalesByPeriod,

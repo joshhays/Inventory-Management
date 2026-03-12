@@ -14,17 +14,31 @@ datasource db {
 }
 
 model User {
-  id             Int             @id @default(autoincrement())
-  email          String          @unique
-  password       String
-  name           String?
-  phone          String?
-  isAdmin        Boolean         @default(false)
-  isUser         Boolean         @default(true)
-  groups         UserGroupMember[]
-  savedAddresses SavedAddress[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  id              Int              @id @default(autoincrement())
+  email           String           @unique
+  password        String
+  name            String?
+  phone           String?
+  isAdmin         Boolean          @default(false)
+  isUser          Boolean          @default(true)
+  groups          UserGroupMember[]
+  savedAddresses  SavedAddress[]
+  dashboardWidgets DashboardWidget[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+model DashboardWidget {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  reportName   String   // e.g. getSalesByPeriod, getOrdersSummary
+  reportParams String   @default("{}") // JSON
+  chartType    String   @default("bar") // bar, line, pie
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model SavedAddress {

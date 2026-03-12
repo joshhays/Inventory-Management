@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reports - Inventory</title>
   <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <link rel="prefetch" href="/">
   <link rel="prefetch" href="/orders.html">
 </head>
@@ -92,7 +93,33 @@
       return out.replace(/\n/g, "<br>");
     }
 
-    function addMessage(role, content) {
+    function renderChart(container, chartData) {
+      if (!chartData || !window.Chart) return null;
+      const canvas = document.createElement("canvas");
+      canvas.height = 220;
+      container.appendChild(canvas);
+      const ctx = canvas.getContext("2d");
+      const config = {
+        type: chartData.type || "bar",
+        data: {
+          labels: chartData.labels || [],
+          datasets: (chartData.datasets || []).map((ds) => ({
+            ...ds,
+            borderColor: ds.backgroundColor,
+            borderWidth: 1,
+          })),
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: chartData.type === "pie" } },
+          scales: chartData.type === "pie" ? {} : { y: { beginAtZero: true } },
+        },
+      };
+      return new Chart(ctx, config);
+    }
+
+    function addMessage(role, content, chartData, reportConfig) {
       messages.push({ role, content });
       if (welcomeEl) welcomeEl.style.display = "none";
       const div = document.createElement("div");
@@ -103,10 +130,48 @@
         inner.textContent = content;
       } else {
         inner.innerHTML = renderMarkdown(content);
+        if (chartData) {
+          const chartWrap = document.createElement("div");
+          chartWrap.className = "reports-chart-wrap";
+          const chartTitle = document.createElement("div");
+          chartTitle.className = "reports-chart-title";
+          chartTitle.textContent = chartData.title || "Chart";
+          chartWrap.appendChild(chartTitle);
+          renderChart(chartWrap, chartData);
+          inner.appendChild(chartWrap);
+          if (reportConfig) {
+            const addBtn = document.createElement("button");
+            addBtn.type = "button";
+            addBtn.className = "btn-add-dashboard";
+            addBtn.textContent = "Add to dashboard";
+            addBtn.onclick = () => addToDashboard(reportConfig);
+            inner.appendChild(addBtn);
+          }
+        }
       }
       div.appendChild(inner);
       messagesEl.appendChild(div);
       messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    async function addToDashboard(config) {
+      try {
+        const res = await fetch("/api/dashboard-widgets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            title: config.title || "Report",
+            reportName: config.reportName,
+            reportParams: config.reportParams || {},
+            chartType: config.type || "bar",
+          }),
+        });
+        if (!res.ok) throw new Error((await res.json()).message || "Failed");
+        alert("Added to dashboard!");
+      } catch (e) {
+        alert("Error: " + (e.message || "Could not add to dashboard"));
+      }
     }
 
     async function sendMessage() {
@@ -135,7 +200,16 @@
           }
           return;
         }
-        addMessage("assistant", data.message?.content || "No response.");
+        const chartData = data.chartData;
+        const reportConfig = chartData
+          ? {
+              title: chartData.title,
+              reportName: chartData.reportName,
+              reportParams: chartData.reportParams || {},
+              type: chartData.type,
+            }
+          : null;
+        addMessage("assistant", data.message?.content || "No response.", chartData, reportConfig);
       } catch (e) {
         addMessage("assistant", "Error: " + (e.message || "Could not connect"));
       } finally {

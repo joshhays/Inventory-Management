@@ -62,6 +62,7 @@ app.use("/api/user-groups", requireAuth, require("./routes/userGroup.routes"));
 app.use("/api/logs", requireAuth, requireAdmin, require("./routes/inventoryLog.routes"));
 app.use("/api/orders", requireAuth, requireAdmin, require("./routes/order.routes"));
 app.use("/api/reports", requireAuth, requireAdmin, require("./routes/report.routes"));
+app.use("/api/dashboard-widgets", requireAuth, requireAdmin, require("./routes/dashboardWidget.routes"));
 app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
 
 app.use(notFoundHandler);
