@@ -1,13 +1,20 @@
 const express = require("express");
 const orderService = require("../services/order.service");
+const customerController = require("../controllers/customer.controller");
 const { requireAuth } = require("../middleware/auth.middleware");
 
 const router = express.Router();
 
+router.get("/profile", customerController.getProfile);
+router.patch("/profile", customerController.updateProfile);
+router.get("/addresses", customerController.getAddresses);
+router.post("/addresses", customerController.createAddress);
+router.delete("/addresses/:id", customerController.deleteAddress);
+
 router.post("/orders", requireAuth, async (req, res, next) => {
   try {
     const user = req.user;
-    const { customerPhone, shippingAddress, items } = req.body;
+    const { customerPhone, shippingAddress, shipping, items } = req.body;
     const customerName = req.body.customerName || user.name || user.email.split("@")[0];
     const customerEmail = (req.body.customerEmail || user.email).toLowerCase().trim();
 
@@ -17,11 +24,30 @@ router.post("/orders", requireAuth, async (req, res, next) => {
       });
     }
 
+    let shippingStr = null;
+    if (shipping && typeof shipping === "object") {
+      const { name, company, address1, address2, city, state, zip } = shipping;
+      if (name && address1 && city && state && zip) {
+        shippingStr = JSON.stringify({
+          name: String(name).trim(),
+          company: company ? String(company).trim() : null,
+          address1: String(address1).trim(),
+          address2: address2 ? String(address2).trim() : null,
+          city: String(city).trim(),
+          state: String(state).trim(),
+          zip: String(zip).trim(),
+        });
+      }
+    }
+    if (!shippingStr && shippingAddress && typeof shippingAddress === "string") {
+      shippingStr = shippingAddress.trim() || null;
+    }
+
     const order = await orderService.create({
       customerName,
       customerEmail,
       customerPhone: customerPhone || null,
-      shippingAddress: shippingAddress || null,
+      shippingAddress: shippingStr,
       items,
     });
 

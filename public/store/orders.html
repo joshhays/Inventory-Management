@@ -11,8 +11,12 @@
     <header class="top-nav top-nav-simple store-nav">
       <a href="/store/" class="top-nav-back">← Products</a>
       <a href="/store/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Store" class="nav-logo"></a>
-      <span class="top-nav-brand">My Orders</span>
-      <a href="/store/cart.html" class="top-nav-back">Cart</a>
+      <div class="store-nav-right">
+        <span class="top-nav-brand">My Orders</span>
+        <a href="/store/cart.html" class="store-cart-link">Cart</a>
+        <a href="/store/settings.html" class="store-settings-link" title="Settings">⚙ Settings</a>
+        <a href="#" id="ordersLogout" class="top-nav-back">Log out</a>
+      </div>
     </header>
     <main class="main-content store-main">
       <div id="ordersContent">
@@ -84,6 +88,12 @@
         document.getElementById("ordersContent").innerHTML = `<p class="store-empty error">${escape(e.message)}</p>`;
       }
     }
+
+    document.getElementById("ordersLogout")?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/store/login.html";
+    });
 
     load();
   </script>

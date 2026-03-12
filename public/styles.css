@@ -1691,8 +1691,16 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 }
 
 .store-cart-link:hover,
-.store-orders-link:hover {
+.store-orders-link:hover,
+.store-settings-link:hover {
   color: var(--sidebar-text-active);
+}
+
+.store-settings-link {
+  color: var(--sidebar-text);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 .store-main {
@@ -2268,12 +2276,132 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 }
 
 .store-form-row input,
-.store-form-row textarea {
+.store-form-row textarea,
+.store-form-row select {
   width: 100%;
   padding: 0.5rem 0.75rem;
   font-size: 1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+}
+
+.store-form-row-inline {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1rem;
+}
+
+.store-form-row-inline div {
+  min-width: 0;
+}
+
+.store-form-row-inline input {
+  width: 100%;
+}
+
+.store-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.store-cancel-btn {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.store-cancel-btn:hover {
+  background: var(--glass-border-subtle);
+}
+
+.store-settings-main {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.store-settings-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1.5rem;
+}
+
+.store-settings-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--glass-bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border-subtle);
+}
+
+.store-settings-section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 1rem;
+}
+
+.store-settings-hint {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 1rem;
+}
+
+.store-save-btn {
+  margin-top: 0.5rem;
+}
+
+.store-add-address-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.95rem;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.store-add-address-btn:hover {
+  background: var(--dangerBg);
+}
+
+.store-addresses-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.store-address-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem;
+  background: var(--glass-bg-strong);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border-subtle);
+}
+
+.store-address-card-body p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.store-address-delete {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--danger);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.store-address-delete:hover {
+  text-decoration: underline;
 }
 
 .store-place-order {

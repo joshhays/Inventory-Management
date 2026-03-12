@@ -11,7 +11,12 @@
     <header class="top-nav top-nav-simple store-nav">
       <a href="/store/" class="top-nav-back">← Continue shopping</a>
       <a href="/store/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Store" class="nav-logo"></a>
-      <a href="/store/cart.html" class="store-cart-link store-cart-link-active">Cart (<span id="cartCount">0</span>)</a>
+      <div class="store-nav-right">
+        <a href="/store/cart.html" class="store-cart-link store-cart-link-active">Cart (<span id="cartCount">0</span>)</a>
+        <a href="/store/orders.html" class="store-orders-link">My Orders</a>
+        <a href="/store/settings.html" class="store-settings-link" title="Settings">⚙ Settings</a>
+        <a href="#" id="cartLogout" class="top-nav-back">Log out</a>
+      </div>
     </header>
     <main class="main-content store-cart-main">
       <div id="cartContent">
@@ -23,8 +28,42 @@
           <div id="orderSummary" class="store-order-summary"></div>
           <div class="store-checkout-divider"></div>
           <div class="store-form-row">
-            <label for="shippingAddress">Shipping address</label>
-            <textarea id="shippingAddress" rows="3" placeholder="Street address, city, state, ZIP code"></textarea>
+            <label for="savedAddress">Saved address</label>
+            <select id="savedAddress">
+              <option value="">-- Enter new or select --</option>
+            </select>
+          </div>
+          <div class="store-shipping-form">
+            <div class="store-form-row">
+              <label for="shipName">Full name</label>
+              <input type="text" id="shipName" placeholder="John Doe">
+            </div>
+            <div class="store-form-row">
+              <label for="shipCompany">Company (optional)</label>
+              <input type="text" id="shipCompany" placeholder="Acme Inc">
+            </div>
+            <div class="store-form-row">
+              <label for="shipAddress1">Address line 1</label>
+              <input type="text" id="shipAddress1" placeholder="123 Main St">
+            </div>
+            <div class="store-form-row">
+              <label for="shipAddress2">Address line 2 (optional)</label>
+              <input type="text" id="shipAddress2" placeholder="Apt 4, Suite 100">
+            </div>
+            <div class="store-form-row store-form-row-inline">
+              <div>
+                <label for="shipCity">City</label>
+                <input type="text" id="shipCity" placeholder="Chicago">
+              </div>
+              <div>
+                <label for="shipState">State</label>
+                <input type="text" id="shipState" placeholder="IL">
+              </div>
+              <div>
+                <label for="shipZip">ZIP</label>
+                <input type="text" id="shipZip" placeholder="60601">
+              </div>
+            </div>
           </div>
           <div class="store-form-row">
             <label for="customerPhone">Phone (optional)</label>
@@ -144,6 +183,7 @@
       `;
 
       sidebar.style.display = "block";
+      loadSavedAddresses();
 
       content.querySelectorAll(".store-cart-qty-btn").forEach((btn) => {
         btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), Number(btn.dataset.delta)));
@@ -153,10 +193,55 @@
       });
     }
 
+    let savedAddressesBound = false;
+    async function loadSavedAddresses() {
+      const sel = document.getElementById("savedAddress");
+      if (!sel) return;
+      sel.innerHTML = '<option value="">-- Enter new or select --</option>';
+      try {
+        const res = await fetch("/api/customer/addresses", { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json();
+        const addrs = data.addresses || [];
+        addrs.forEach((a) => {
+          const opt = document.createElement("option");
+          opt.value = JSON.stringify(a);
+          opt.textContent = a.label + " - " + a.address1 + ", " + a.city;
+          sel.appendChild(opt);
+        });
+      } catch (_) {}
+      if (!savedAddressesBound) {
+        savedAddressesBound = true;
+        sel.addEventListener("change", () => {
+          const val = sel.value;
+          if (!val) return;
+          try {
+            const a = JSON.parse(val);
+            document.getElementById("shipName").value = a.name || "";
+            document.getElementById("shipCompany").value = a.company || "";
+            document.getElementById("shipAddress1").value = a.address1 || "";
+            document.getElementById("shipAddress2").value = a.address2 || "";
+            document.getElementById("shipCity").value = a.city || "";
+            document.getElementById("shipState").value = a.state || "";
+            document.getElementById("shipZip").value = a.zip || "";
+          } catch (_) {}
+        });
+      }
+    }
+
     document.getElementById("placeOrderBtn").addEventListener("click", async () => {
       const cart = getCart();
       if (cart.length === 0) {
         alert("Your cart is empty.");
+        return;
+      }
+      const name = document.getElementById("shipName").value.trim();
+      const address1 = document.getElementById("shipAddress1").value.trim();
+      const city = document.getElementById("shipCity").value.trim();
+      const state = document.getElementById("shipState").value.trim();
+      const zip = document.getElementById("shipZip").value.trim();
+      if (!name || !address1 || !city || !state || !zip) {
+        alert("Please fill in name, address, city, state, and ZIP.");
         return;
       }
       const btn = document.getElementById("placeOrderBtn");
@@ -168,7 +253,15 @@
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            shippingAddress: document.getElementById("shippingAddress").value.trim() || undefined,
+            shipping: {
+              name,
+              company: document.getElementById("shipCompany").value.trim() || null,
+              address1,
+              address2: document.getElementById("shipAddress2").value.trim() || null,
+              city,
+              state,
+              zip,
+            },
             customerPhone: document.getElementById("customerPhone").value.trim() || undefined,
             items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity || 1 })),
           }),
@@ -191,6 +284,12 @@
         btn.disabled = false;
         btn.textContent = "Place your order";
       }
+    });
+
+    document.getElementById("cartLogout")?.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/store/login.html";
     });
 
     render();

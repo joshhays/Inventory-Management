@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings - Store</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple store-nav">
+      <a href="/store/" class="top-nav-back">← Store</a>
+      <a href="/store/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Store" class="nav-logo"></a>
+      <div class="store-nav-right">
+        <a href="/store/cart.html" class="store-cart-link">Cart (<span id="cartCount">0</span>)</a>
+        <a href="/store/orders.html" class="store-orders-link">My Orders</a>
+        <a href="#" id="logoutLink" class="top-nav-back">Log out</a>
+      </div>
+    </header>
+    <main class="main-content store-settings-main">
+      <h1 class="store-settings-title">Account settings</h1>
+
+      <section class="store-settings-section">
+        <h2>Profile</h2>
+        <div class="store-form-row">
+          <label for="profileName">Name</label>
+          <input type="text" id="profileName" placeholder="Your name">
+        </div>
+        <div class="store-form-row">
+          <label for="profileEmail">Email</label>
+          <input type="email" id="profileEmail" disabled placeholder="Email (read-only)">
+        </div>
+        <div class="store-form-row">
+          <label for="profilePhone">Phone</label>
+          <input type="tel" id="profilePhone" placeholder="Optional">
+        </div>
+        <button type="button" class="btn-apply store-save-btn" id="saveProfileBtn">Save profile</button>
+      </section>
+
+      <section class="store-settings-section">
+        <h2>Saved addresses</h2>
+        <p class="store-settings-hint">Add addresses to use at checkout.</p>
+        <div id="addressesList" class="store-addresses-list"></div>
+        <div class="store-add-address-form" id="addAddressForm" style="display:none">
+          <div class="store-form-row">
+            <label for="addrLabel">Label (e.g. Home, Office)</label>
+            <input type="text" id="addrLabel" placeholder="Home">
+          </div>
+          <div class="store-form-row">
+            <label for="addrName">Full name</label>
+            <input type="text" id="addrName" placeholder="John Doe">
+          </div>
+          <div class="store-form-row">
+            <label for="addrCompany">Company (optional)</label>
+            <input type="text" id="addrCompany" placeholder="Acme Inc">
+          </div>
+          <div class="store-form-row">
+            <label for="addrAddress1">Address line 1</label>
+            <input type="text" id="addrAddress1" placeholder="123 Main St">
+          </div>
+          <div class="store-form-row">
+            <label for="addrAddress2">Address line 2 (optional)</label>
+            <input type="text" id="addrAddress2" placeholder="Apt 4, Suite 100">
+          </div>
+          <div class="store-form-row store-form-row-inline">
+            <div>
+              <label for="addrCity">City</label>
+              <input type="text" id="addrCity" placeholder="Chicago">
+            </div>
+            <div>
+              <label for="addrState">State</label>
+              <input type="text" id="addrState" placeholder="IL">
+            </div>
+            <div>
+              <label for="addrZip">ZIP</label>
+              <input type="text" id="addrZip" placeholder="60601">
+            </div>
+          </div>
+          <div class="store-form-actions">
+            <button type="button" class="btn-apply store-save-btn" id="saveAddressBtn">Save address</button>
+            <button type="button" class="store-cancel-btn" id="cancelAddressBtn">Cancel</button>
+          </div>
+        </div>
+        <button type="button" class="store-add-address-btn" id="addAddressBtn">+ Add new address</button>
+      </section>
+    </main>
+  </div>
+  <script>
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    function getCart() {
+      try {
+        return JSON.parse(localStorage.getItem("storeCart") || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    const profileName = document.getElementById("profileName");
+    const profileEmail = document.getElementById("profileEmail");
+    const profilePhone = document.getElementById("profilePhone");
+    const saveProfileBtn = document.getElementById("saveProfileBtn");
+    const addressesList = document.getElementById("addressesList");
+    const addAddressForm = document.getElementById("addAddressForm");
+    const addAddressBtn = document.getElementById("addAddressBtn");
+    const saveAddressBtn = document.getElementById("saveAddressBtn");
+    const cancelAddressBtn = document.getElementById("cancelAddressBtn");
+
+    document.getElementById("cartCount").textContent = getCart().reduce((s, i) => s + (i.quantity || 1), 0);
+
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/customer/profile", { credentials: "include" });
+        if (!res.ok) {
+          if (res.status === 401) {
+            window.location.href = "/store/login.html";
+            return;
+          }
+          throw new Error("Failed to load profile");
+        }
+        const data = await res.json();
+        const p = data.profile || {};
+        profileName.value = p.name || "";
+        profileEmail.value = p.email || "";
+        profilePhone.value = p.phone || "";
+      } catch (e) {
+        alert("Error: " + (e.message || "Could not load profile"));
+      }
+    }
+
+    async function loadAddresses() {
+      try {
+        const res = await fetch("/api/customer/addresses", { credentials: "include" });
+        if (!res.ok) {
+          if (res.status === 401) {
+            window.location.href = "/store/login.html";
+            return;
+          }
+          throw new Error("Failed to load addresses");
+        }
+        const data = await res.json();
+        const addrs = data.addresses || [];
+        if (addrs.length === 0) {
+          addressesList.innerHTML = '<p class="store-empty">No saved addresses yet.</p>';
+          return;
+        }
+        addressesList.innerHTML = addrs
+          .map(
+            (a) => `
+          <div class="store-address-card" data-id="${a.id}">
+            <div class="store-address-card-body">
+              <strong>${escape(a.label)}</strong>
+              <p>${escape(a.name)}${a.company ? "<br>" + escape(a.company) : ""}</p>
+              <p>${escape(a.address1)}${a.address2 ? "<br>" + escape(a.address2) : ""}</p>
+              <p>${escape(a.city)}, ${escape(a.state)} ${escape(a.zip)}</p>
+            </div>
+            <button type="button" class="store-address-delete" data-id="${a.id}">Delete</button>
+          </div>
+        `
+          )
+          .join("");
+        addressesList.querySelectorAll(".store-address-delete").forEach((btn) => {
+          btn.addEventListener("click", () => deleteAddress(Number(btn.dataset.id)));
+        });
+      } catch (e) {
+        addressesList.innerHTML = '<p class="store-empty error">' + escape(e.message) + "</p>";
+      }
+    }
+
+    async function deleteAddress(id) {
+      if (!confirm("Delete this address?")) return;
+      try {
+        const res = await fetch("/api/customer/addresses/" + id, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to delete");
+        loadAddresses();
+      } catch (e) {
+        alert("Error: " + (e.message || "Could not delete"));
+      }
+    }
+
+    saveProfileBtn.addEventListener("click", async () => {
+      saveProfileBtn.disabled = true;
+      saveProfileBtn.textContent = "Saving…";
+      try {
+        const res = await fetch("/api/customer/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: profileName.value.trim() || null,
+            phone: profilePhone.value.trim() || null,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to save");
+        saveProfileBtn.textContent = "Saved!";
+        setTimeout(() => (saveProfileBtn.textContent = "Save profile"), 1500);
+      } catch (e) {
+        alert("Error: " + (e.message || "Could not save"));
+      } finally {
+        saveProfileBtn.disabled = false;
+      }
+    });
+
+    addAddressBtn.addEventListener("click", () => {
+      addAddressForm.style.display = "block";
+      addAddressBtn.style.display = "none";
+      document.getElementById("addrLabel").value = "";
+      document.getElementById("addrName").value = "";
+      document.getElementById("addrCompany").value = "";
+      document.getElementById("addrAddress1").value = "";
+      document.getElementById("addrAddress2").value = "";
+      document.getElementById("addrCity").value = "";
+      document.getElementById("addrState").value = "";
+      document.getElementById("addrZip").value = "";
+    });
+
+    cancelAddressBtn.addEventListener("click", () => {
+      addAddressForm.style.display = "none";
+      addAddressBtn.style.display = "block";
+    });
+
+    saveAddressBtn.addEventListener("click", async () => {
+      const label = document.getElementById("addrLabel").value.trim();
+      const name = document.getElementById("addrName").value.trim();
+      const address1 = document.getElementById("addrAddress1").value.trim();
+      const city = document.getElementById("addrCity").value.trim();
+      const state = document.getElementById("addrState").value.trim();
+      const zip = document.getElementById("addrZip").value.trim();
+      if (!label || !name || !address1 || !city || !state || !zip) {
+        alert("Please fill in label, name, address, city, state, and ZIP.");
+        return;
+      }
+      saveAddressBtn.disabled = true;
+      saveAddressBtn.textContent = "Saving…";
+      try {
+        const res = await fetch("/api/customer/addresses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            label,
+            name,
+            company: document.getElementById("addrCompany").value.trim() || null,
+            address1,
+            address2: document.getElementById("addrAddress2").value.trim() || null,
+            city,
+            state,
+            zip,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to save address");
+        addAddressForm.style.display = "none";
+        addAddressBtn.style.display = "block";
+        loadAddresses();
+      } catch (e) {
+        alert("Error: " + (e.message || "Could not save"));
+      } finally {
+        saveAddressBtn.disabled = false;
+        saveAddressBtn.textContent = "Save address";
+      }
+    });
+
+    document.getElementById("logoutLink").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/store/login.html";
+    });
+
+    loadProfile();
+    loadAddresses();
+  </script>
+</body>
+</html>

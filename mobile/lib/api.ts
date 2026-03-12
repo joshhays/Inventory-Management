@@ -108,6 +108,8 @@ export type Order = {
   id: number;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string | null;
+  shippingAddress?: string | null;
   total: number;
   status: string;
   createdAt: string;

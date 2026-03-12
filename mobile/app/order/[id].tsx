@@ -187,6 +187,31 @@ export default function OrderDetailScreen() {
   const formatPrice = (n: number) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  /** Parse shipping address - supports JSON or plain text */
+  const parseShipping = (addr: string | null | undefined): string | null => {
+    if (!addr || !addr.trim()) return null;
+    try {
+      const parsed = JSON.parse(addr);
+      if (parsed && typeof parsed === 'object') {
+        const lines: string[] = [];
+        if (parsed.name) lines.push(parsed.name);
+        if (parsed.company) lines.push(parsed.company);
+        if (parsed.address1) lines.push(parsed.address1);
+        if (parsed.address2) lines.push(parsed.address2);
+        if (parsed.city || parsed.state || parsed.zip) {
+          const cityStateZip = [parsed.city, parsed.state, parsed.zip].filter(Boolean).join(', ');
+          if (cityStateZip) lines.push(cityStateZip);
+        }
+        return lines.length > 0 ? lines.join('\n') : addr;
+      }
+    } catch {
+      // Not JSON, use as plain text
+    }
+    return addr;
+  };
+
+  const shippingDisplay = parseShipping(order.shippingAddress);
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
@@ -279,6 +304,20 @@ export default function OrderDetailScreen() {
 
           {renderPrimaryAction()}
         </View>
+
+        {(shippingDisplay || order.customerPhone) && (
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Shipping</ThemedText>
+            {shippingDisplay ? (
+              <View style={styles.shippingBlock}>
+                <ThemedText style={styles.shippingText}>{shippingDisplay}</ThemedText>
+              </View>
+            ) : null}
+            {order.customerPhone ? (
+              <ThemedText style={styles.shippingPhone}>Phone: {order.customerPhone}</ThemedText>
+            ) : null}
+          </View>
+        )}
 
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle}>Pick list</ThemedText>
@@ -407,6 +446,14 @@ const styles = StyleSheet.create({
   completeBtnText: { color: '#fff' },
   section: { marginTop: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: WebTheme.text, marginBottom: 12 },
+  shippingBlock: {
+    padding: 12,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  shippingText: { fontSize: 15, color: WebTheme.text, lineHeight: 22 },
+  shippingPhone: { fontSize: 14, color: WebTheme.textMuted },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
