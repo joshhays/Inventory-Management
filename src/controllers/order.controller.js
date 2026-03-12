@@ -69,11 +69,13 @@ const updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    console.log("[order] PATCH status received: orderId=" + id + " status=" + JSON.stringify(status));
     if (!status || typeof status !== "string") {
       return res.status(400).json({ message: "status is required." });
     }
     const newStatus = status.trim().toLowerCase();
     const order = await orderService.updateStatus(id, status.trim());
+    console.log("[order] Status updated to '" + newStatus + "' for order #" + order.id);
 
     // Send email when order becomes ready for messenger pickup
     if (newStatus === "ready") {

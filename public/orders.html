@@ -126,7 +126,7 @@
       params.set("page", page);
       params.set("limit", pageSize.value);
       try {
-        const res = await fetch("/api/orders?" + params);
+        const res = await fetch("/api/orders?" + params, { credentials: "include" });
         const data = await res.json();
         const { orders, total, page: p, limit, totalPages } = data;
         if (orders.length === 0) {
@@ -225,6 +225,7 @@
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ picked: !currentlyPicked }),
+          credentials: "include",
         });
         if (!res.ok) throw new Error((await res.json()).message || res.statusText);
         openOrderDetail(selectedOrderId);
@@ -241,6 +242,7 @@
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status }),
+          credentials: "include",
         });
         if (!res.ok) throw new Error((await res.json()).message || res.statusText);
         loadOrders(currentPage);
