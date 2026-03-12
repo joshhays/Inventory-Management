@@ -139,6 +139,26 @@ export default function OrderDetailScreen() {
     setSelectedItem(null);
   };
 
+  const handleDoubleCheckComplete = async () => {
+    if (!order || order.status?.toLowerCase() !== 'picked') return;
+    try {
+      await updateOrderStatus(order.id, 'ready');
+      router.back();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleShip = async () => {
+    if (!order || order.status?.toLowerCase() !== 'ready') return;
+    try {
+      await updateOrderStatus(order.id, 'shipped');
+      router.back();
+    } catch {
+      // ignore
+    }
+  };
+
   const formatPrice = (n: number) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -160,9 +180,58 @@ export default function OrderDetailScreen() {
   }
 
   const items = order.items || [];
-  const unpickedItems = items.filter((i) => !i.picked);
   const pickedCount = items.filter((i) => i.picked).length;
   const allPicked = items.length > 0 && items.every((i) => i.picked);
+  const status = order.status?.toLowerCase() || 'pending';
+  const isReady = status === 'ready';
+  const isPicked = status === 'picked';
+
+  const renderPrimaryAction = () => {
+    if (isReady) {
+      return (
+        <Pressable style={[styles.startBtn, styles.shipBtn]} onPress={handleShip}>
+          <MaterialIcons name="local-shipping" size={24} color="#fff" />
+          <ThemedText style={[styles.startBtnText, styles.completeBtnText]}>Ship</ThemedText>
+        </Pressable>
+      );
+    }
+    if (isPicked) {
+      return (
+        <Pressable style={[styles.startBtn, styles.completeBtn]} onPress={handleDoubleCheckComplete}>
+          <MaterialIcons name="verified" size={24} color="#fff" />
+          <ThemedText style={[styles.startBtnText, styles.completeBtnText]}>Double check complete</ThemedText>
+        </Pressable>
+      );
+    }
+    if (!pickingMode && !allPicked) {
+      return (
+        <Pressable style={styles.startBtn} onPress={handleStartPicking}>
+          <MaterialIcons name="qr-code-scanner" size={24} color="#fff" />
+          <ThemedText style={styles.startBtnText}>Start Picking</ThemedText>
+        </Pressable>
+      );
+    }
+    if (allPicked) {
+      return (
+        <Pressable style={[styles.startBtn, styles.completeBtn]} onPress={handleDonePicking}>
+          <MaterialIcons name="check-circle" size={24} color="#fff" />
+          <ThemedText style={[styles.startBtnText, styles.completeBtnText]}>Complete</ThemedText>
+        </Pressable>
+      );
+    }
+    return (
+      <View style={styles.pickingActions}>
+        <ThemedText style={styles.pickingHint}>
+          Tap an item below, then scan its barcode to confirm.
+        </ThemedText>
+        <Pressable style={[styles.doneBtn, allPicked && styles.completeBtn]} onPress={handleDonePicking}>
+          <ThemedText style={[styles.doneBtnText, allPicked && styles.completeBtnText]}>
+            {allPicked ? 'Complete' : 'Done Picking'}
+          </ThemedText>
+        </Pressable>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -183,32 +252,7 @@ export default function OrderDetailScreen() {
             </ThemedText>
           </View>
 
-          {!pickingMode && !allPicked ? (
-            <Pressable style={styles.startBtn} onPress={handleStartPicking}>
-              <MaterialIcons name="qr-code-scanner" size={24} color="#fff" />
-              <ThemedText style={styles.startBtnText}>Start Picking</ThemedText>
-            </Pressable>
-          ) : allPicked ? (
-            <Pressable style={[styles.startBtn, styles.completeBtn]} onPress={handleDonePicking}>
-              <MaterialIcons name="check-circle" size={24} color="#fff" />
-              <ThemedText style={[styles.startBtnText, styles.completeBtnText]}>Complete</ThemedText>
-            </Pressable>
-          ) : (
-            <View style={styles.pickingActions}>
-              <ThemedText style={styles.pickingHint}>
-                {allPicked
-                  ? 'All items picked. Tap Complete to move to Picked.'
-                  : 'Tap an item below, then scan its barcode to confirm.'}
-              </ThemedText>
-              <Pressable
-                style={[styles.doneBtn, allPicked && styles.completeBtn]}
-                onPress={handleDonePicking}>
-                <ThemedText style={[styles.doneBtnText, allPicked && styles.completeBtnText]}>
-                  {allPicked ? 'Complete' : 'Done Picking'}
-                </ThemedText>
-              </Pressable>
-            </View>
-          )}
+          {renderPrimaryAction()}
         </View>
 
         <View style={styles.section}>
@@ -329,6 +373,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   completeBtn: {
+    backgroundColor: WebTheme.accent,
+  },
+  shipBtn: {
     backgroundColor: WebTheme.accent,
   },
   doneBtnText: { fontSize: 15, fontWeight: '600', color: WebTheme.text },

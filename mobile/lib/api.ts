@@ -114,8 +114,9 @@ export type Order = {
   items?: OrderItem[];
 };
 
-export async function fetchOrders(): Promise<{ orders: Order[] }> {
-  const res = await fetch(api().orders, fetchOpts());
+export async function fetchOrders(status?: string): Promise<{ orders: Order[] }> {
+  const url = status ? `${api().orders}?status=${encodeURIComponent(status)}` : api().orders;
+  const res = await fetch(url, fetchOpts());
   if (!res.ok) throw new ApiError(await res.text().catch(() => 'Failed to fetch orders'), res.status);
   return res.json();
 }

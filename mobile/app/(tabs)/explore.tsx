@@ -14,19 +14,37 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { getApiBase } from '@/contexts/DeploymentContext';
 import { WebTheme } from '@/constants/web-theme';
-import { ApiError, fetchOrders, updateOrderStatus, type Order } from '@/lib/api';
+import { ApiError, fetchOrders, type Order } from '@/lib/api';
 
-const STATUS_ORDER = ['pending', 'in process', 'picked', 'ready', 'shipped'];
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  'in process': 'In Process',
-  picked: 'Picked',
-  ready: 'Ready',
-  shipped: 'Shipped',
+const BENTO_CONFIG: { status: string; slug: string; title: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
+  { status: 'pending', slug: 'pending', title: 'Pending', icon: 'schedule' },
+  { status: 'in process', slug: 'in-process', title: 'In Process', icon: 'inventory-2' },
+  { status: 'picked', slug: 'picked', title: 'Picked', icon: 'check-circle' },
+  { status: 'ready', slug: 'ready', title: 'Ready', icon: 'local-shipping' },
+  { status: 'shipped', slug: 'shipped', title: 'Shipped', icon: 'done-all' },
+];
+
+type BentoCardProps = {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  title: string;
+  count: number;
+  onPress: () => void;
 };
 
-function getStatusLabel(status: string): string {
-  return STATUS_LABELS[status] ?? status;
+function BentoCard({ icon, title, count, onPress }: BentoCardProps) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.bentoCard, pressed && styles.bentoCardPressed]}
+      onPress={onPress}>
+      <View style={styles.bentoCardInner}>
+        <View style={styles.iconWrap}>
+          <MaterialIcons name={icon} size={28} color={WebTheme.accent} />
+        </View>
+        <ThemedText style={styles.bentoCardTitle}>{title}</ThemedText>
+        <ThemedText style={styles.bentoCardCount}>{count} orders</ThemedText>
+      </View>
+    </Pressable>
+  );
 }
 
 export default function OrdersScreen() {
@@ -75,8 +93,8 @@ export default function OrdersScreen() {
 
   const ordersByStatus = useMemo(() => {
     const map: Record<string, Order[]> = {};
-    for (const s of STATUS_ORDER) {
-      map[s] = [];
+    for (const c of BENTO_CONFIG) {
+      map[c.status] = [];
     }
     for (const o of orders) {
       const key = o.status?.toLowerCase() || 'pending';
@@ -89,84 +107,6 @@ export default function OrdersScreen() {
     }
     return map;
   }, [orders]);
-
-  const formatPrice = (n: number) =>
-    Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-  const formatDate = (s: string) => new Date(s).toLocaleDateString();
-
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
-
-  const handleDoubleCheckComplete = useCallback(
-    async (orderId: number) => {
-      setUpdatingId(orderId);
-      try {
-        await updateOrderStatus(orderId, 'ready');
-        load();
-      } catch {
-        // ignore
-      } finally {
-        setUpdatingId(null);
-      }
-    },
-    [load]
-  );
-
-  const renderOrderCard = (item: Order, statusKey?: string) => {
-    const itemCount = item.items?.reduce((s, i) => s + i.quantity, 0) || 0;
-    const isPicked = statusKey === 'picked';
-    const isUpdating = updatingId === item.id;
-    return (
-      <View key={item.id} style={styles.card}>
-        <Pressable
-          style={styles.cardPressable}
-          onPress={() => !isUpdating && router.push(`/order/${item.id}`)}>
-          <View style={styles.cardContent}>
-            <View style={styles.cardMain}>
-              <ThemedText style={styles.customer}>{item.customerName}</ThemedText>
-              <ThemedText style={styles.meta}>
-                #{item.id} · {formatDate(item.createdAt)} · {itemCount} items
-              </ThemedText>
-            </View>
-            <View style={styles.right}>
-              <ThemedText style={styles.total}>{formatPrice(item.total)}</ThemedText>
-              <ThemedText style={[styles.badge, styles[`badge${item.status?.replace(/\s/g, '')}` as keyof typeof styles] || styles.badgeDefault]}>
-                {getStatusLabel(item.status)}
-              </ThemedText>
-            </View>
-          </View>
-        </Pressable>
-        {isPicked && (
-          <Pressable
-            style={[styles.doubleCheckBtn, isUpdating && styles.doubleCheckBtnDisabled]}
-            onPress={() => !isUpdating && handleDoubleCheckComplete(item.id)}
-            disabled={isUpdating}>
-            <MaterialIcons name="verified" size={18} color="#fff" />
-            <ThemedText style={styles.doubleCheckBtnText}>
-              {isUpdating ? '…' : 'Double check complete'}
-            </ThemedText>
-          </Pressable>
-        )}
-      </View>
-    );
-  };
-
-  const renderBentoSection = (statusKey: string, title: string, icon: keyof typeof MaterialIcons.glyphMap) => {
-    const list = ordersByStatus[statusKey] || [];
-    if (list.length === 0) return null;
-    return (
-      <View key={statusKey} style={styles.bentoSection}>
-        <View style={styles.bentoHeader}>
-          <MaterialIcons name={icon} size={20} color={WebTheme.accent} />
-          <ThemedText style={styles.bentoTitle}>{title}</ThemedText>
-          <ThemedText style={styles.bentoCount}>{list.length}</ThemedText>
-        </View>
-        <View style={styles.bentoCards}>
-          {list.map((o) => renderOrderCard(o, statusKey))}
-        </View>
-      </View>
-    );
-  };
 
   if (loading) {
     return (
@@ -193,7 +133,7 @@ export default function OrdersScreen() {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <ThemedText type="title" style={styles.headerTitle}>Orders</ThemedText>
-        <ThemedText style={styles.headerSub}>Pull to refresh</ThemedText>
+        <ThemedText style={styles.headerSub}>Tap a status to view orders</ThemedText>
       </View>
 
       <ScrollView
@@ -207,21 +147,15 @@ export default function OrdersScreen() {
           />
         }
         showsVerticalScrollIndicator={false}>
-        {renderBentoSection('pending', 'Pending', 'schedule')}
-        {renderBentoSection('in process', 'In Process', 'inventory-2')}
-        {renderBentoSection('picked', 'Picked', 'check-circle')}
-        {renderBentoSection('ready', 'Ready', 'local-shipping')}
-        {renderBentoSection('shipped', 'Shipped', 'done-all')}
-        {(ordersByStatus['_other']?.length ?? 0) > 0 && (
-          <View style={styles.bentoSection}>
-            <View style={styles.bentoHeader}>
-              <ThemedText style={styles.bentoTitle}>Other</ThemedText>
-            </View>
-            <View style={styles.bentoCards}>
-              {(ordersByStatus['_other'] || []).map((o) => renderOrderCard(o, '_other'))}
-            </View>
-          </View>
-        )}
+        {BENTO_CONFIG.map(({ status, slug, title, icon }) => (
+          <BentoCard
+            key={slug}
+            icon={icon}
+            title={title}
+            count={ordersByStatus[status]?.length ?? 0}
+            onPress={() => router.push(`/orders/${slug}`)}
+          />
+        ))}
         {orders.length === 0 && (
           <ThemedText style={styles.empty}>No orders yet.</ThemedText>
         )}
@@ -253,67 +187,30 @@ const styles = StyleSheet.create({
   headerSub: { color: WebTheme.textMuted, marginTop: 4 },
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
-  bentoSection: {
-    marginBottom: 24,
-  },
-  bentoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  bentoTitle: { fontSize: 16, fontWeight: '600', color: WebTheme.text },
-  bentoCount: {
-    fontSize: 13,
-    color: WebTheme.textMuted,
-    marginLeft: 4,
-  },
-  bentoCards: { gap: 10 },
-  card: {
-    backgroundColor: '#fff',
+  bentoCard: {
+    marginBottom: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: WebTheme.radius,
+    padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    shadowColor: '#1f2687',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 4,
   },
-  cardPressable: { padding: 16 },
-  cardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  doubleCheckBtn: {
-    flexDirection: 'row',
+  bentoCardPressed: { opacity: 0.92 },
+  bentoCardInner: { gap: 8 },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(227, 24, 55, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    paddingVertical: 10,
-    backgroundColor: WebTheme.success,
-    borderRadius: 8,
   },
-  doubleCheckBtnDisabled: { opacity: 0.7 },
-  doubleCheckBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
-  cardMain: { flex: 1 },
-  customer: { fontSize: 16, fontWeight: '600', color: WebTheme.text },
-  meta: { fontSize: 13, marginTop: 2, color: WebTheme.textMuted },
-  right: { alignItems: 'flex-end' },
-  total: { fontSize: 16, fontWeight: '600', color: WebTheme.text },
-  badge: {
-    fontSize: 11,
-    textTransform: 'capitalize',
-    marginTop: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  badgeDefault: { backgroundColor: '#e5e7eb', color: '#374151' },
-  badgepending: { backgroundColor: '#fef3c7', color: '#92400e' },
-  badgeinprocess: { backgroundColor: '#dbeafe', color: '#1e40af' },
-  badgepicked: { backgroundColor: '#e0e7ff', color: '#3730a3' },
-  badgeready: { backgroundColor: '#d1fae5', color: '#065f46' },
-  badgeshipped: { backgroundColor: '#dcfce7', color: '#166534' },
+  bentoCardTitle: { fontSize: 18, fontWeight: '600', color: WebTheme.text },
+  bentoCardCount: { fontSize: 14, color: WebTheme.textMuted },
   empty: { padding: 24, textAlign: 'center', color: WebTheme.textMuted },
 });
