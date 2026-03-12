@@ -32,6 +32,7 @@ function getPreviewUrl(product: Product): string | null {
   const pdfFile = files.find((f) => PDF_EXT.test(f.filename));
 
   if (imageFile) {
+    if (imageFile.url) return imageFile.url.startsWith('/') ? `${API_BASE}${imageFile.url}` : imageFile.url;
     const encodedPath = imageFile.path.split('/').map(encodeURIComponent).join('/');
     return `${API_BASE}/uploads/${encodedPath}`;
   }
@@ -215,7 +216,7 @@ export default function ProductDetailScreen() {
                 </>
               ) : (
                 <ThemedText style={styles.debugText}>
-                  No image or PDF. Upload via web Manage Products.
+                  No image or PDF. Attach via web Manage Products.
                 </ThemedText>
               )}
             </View>

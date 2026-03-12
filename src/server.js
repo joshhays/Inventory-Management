@@ -8,7 +8,10 @@ const env = require("./config/env");
 async function ensureAdminUser() {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
-  if (!email || !password) return;
+  if (!email || !password) {
+    console.log("Admin user setup skipped. Set ADMIN_EMAIL and ADMIN_PASSWORD in Railway to create an admin.");
+    return;
+  }
 
   try {
     const emailNorm = email.toLowerCase().trim();

@@ -46,6 +46,7 @@ app.use(
 app.use(requirePageAuth);
 app.use(express.static(path.join(__dirname, "../public")));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+app.use("/product-files", express.static(path.join(__dirname, "../product-files")));
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
@@ -56,6 +57,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", requireAuth, requireAdmin, userRoutes);
 
 app.use("/api/products", requireAuth, productRoutes);
+app.use("/api/product-files", requireAuth, require("./routes/productFile.routes"));
 app.use("/api/user-groups", requireAuth, require("./routes/userGroup.routes"));
 app.use("/api/logs", requireAuth, requireAdmin, require("./routes/inventoryLog.routes"));
 app.use("/api/orders", requireAuth, requireAdmin, require("./routes/order.routes"));

@@ -427,6 +427,22 @@ h1 {
   background: #475569;
 }
 
+.btn-del-small {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  background: var(--danger);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  margin-left: 0.25rem;
+}
+
+.btn-del-small:hover {
+  background: var(--danger-hover);
+}
+
 .btn-adjust {
   background: var(--accent);
   color: white;
@@ -1316,17 +1332,36 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   opacity: 0.9;
 }
 
-.upload-row {
+.upload-row,
+.attach-row {
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
 }
 
-.upload-row label {
+.upload-row label,
+.attach-row label {
   display: block;
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-bottom: 0.5rem;
+}
+
+.attach-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.attach-row select {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
 }
 
 .import-wrap {

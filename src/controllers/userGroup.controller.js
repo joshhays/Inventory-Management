@@ -25,7 +25,49 @@ const createUserGroup = async (req, res, next) => {
   }
 };
 
+const updateUserGroup = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ message: "name is required." });
+    }
+    const group = await userGroupService.update(id, { name: name.trim() });
+    if (!group) return res.status(404).json({ message: "Group not found." });
+    return res.status(200).json(group);
+  } catch (error) {
+    if (error.code === "P2002") {
+      return res.status(400).json({ message: "A group with this name already exists." });
+    }
+    return next(error);
+  }
+};
+
+const deleteUserGroup = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const result = await userGroupService.remove(id);
+    if (!result) return res.status(404).json({ message: "Group not found." });
+    return res.status(200).json({ message: "Group deleted.", id: result.id });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getUserGroup = async (req, res, next) => {
+  try {
+    const group = await userGroupService.findById(req.params.id);
+    if (!group) return res.status(404).json({ message: "Group not found." });
+    return res.status(200).json(group);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getUserGroups,
+  getUserGroup,
   createUserGroup,
+  updateUserGroup,
+  deleteUserGroup,
 };

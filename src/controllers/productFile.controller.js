@@ -1,10 +1,12 @@
 const fs = require("fs");
 const path = require("path");
+const prisma = require("../lib/prisma");
 const productFileService = require("../services/productFile.service");
 const productService = require("../services/product.service");
 const { canAccessProduct } = require("../lib/auth-helpers");
 
 const UPLOAD_DIR = path.join(__dirname, "../../uploads");
+const PRODUCT_FILES_DIR = path.join(__dirname, "../../product-files");
 
 async function checkProductAccess(req, res, productId) {
   const product = await productService.getProductWithFiles(productId);
@@ -21,7 +23,8 @@ const getFiles = async (req, res, next) => {
     const access = await checkProductAccess(req, res, id);
     if (access.status) return res.status(access.status).json({ message: access.message });
     const files = await productFileService.getByProductId(id);
-    res.status(200).json(files);
+    const withUrls = files.map((f) => ({ ...f, url: productFileService.getFileUrl(f) }));
+    res.status(200).json(withUrls);
   } catch (error) {
     next(error);
   }
@@ -38,11 +41,12 @@ const getPreview = async (req, res, next) => {
     const pdfFile = files.find((f) => PDF_EXT.test(f.filename));
     const imageFile = files.find((f) => IMAGE_EXT.test(f.filename));
 
-    // Prefer image, otherwise use first page of PDF only
+    const getBaseDir = (f) => (productFileService.getFileUrl(f)?.startsWith("/product-files/") ? PRODUCT_FILES_DIR : UPLOAD_DIR);
+
     if (imageFile) {
-      const fullPath = path.join(UPLOAD_DIR, imageFile.path);
+      const fullPath = path.join(getBaseDir(imageFile), imageFile.path);
       if (fs.existsSync(fullPath)) {
-        return res.sendFile(fullPath);
+        return res.sendFile(path.resolve(fullPath));
       }
     }
 
@@ -50,7 +54,7 @@ const getPreview = async (req, res, next) => {
       return res.status(404).json({ message: "No image or PDF file found." });
     }
 
-    const fullPath = path.join(UPLOAD_DIR, pdfFile.path);
+    const fullPath = path.join(getBaseDir(pdfFile), pdfFile.path);
     if (!fs.existsSync(fullPath)) {
       return res.status(404).json({ message: "File not found." });
     }
@@ -75,20 +79,21 @@ const getPreview = async (req, res, next) => {
   }
 };
 
-const uploadFile = async (req, res, next) => {
+const attachFile = async (req, res, next) => {
   try {
     const { id } = req.params;
     const access = await checkProductAccess(req, res, id);
     if (access.status) return res.status(access.status).json({ message: access.message });
-    const file = req.file;
-    if (!file) {
-      return res.status(400).json({ message: "No file uploaded." });
+    const { path: filePath } = req.body || {};
+    if (!filePath || typeof filePath !== "string") {
+      return res.status(400).json({ message: "path is required (e.g. \"manual.pdf\" or \"guides/spec.pdf\")." });
     }
-    const productFile = await productFileService.add(id, file);
+    const cleanPath = filePath.replace(/^\/+/, "").replace(/\.\./g, "");
+    const productFile = await productFileService.addFromRepo(id, cleanPath);
     if (!productFile) {
-      return res.status(404).json({ message: "Product not found." });
+      return res.status(404).json({ message: "Product or file not found. Ensure the file exists in product-files/." });
     }
-    res.status(201).json(productFile);
+    res.status(201).json({ ...productFile, url: productFileService.getFileUrl(productFile) });
   } catch (error) {
     next(error);
   }
@@ -112,6 +117,6 @@ const deleteFile = async (req, res, next) => {
 module.exports = {
   getFiles,
   getPreview,
-  uploadFile,
+  attachFile,
   deleteFile,
 };

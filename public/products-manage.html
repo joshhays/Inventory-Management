@@ -112,9 +112,12 @@
     <div class="modal">
       <h3 id="filesModalTitle">Files</h3>
       <div class="file-list" id="filesList"></div>
-      <div class="upload-row">
-        <label>Upload PDF or image</label>
-        <input type="file" id="fileUploadInput" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp">
+      <div class="attach-row">
+        <label>Attach PDF or image from repo</label>
+        <select id="fileSelectDropdown">
+          <option value="">Select a file...</option>
+        </select>
+        <button type="button" class="btn-apply" id="btnAttachFile">Attach</button>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-cancel" id="btnCloseFiles">Close</button>
@@ -175,9 +178,12 @@
       return (files || [])[0];
     }
 
-    function getImageUrl(path) {
-      if (!path) return "";
-      return "/uploads/" + path.split("/").map(encodeURIComponent).join("/");
+    function getImageUrl(fileOrPath) {
+      if (!fileOrPath) return "";
+      if (typeof fileOrPath === "object" && fileOrPath.url) return fileOrPath.url;
+      const p = typeof fileOrPath === "string" ? fileOrPath : fileOrPath?.path;
+      if (!p) return "";
+      return "/uploads/" + p.split("/").map(encodeURIComponent).join("/");
     }
 
     function openPreview(src) {
@@ -240,10 +246,10 @@
         const firstFile = getFirstFile(p.files);
         let thumbHtml;
         if (firstImg) {
-          const imgUrl = getImageUrl(firstImg.path);
+          const imgUrl = getImageUrl(firstImg);
           thumbHtml = `<div class="product-thumb-wrap"><img class="product-thumb" src="${imgUrl}" alt=""></div>`;
         } else if (firstFile) {
-          const pdfUrl = getImageUrl(firstFile.path);
+          const pdfUrl = getImageUrl(firstFile);
           const isPdf = (firstFile.filename || "").toLowerCase().endsWith(".pdf");
           thumbHtml = isPdf
             ? `<div class="product-thumb-wrap"><a href="${pdfUrl}" target="_blank" class="product-pdf-wrap" title="Click to open full PDF" data-pdf-url="${pdfUrl.replace(/"/g, "&quot;")}"><canvas class="product-pdf-preview" data-pdf-src="${pdfUrl.replace(/"/g, "&quot;")}"></canvas></a></div>`
@@ -429,16 +435,29 @@
 
     // Files modal
     let filesProductId = null;
+    let availableFiles = [];
     const filesModal = document.getElementById("filesModal");
     const filesList = document.getElementById("filesList");
-    const fileUploadInput = document.getElementById("fileUploadInput");
+    const fileSelectDropdown = document.getElementById("fileSelectDropdown");
+    const btnAttachFile = document.getElementById("btnAttachFile");
 
     async function openFilesModal(id) {
       filesProductId = id;
       const p = data.find(x => x.id === id);
       document.getElementById("filesModalTitle").textContent = `Files: ${p ? escape(p.name) : id}`;
-      await refreshFilesList();
+      await Promise.all([loadAvailableFiles(), refreshFilesList()]);
       filesModal.classList.add("open");
+    }
+
+    async function loadAvailableFiles() {
+      try {
+        const res = await fetch("/api/product-files/available");
+        availableFiles = await res.json();
+        fileSelectDropdown.innerHTML = '<option value="">Select a file...</option>' +
+          availableFiles.map(f => `<option value="${escape(f.path)}">${escape(f.filename)}</option>`).join("");
+      } catch (e) {
+        fileSelectDropdown.innerHTML = '<option value="">Error loading files</option>';
+      }
     }
 
     async function refreshFilesList() {
@@ -447,9 +466,9 @@
         const res = await fetch(`/api/products/${filesProductId}/files`);
         const files = await res.json();
 filesList.innerHTML = files.length === 0
-          ? "<p style='color:#64748b;font-size:0.85rem;'>No files yet.</p>"
+          ? "<p style='color:#64748b;font-size:0.85rem;'>No files attached yet.</p>"
           : files.map(f => {
-              const url = getImageUrl(f.path);
+              const url = getImageUrl(f);
               const isImg = isImageFile(f.filename);
               const preview = isImg
                 ? `<img src="${url}" alt="" class="file-preview-img">`
@@ -487,26 +506,25 @@ filesList.innerHTML = files.length === 0
       }
     }
 
-    fileUploadInput.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (!file || !filesProductId) return;
-      const fd = new FormData();
-      fd.append("file", file);
+    btnAttachFile.addEventListener("click", async () => {
+      const path = fileSelectDropdown.value;
+      if (!path || !filesProductId) return;
       try {
         const res = await fetch(`/api/products/${filesProductId}/files`, {
           method: "POST",
-          body: fd,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path }),
         });
         if (!res.ok) {
           const err = await res.json();
-          throw new Error(err.message || "Upload failed");
+          throw new Error(err.message || "Attach failed");
         }
         await refreshFilesList();
         load();
+        fileSelectDropdown.value = "";
       } catch (err) {
         alert("Error: " + err.message);
       }
-      fileUploadInput.value = "";
     });
 
     document.getElementById("btnCloseFiles").addEventListener("click", () => {

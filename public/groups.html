@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Groups - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="prefetch" href="/">
+  <link rel="prefetch" href="/products.html">
+  <link rel="prefetch" href="/products-manage.html">
+  <link rel="prefetch" href="/users.html">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <span class="top-nav-brand">Inventory</span>
+    </header>
+    <main class="main-content">
+      <div class="toolbar">
+        <h1>Product Groups</h1>
+        <button type="button" class="btn-create" id="btnCreate">Create Group</button>
+      </div>
+      <div class="table-wrap">
+        <div class="loading" id="status">Loading…</div>
+        <div id="accessDenied" class="error" style="display:none">Admin access required.</div>
+        <table id="table" style="display:none">
+          <thead>
+            <tr>
+              <th>Group Name</th>
+              <th class="num">Products</th>
+              <th class="actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="body"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="groupModal">
+    <div class="modal" style="min-width: 360px;">
+      <h3 id="groupModalTitle">Create Group</h3>
+      <form id="groupForm">
+        <div class="modal-row">
+          <label>Group Name</label>
+          <input type="text" id="groupName" required placeholder="e.g. Retail, Wholesale">
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn-apply">Save</button>
+          <button type="button" class="btn-cancel" id="btnGroupCancel">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="tagModal">
+    <div class="modal" style="min-width: 480px; max-width: 90vw;">
+      <h3 id="tagModalTitle">Tag Products</h3>
+      <p class="kit-modal-hint" id="tagModalSubtitle">Add or remove products from this group.</p>
+      <div class="modal-row">
+        <label>Add product to group</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <select id="tagProductSelect" style="flex: 1;">
+            <option value="">Select product...</option>
+          </select>
+          <button type="button" class="btn-apply" id="btnAddToGroup">Add</button>
+        </div>
+      </div>
+      <div class="modal-row">
+        <label>Products in this group</label>
+        <div id="tagProductList" class="file-list" style="max-height: 200px;"></div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" id="btnTagClose">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+      <h3>Delete Group</h3>
+      <p id="deleteConfirmText">Are you sure? Products will be unassigned from this group.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn-apply" id="btnDeleteConfirm" style="background: var(--danger);">Delete</button>
+        <button type="button" class="btn-cancel" id="btnDeleteCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let groups = [];
+    let products = [];
+    let editingId = null;
+    let tagGroupId = null;
+    let deleteTargetId = null;
+
+    const status = document.getElementById("status");
+    const table = document.getElementById("table");
+    const body = document.getElementById("body");
+    const accessDenied = document.getElementById("accessDenied");
+    const groupModal = document.getElementById("groupModal");
+    const groupForm = document.getElementById("groupForm");
+    const tagModal = document.getElementById("tagModal");
+    const deleteModal = document.getElementById("deleteModal");
+
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    async function loadGroups() {
+      try {
+        const res = await fetch("/api/user-groups", { credentials: "include" });
+        if (res.status === 403) {
+          status.style.display = "none";
+          accessDenied.style.display = "block";
+          document.getElementById("btnCreate").style.display = "none";
+          return [];
+        }
+        if (!res.ok) throw new Error("Failed to load groups");
+        return res.json();
+      } catch (e) {
+        status.textContent = "Error: " + e.message;
+        status.className = "error";
+        return [];
+      }
+    }
+
+    async function loadProducts() {
+      const res = await fetch("/api/products", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    }
+
+    async function render() {
+      groups = await loadGroups();
+      if (groups.length === 0 && accessDenied.style.display === "block") return;
+
+      body.innerHTML = groups.map((g) => {
+        const count = g.products?.length ?? 0;
+        return `
+          <tr data-id="${g.id}">
+            <td>${escape(g.name)}</td>
+            <td class="num">${count}</td>
+            <td class="actions-col">
+              <button type="button" class="btn-edit" data-id="${g.id}">Edit</button>
+              <button type="button" class="btn-edit" data-id="${g.id}" data-action="tag">Tag Products</button>
+              <button type="button" class="btn-del-small" data-id="${g.id}">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      body.querySelectorAll(".btn-edit").forEach((btn) => {
+        if (btn.dataset.action === "tag") {
+          btn.addEventListener("click", () => openTagModal(Number(btn.dataset.id)));
+        } else {
+          btn.addEventListener("click", () => openEdit(Number(btn.dataset.id)));
+        }
+      });
+      body.querySelectorAll(".btn-del-small").forEach((btn) => {
+        btn.addEventListener("click", () => openDelete(Number(btn.dataset.id)));
+      });
+
+      status.style.display = "none";
+      table.style.display = "table";
+    }
+
+    function openCreate() {
+      editingId = null;
+      document.getElementById("groupModalTitle").textContent = "Create Group";
+      document.getElementById("groupName").value = "";
+      groupModal.classList.add("open");
+    }
+
+    function openEdit(id) {
+      const g = groups.find((x) => x.id === id);
+      if (!g) return;
+      editingId = id;
+      document.getElementById("groupModalTitle").textContent = "Edit Group";
+      document.getElementById("groupName").value = g.name;
+      groupModal.classList.add("open");
+    }
+
+    function closeGroupModal() {
+      groupModal.classList.remove("open");
+      editingId = null;
+    }
+
+    async function openTagModal(id) {
+      tagGroupId = id;
+      const g = groups.find((x) => x.id === id);
+      document.getElementById("tagModalTitle").textContent = `Tag Products: ${g ? escape(g.name) : ""}`;
+      await populateTagModal();
+      tagModal.classList.add("open");
+    }
+
+    async function populateTagModal() {
+      if (!tagGroupId) return;
+      products = await loadProducts();
+      const groupRes = await fetch(`/api/user-groups/${tagGroupId}`, { credentials: "include" });
+      const group = groupRes.ok ? await groupRes.json() : { products: [] };
+      const groupProductIds = (group.products || []).map((p) => p.id);
+
+      const select = document.getElementById("tagProductSelect");
+      const available = products.filter((p) => !groupProductIds.includes(p.id) && p.productType !== "kit");
+      select.innerHTML = '<option value="">Select product...</option>' +
+        available.map((p) => `<option value="${p.id}">${escape(p.name)} (${escape(p.sku)})</option>`).join("");
+
+      const list = document.getElementById("tagProductList");
+      list.innerHTML = (group.products || []).map((p) => `
+        <div class="file-item" data-id="${p.id}">
+          <span>${escape(p.name)} (${escape(p.sku)})</span>
+          <button type="button" class="btn-del-small" data-id="${p.id}">Remove</button>
+        </div>
+      `).join("") || '<p class="kit-modal-hint" style="margin:0">No products in this group.</p>';
+
+      list.querySelectorAll(".btn-del-small").forEach((btn) => {
+        btn.addEventListener("click", () => removeFromGroup(Number(btn.dataset.id)));
+      });
+    }
+
+    async function addToGroup() {
+      const productId = document.getElementById("tagProductSelect").value;
+      if (!productId || !tagGroupId) return;
+      try {
+        const product = products.find((p) => p.id === Number(productId));
+        if (!product) return;
+        const res = await fetch(`/api/products/${productId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: product.name,
+            sku: product.sku,
+            price: product.price,
+            quantity: product.quantity,
+            description: product.description ?? "",
+            groupId: tagGroupId,
+            productType: product.productType || "regular",
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Failed");
+        }
+        const g = groups.find((x) => x.id === tagGroupId);
+        if (g) g.products = g.products || [];
+        g.products.push(product);
+        await populateTagModal();
+        await render();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+    async function removeFromGroup(productId) {
+      if (!tagGroupId) return;
+      try {
+        const product = products.find((p) => p.id === productId);
+        if (!product) return;
+        const res = await fetch(`/api/products/${productId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: product.name,
+            sku: product.sku,
+            price: product.price,
+            quantity: product.quantity,
+            description: product.description ?? "",
+            groupId: null,
+            productType: product.productType || "regular",
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Failed");
+        }
+        const g = groups.find((x) => x.id === tagGroupId);
+        if (g?.products) g.products = g.products.filter((p) => p.id !== productId);
+        await populateTagModal();
+        await render();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+    function openDelete(id) {
+      const g = groups.find((x) => x.id === id);
+      deleteTargetId = id;
+      const count = g?.products?.length ?? 0;
+      document.getElementById("deleteConfirmText").textContent =
+        count > 0
+          ? `Delete "${escape(g?.name)}"? ${count} product(s) will be unassigned from this group.`
+          : `Delete "${escape(g?.name)}"?`;
+      deleteModal.classList.add("open");
+    }
+
+    function closeDeleteModal() {
+      deleteModal.classList.remove("open");
+      deleteTargetId = null;
+    }
+
+    groupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("groupName").value.trim();
+      if (!name) return;
+      try {
+        if (editingId) {
+          const res = await fetch(`/api/user-groups/${editingId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ name }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Update failed");
+          }
+        } else {
+          const res = await fetch("/api/user-groups", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ name }),
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Create failed");
+          }
+        }
+        closeGroupModal();
+        await render();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    });
+
+    document.getElementById("btnCreate").addEventListener("click", openCreate);
+    document.getElementById("btnGroupCancel").addEventListener("click", closeGroupModal);
+    document.getElementById("btnAddToGroup").addEventListener("click", addToGroup);
+    document.getElementById("btnTagClose").addEventListener("click", () => {
+      tagModal.classList.remove("open");
+      tagGroupId = null;
+    });
+    document.getElementById("btnDeleteConfirm").addEventListener("click", async () => {
+      if (!deleteTargetId) return;
+      try {
+        const res = await fetch(`/api/user-groups/${deleteTargetId}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Delete failed");
+        }
+        closeDeleteModal();
+        await render();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    });
+    document.getElementById("btnDeleteCancel").addEventListener("click", closeDeleteModal);
+
+    groupModal.addEventListener("click", (e) => { if (e.target === groupModal) closeGroupModal(); });
+    tagModal.addEventListener("click", (e) => { if (e.target === tagModal) tagModal.classList.remove("open"); });
+    deleteModal.addEventListener("click", (e) => { if (e.target === deleteModal) closeDeleteModal(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeGroupModal();
+        tagModal.classList.remove("open");
+        closeDeleteModal();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

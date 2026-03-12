@@ -2,7 +2,7 @@
  * Redirect unauthenticated users to the login page when they request protected HTML pages.
  * Must run after session middleware, before express.static.
  */
-const PROTECTED_PATHS = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html"];
+const PROTECTED_PATHS = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html"];
 
 function requirePageAuth(req, res, next) {
   if (req.method !== "GET") return next();

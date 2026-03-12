@@ -4,6 +4,7 @@ export type ProductFile = {
   id: number;
   filename: string;
   path: string;
+  url?: string;
 };
 
 export type Product = {
