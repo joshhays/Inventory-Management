@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cart - Store</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple store-nav">
+      <a href="/store/" class="top-nav-back">← Products</a>
+      <span class="top-nav-brand">Cart</span>
+    </header>
+    <main class="main-content store-main">
+      <div id="cartContent">
+        <div class="loading" id="loading">Loading…</div>
+      </div>
+      <div id="checkoutSection" style="display:none">
+        <div class="store-checkout-form">
+          <h2>Checkout</h2>
+          <div class="store-form-row">
+            <label for="shippingAddress">Shipping address</label>
+            <textarea id="shippingAddress" rows="3" placeholder="Street, city, state, zip"></textarea>
+          </div>
+          <div class="store-form-row">
+            <label for="customerPhone">Phone</label>
+            <input type="tel" id="customerPhone" placeholder="Optional">
+          </div>
+          <button type="button" class="btn-apply store-place-order" id="placeOrderBtn">Place order</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    function formatPrice(n) {
+      return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getCart() {
+      try {
+        return JSON.parse(localStorage.getItem("storeCart") || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function setCart(cart) {
+      localStorage.setItem("storeCart", JSON.stringify(cart));
+    }
+
+    function updateQty(productId, delta) {
+      const cart = getCart();
+      const item = cart.find((i) => i.productId === productId);
+      if (!item) return;
+      item.quantity = Math.max(0, (item.quantity || 1) + delta);
+      if (item.quantity <= 0) {
+        cart.splice(cart.indexOf(item), 1);
+      }
+      setCart(cart);
+      render();
+    }
+
+    function render() {
+      const cart = getCart();
+      const content = document.getElementById("cartContent");
+      const checkoutSection = document.getElementById("checkoutSection");
+
+      if (cart.length === 0) {
+        content.innerHTML = '<p class="store-empty">Your cart is empty. <a href="/store/">Browse products</a></p>';
+        checkoutSection.style.display = "none";
+        return;
+      }
+
+      const total = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+      content.innerHTML = `
+        <table class="store-cart-table">
+          <thead>
+            <tr><th>Product</th><th>SKU</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th><th></th></tr>
+          </thead>
+          <tbody>
+            ${cart
+              .map(
+                (i) => `
+              <tr>
+                <td>${escape(i.name)}</td>
+                <td>${escape(i.sku)}</td>
+                <td class="num">
+                  <button type="button" class="store-qty-btn" data-id="${i.productId}" data-delta="-1">−</button>
+                  <span>${i.quantity || 1}</span>
+                  <button type="button" class="store-qty-btn" data-id="${i.productId}" data-delta="1">+</button>
+                </td>
+                <td class="num">$${formatPrice(i.price)}</td>
+                <td class="num">$${formatPrice((i.price || 0) * (i.quantity || 1))}</td>
+                <td><button type="button" class="store-remove-btn" data-id="${i.productId}">Remove</button></td>
+              </tr>
+            `
+              )
+              .join("")}
+          </tbody>
+        </table>
+        <p class="store-cart-total">Total: $${formatPrice(total)}</p>
+      `;
+      checkoutSection.style.display = "block";
+
+      content.querySelectorAll(".store-qty-btn").forEach((btn) => {
+        btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), Number(btn.dataset.delta)));
+      });
+      content.querySelectorAll(".store-remove-btn").forEach((btn) => {
+        btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), -999));
+      });
+    }
+
+    document.getElementById("placeOrderBtn").addEventListener("click", async () => {
+      const cart = getCart();
+      if (cart.length === 0) {
+        alert("Your cart is empty.");
+        return;
+      }
+      const btn = document.getElementById("placeOrderBtn");
+      btn.disabled = true;
+      btn.textContent = "Placing order…";
+      try {
+        const res = await fetch("/api/customer/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            shippingAddress: document.getElementById("shippingAddress").value.trim() || undefined,
+            customerPhone: document.getElementById("customerPhone").value.trim() || undefined,
+            items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity || 1 })),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Order failed");
+        setCart([]);
+        window.location.href = "/store/orders.html?placed=1";
+      } catch (e) {
+        alert("Error: " + (e.message || "Could not place order"));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Place order";
+      }
+    });
+
+    render();
+    document.getElementById("loading").style.display = "none";
+  </script>
+</body>
+</html>

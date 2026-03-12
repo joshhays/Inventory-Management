@@ -72,6 +72,24 @@ function findMany({ page = 1, limit = 50, status } = {}) {
   ]);
 }
 
+function findManyByEmail(email, { page = 1, limit = 20 } = {}) {
+  const pageNum = Math.max(1, Number(page) || 1);
+  const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
+  const skip = (pageNum - 1) * limitNum;
+  const where = { customerEmail: String(email).trim() };
+
+  return prisma.$transaction([
+    prisma.order.findMany({
+      where,
+      include: { items: true },
+      orderBy: { createdAt: "desc" },
+      take: limitNum,
+      skip,
+    }),
+    prisma.order.count({ where }),
+  ]);
+}
+
 function findById(id) {
   return prisma.order.findUnique({
     where: { id: Number(id) },
@@ -90,6 +108,7 @@ function updateStatus(id, status) {
 module.exports = {
   create,
   findMany,
+  findManyByEmail,
   findById,
   updateStatus,
 };

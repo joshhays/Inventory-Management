@@ -22,12 +22,9 @@ const getAllProducts = async (options = {}) => {
   const { groupId, allowedGroupIds } = options;
   const conditions = [];
 
-  if (allowedGroupIds !== null && allowedGroupIds !== undefined) {
+  if (allowedGroupIds !== null && allowedGroupIds !== undefined && allowedGroupIds.length > 0) {
     conditions.push({
-      OR: [
-        { groupId: null },
-        ...(allowedGroupIds.length ? [{ groupId: { in: allowedGroupIds } }] : []),
-      ],
+      OR: [{ groupId: null }, { groupId: { in: allowedGroupIds } }],
     });
   }
 

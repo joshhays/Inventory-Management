@@ -1,5 +1,42 @@
 const authService = require("../services/auth.service");
 
+const register = async (req, res, next) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required." });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
+    }
+    const emailNorm = String(email).toLowerCase().trim();
+    const existing = await authService.findByEmail(emailNorm);
+    if (existing) {
+      return res.status(400).json({ message: "An account with this email already exists." });
+    }
+    const hashed = await authService.hashPassword(password);
+    const prisma = require("../lib/prisma");
+    const user = await prisma.user.create({
+      data: {
+        email: emailNorm,
+        password: hashed,
+        name: name ? String(name).trim() : null,
+        isAdmin: false,
+        isUser: true,
+      },
+      include: { groups: { include: { group: true } } },
+    });
+    const safeUser = authService.toSafeUser(user);
+    req.session.user = safeUser;
+    req.session.save((err) => {
+      if (err) return next(err);
+      return res.status(201).json({ user: safeUser });
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -63,6 +100,7 @@ const me = async (req, res, next) => {
 };
 
 module.exports = {
+  register,
   login,
   logout,
   me,

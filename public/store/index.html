@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Store</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple store-nav">
+      <a href="/store/" class="top-nav-brand">Store</a>
+      <div class="store-nav-right">
+        <a href="/store/cart.html" class="store-cart-link" id="cartLink">Cart (<span id="cartCount">0</span>)</a>
+        <a href="/store/orders.html" class="store-orders-link">My Orders</a>
+        <a href="#" id="logoutLink" class="top-nav-back">Log out</a>
+      </div>
+    </header>
+    <main class="main-content store-main">
+      <div class="store-toolbar">
+        <h1>Products</h1>
+        <input type="search" id="searchInput" placeholder="Search products..." class="store-search">
+      </div>
+      <div class="store-grid" id="productGrid">
+        <div class="loading" id="loading">Loading…</div>
+      </div>
+    </main>
+  </div>
+  <script>
+    let products = [];
+    const grid = document.getElementById("productGrid");
+    const cartCount = document.getElementById("cartCount");
+    const searchInput = document.getElementById("searchInput");
+
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    function formatPrice(n) {
+      return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getImageUrl(file) {
+      if (!file) return "";
+      if (typeof file === "object" && file.url) return file.url;
+      const p = typeof file === "string" ? file : file?.path;
+      if (!p) return "";
+      return "/uploads/" + p.split("/").map(encodeURIComponent).join("/");
+    }
+
+    function getCart() {
+      try {
+        return JSON.parse(localStorage.getItem("storeCart") || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function setCart(cart) {
+      localStorage.setItem("storeCart", JSON.stringify(cart));
+      cartCount.textContent = cart.reduce((s, i) => s + (i.quantity || 1), 0);
+    }
+
+    function addToCart(productId, qty) {
+      const cart = getCart();
+      const existing = cart.find((i) => i.productId === productId);
+      if (existing) {
+        existing.quantity = (existing.quantity || 1) + qty;
+      } else {
+        const p = products.find((x) => x.id === productId);
+        if (!p) return;
+        cart.push({ productId: p.id, sku: p.sku, quantity: qty, name: p.name, price: p.price });
+      }
+      setCart(cart);
+    }
+
+    function render(rows) {
+      const q = searchInput.value.trim().toLowerCase();
+      const filtered = q
+        ? rows.filter((p) => (p.name || "").toLowerCase().includes(q) || (p.sku || "").toLowerCase().includes(q))
+        : rows;
+      const regular = filtered.filter((p) => (p.productType || "regular") !== "kit" || !p.kitItems?.length);
+      if (regular.length === 0) {
+        grid.innerHTML = '<p class="store-empty">No products found.</p>';
+        return;
+      }
+      grid.innerHTML = regular
+        .map((p) => {
+          const firstFile = (p.files || [])[0];
+          const imgUrl = firstFile ? getImageUrl(firstFile) : null;
+          const isPdf = firstFile && (firstFile.filename || "").toLowerCase().endsWith(".pdf");
+          const thumb = imgUrl
+            ? isPdf
+              ? '<a href="' + imgUrl + '" target="_blank" class="store-thumb store-thumb-pdf">PDF</a>'
+              : '<img src="' + imgUrl + '" alt="" class="store-thumb" onerror="this.style.display=\'none\'">'
+            : '<div class="store-thumb store-thumb-placeholder">—</div>';
+          return (
+            '<div class="store-card" data-id="' +
+            p.id +
+            '">' +
+            '<div class="store-card-img">' +
+            thumb +
+            "</div>" +
+            '<div class="store-card-body">' +
+            '<h3 class="store-card-title">' +
+            escape(p.name) +
+            "</h3>" +
+            '<p class="store-card-sku">' +
+            escape(p.sku) +
+            "</p>" +
+            '<p class="store-card-price">$' +
+            formatPrice(p.price) +
+            "</p>" +
+            '<div class="store-card-actions">' +
+            '<input type="number" min="1" value="1" class="store-qty-input" data-id="' +
+            p.id +
+            '">' +
+            '<button type="button" class="btn-apply store-add-btn" data-id="' +
+            p.id +
+            '">Add to cart</button>' +
+            "</div>" +
+            "</div>" +
+            "</div>"
+          );
+        })
+        .join("");
+      grid.querySelectorAll(".store-add-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = Number(btn.dataset.id);
+          const input = grid.querySelector('.store-qty-input[data-id="' + id + '"]');
+          const qty = Math.max(1, parseInt(input?.value, 10) || 1);
+          addToCart(id, qty);
+        });
+      });
+    }
+
+    async function load() {
+      try {
+        const res = await fetch("/api/products", { credentials: "include" });
+        if (!res.ok) {
+          if (res.status === 401) {
+            window.location.href = "/store/login.html";
+            return;
+          }
+          throw new Error("Failed to load products");
+        }
+        products = await res.json();
+        document.getElementById("loading").style.display = "none";
+        render(products);
+      } catch (e) {
+        grid.innerHTML = '<p class="store-empty error">' + escape(e.message) + "</p>";
+      }
+    }
+
+    searchInput.addEventListener("input", () => render(products));
+    cartCount.textContent = getCart().reduce((s, i) => s + (i.quantity || 1), 0);
+
+    document.getElementById("logoutLink").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/store/login.html";
+    });
+
+    load();
+  </script>
+</body>
+</html>
