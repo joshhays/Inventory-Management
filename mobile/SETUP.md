@@ -46,11 +46,9 @@ Edit `constants/deployments.ts` and add entries:
 },
 ```
 
-## 6. Auth & permissions
+## 6. Login required
 
-- **Products (view)**: Works without login.
-- **Orders, Transaction Log**: Require admin. Sign in via the web admin first.
-- **Add product, Adjust quantity**: Require admin. Use the web admin for these actions.
+You must sign in before using the app. Use the same admin credentials as the web dashboard. After login you have full access to Products, Orders, Transaction Log, and quantity adjustments.
 
 ## 7. Optional: Use tunnel for different networks
 

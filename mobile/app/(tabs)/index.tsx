@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { WebTheme } from '@/constants/web-theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useDeployment } from '@/contexts/DeploymentContext';
 
 const PAGE_BG = '#fafafa';
@@ -40,6 +41,7 @@ function BentoCard({ icon, title, subtitle, onPress, large }: BentoCardProps) {
 export default function DashboardScreen() {
   const router = useRouter();
   const { deployment, clearDeployment } = useDeployment();
+  const { user, logout } = useAuth();
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -51,14 +53,19 @@ export default function DashboardScreen() {
             </ThemedText>
             <ThemedText style={styles.subtitle}>
               {deployment?.name ?? 'Inventory'}
+              {user?.email ? ` · ${user.email}` : ''}
             </ThemedText>
           </View>
-          <Pressable
-            style={styles.switchBtn}
-            onPress={clearDeployment}>
-            <MaterialIcons name="swap-horiz" size={20} color={WebTheme.accent} />
-            <ThemedText style={styles.switchText}>Switch</ThemedText>
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable style={styles.switchBtn} onPress={logout}>
+              <MaterialIcons name="logout" size={18} color={WebTheme.accent} />
+              <ThemedText style={styles.switchText}>Log out</ThemedText>
+            </Pressable>
+            <Pressable style={styles.switchBtn} onPress={clearDeployment}>
+              <MaterialIcons name="swap-horiz" size={18} color={WebTheme.accent} />
+              <ThemedText style={styles.switchText}>Switch</ThemedText>
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -105,6 +112,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  headerActions: { flexDirection: 'row', gap: 8 },
   switchBtn: {
     flexDirection: 'row',
     alignItems: 'center',

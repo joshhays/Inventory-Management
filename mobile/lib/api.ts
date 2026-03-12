@@ -16,6 +16,12 @@ function api() {
   };
 }
 
+const fetchOpts = (init?: RequestInit): RequestInit => ({
+  ...init,
+  credentials: 'include' as RequestCredentials,
+  headers: { 'Content-Type': 'application/json', ...init?.headers },
+});
+
 export type ProductFile = {
   id: number;
   filename: string;
@@ -36,14 +42,14 @@ export type Product = {
 };
 
 export async function fetchProduct(id: number): Promise<Product> {
-  const res = await fetch(`${api().products}/${id}`);
+  const res = await fetch(`${api().products}/${id}`, fetchOpts());
   if (!res.ok) throw new Error('Failed to fetch product');
   return res.json();
 }
 
 export async function fetchProducts(groupId?: string): Promise<Product[]> {
   const url = groupId ? `${api().products}?groupId=${groupId}` : api().products;
-  const res = await fetch(url);
+  const res = await fetch(url, fetchOpts());
   if (!res.ok) throw new Error('Failed to fetch products');
   return res.json();
 }
@@ -56,11 +62,10 @@ export async function createProduct(data: {
   description?: string;
   productType?: string;
 }): Promise<Product> {
-  const res = await fetch(api().products, {
+  const res = await fetch(api().products, fetchOpts({
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-  });
+  }));
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new ApiError(
@@ -101,8 +106,8 @@ export type Order = {
 };
 
 export async function fetchOrders(): Promise<{ orders: Order[] }> {
-  const res = await fetch(api().orders);
-  if (!res.ok) throw new Error('Failed to fetch orders');
+  const res = await fetch(api().orders, fetchOpts());
+  if (!res.ok) throw new ApiError(await res.text().catch(() => 'Failed to fetch orders'), res.status);
   return res.json();
 }
 
@@ -111,7 +116,7 @@ export async function fetchLogs(page = 1, limit = 50): Promise<{
   total: number;
   totalPages: number;
 }> {
-  const res = await fetch(`${api().logs}?page=${page}&limit=${limit}`);
+  const res = await fetch(`${api().logs}?page=${page}&limit=${limit}`, fetchOpts());
   if (!res.ok) throw new ApiError(await res.text().catch(() => 'Failed to fetch logs'), res.status);
   return res.json();
 }
