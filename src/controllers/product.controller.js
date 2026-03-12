@@ -57,6 +57,7 @@ const getProduct = async (req, res, next) => {
 
 const createProduct = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { name, sku, quantity, price, description, groupId, productType } = req.body;
 
     if (!name || !sku || price === undefined) {
@@ -96,6 +97,7 @@ const createProduct = async (req, res, next) => {
 
 const updateQuantity = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
     const { quantity, adjust } = req.body;
 
@@ -129,6 +131,7 @@ const updateQuantity = async (req, res, next) => {
 
 const updateProduct = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
     const { name, sku, quantity, price, description, groupId, productType } = req.body;
 
@@ -165,6 +168,7 @@ const updateProduct = async (req, res, next) => {
 
 const exportCsv = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const groupId = req.query.groupId ?? req.get("X-User-Group-Id");
     const user = req.user;
     const allowedGroupIds = user?.isAdmin ? null : (user?.groupIds || []);
@@ -227,6 +231,7 @@ const importCsv = async (req, res, next) => {
 
 const getLabel = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
     const product = await productService.getProductWithFiles(id);
     if (!product) {

@@ -12,8 +12,10 @@ async function checkKitAccess(req, res, kitId) {
 const getKitItems = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const access = await checkKitAccess(req, res, id);
-    if (access.status) return res.status(access.status).json({ message: access.message });
+    if (req.user) {
+      const access = await checkKitAccess(req, res, id);
+      if (access.status) return res.status(access.status).json({ message: access.message });
+    }
     const items = await kitItemService.getKitItems(id);
     res.status(200).json(items);
   } catch (error) {
@@ -23,6 +25,7 @@ const getKitItems = async (req, res, next) => {
 
 const addKitItem = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
     const access = await checkKitAccess(req, res, id);
     if (access.status) return res.status(access.status).json({ message: access.message });
@@ -45,6 +48,7 @@ const addKitItem = async (req, res, next) => {
 
 const updateKitItem = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id, itemId } = req.params;
     const access = await checkKitAccess(req, res, id);
     if (access.status) return res.status(access.status).json({ message: access.message });
@@ -61,6 +65,7 @@ const updateKitItem = async (req, res, next) => {
 
 const removeKitItem = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id, itemId } = req.params;
     const access = await checkKitAccess(req, res, id);
     if (access.status) return res.status(access.status).json({ message: access.message });

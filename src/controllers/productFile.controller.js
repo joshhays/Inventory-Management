@@ -20,8 +20,10 @@ const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
 const getFiles = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const access = await checkProductAccess(req, res, id);
-    if (access.status) return res.status(access.status).json({ message: access.message });
+    if (req.user) {
+      const access = await checkProductAccess(req, res, id);
+      if (access.status) return res.status(access.status).json({ message: access.message });
+    }
     const files = await productFileService.getByProductId(id);
     const withUrls = files.map((f) => ({ ...f, url: productFileService.getFileUrl(f) }));
     res.status(200).json(withUrls);
@@ -33,9 +35,12 @@ const getFiles = async (req, res, next) => {
 const getPreview = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const access = await checkProductAccess(req, res, id);
-    if (access.status) return res.status(access.status).json({ message: access.message });
-    const product = access.product;
+    const product = await productService.getProductWithFiles(id);
+    if (!product) return res.status(404).json({ message: "Product not found." });
+    if (req.user) {
+      const access = await checkProductAccess(req, res, id);
+      if (access.status) return res.status(access.status).json({ message: access.message });
+    }
 
     const files = product.files || [];
     const pdfFile = files.find((f) => PDF_EXT.test(f.filename));
@@ -81,6 +86,7 @@ const getPreview = async (req, res, next) => {
 
 const attachFile = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
     const access = await checkProductAccess(req, res, id);
     if (access.status) return res.status(access.status).json({ message: access.message });
@@ -101,6 +107,7 @@ const attachFile = async (req, res, next) => {
 
 const deleteFile = async (req, res, next) => {
   try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id, fileId } = req.params;
     const access = await checkProductAccess(req, res, id);
     if (access.status) return res.status(access.status).json({ message: access.message });
