@@ -162,6 +162,13 @@ export default function OrderDetailScreen() {
   const formatPrice = (n: number) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  const formatPickDuration = (start: string, end: string) => {
+    const sec = Math.round((new Date(end).getTime() - new Date(start).getTime()) / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
@@ -277,6 +284,15 @@ export default function OrderDetailScreen() {
             </ThemedText>
           </View>
 
+          {order.pickingStartedAt && order.pickingCompletedAt && (
+            <View style={styles.pickTime}>
+              <ThemedText style={styles.pickTimeText}>
+                Pick time:{' '}
+                {formatPickDuration(order.pickingStartedAt, order.pickingCompletedAt)}
+              </ThemedText>
+            </View>
+          )}
+
           {renderPrimaryAction()}
         </View>
 
@@ -386,6 +402,15 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   progressText: { fontSize: 14, fontWeight: '600', color: WebTheme.accent },
+  pickTime: {
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  pickTimeText: { fontSize: 14, color: WebTheme.textMuted },
   startBtn: {
     flexDirection: 'row',
     alignItems: 'center',

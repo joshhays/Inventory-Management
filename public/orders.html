@@ -77,6 +77,10 @@
       <label>Shipping Address</label>
       <p id="orderDetailAddress"></p>
     </div>
+    <div class="detail-section" id="orderDetailPickTimeWrap" style="display:none">
+      <label>Pick time</label>
+      <p id="orderDetailPickTime"></p>
+    </div>
     <div class="detail-section">
       <label>Status</label>
       <select id="orderDetailStatus" class="status-select">
@@ -192,6 +196,19 @@
         document.getElementById("orderDetailAddress").textContent = order.shippingAddress || "—";
         document.getElementById("orderDetailStatus").value = order.status;
         document.getElementById("orderDetailTotal").textContent = formatPrice(order.total);
+        const pickWrap = document.getElementById("orderDetailPickTimeWrap");
+        const pickEl = document.getElementById("orderDetailPickTime");
+        if (order.pickingStartedAt && order.pickingCompletedAt) {
+          const start = new Date(order.pickingStartedAt).getTime();
+          const end = new Date(order.pickingCompletedAt).getTime();
+          const sec = Math.round((end - start) / 1000);
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          pickEl.textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+          pickWrap.style.display = "block";
+        } else {
+          pickWrap.style.display = "none";
+        }
         const itemsList = document.getElementById("orderDetailItems");
         itemsList.innerHTML = (order.items || []).map(i => `
           <li class="pick-item ${i.picked ? 'picked' : ''}" data-item-id="${i.id}">

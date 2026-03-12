@@ -127,10 +127,19 @@ function findById(id) {
   });
 }
 
-function updateStatus(id, status) {
+async function updateStatus(id, status) {
+  const statusNorm = String(status).trim().toLowerCase();
+  const data = { status: statusNorm };
+
+  if (statusNorm === "in process") {
+    data.pickingStartedAt = new Date();
+  } else if (statusNorm === "picked") {
+    data.pickingCompletedAt = new Date();
+  }
+
   return prisma.order.update({
     where: { id: Number(id) },
-    data: { status: String(status) },
+    data,
     include: { items: true },
   });
 }

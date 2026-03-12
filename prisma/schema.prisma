@@ -109,16 +109,18 @@ model InventoryLog {
 }
 
 model Order {
-  id              Int         @id @default(autoincrement())
-  customerName    String
-  customerEmail   String
-  customerPhone   String?
-  shippingAddress String?
-  status          String      @default("pending")
-  total           Float
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  items           OrderItem[]
+  id                  Int         @id @default(autoincrement())
+  customerName        String
+  customerEmail       String
+  customerPhone       String?
+  shippingAddress     String?
+  status              String      @default("pending")
+  total               Float
+  pickingStartedAt    DateTime?
+  pickingCompletedAt  DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  items               OrderItem[]
 }
 
 model OrderItem {

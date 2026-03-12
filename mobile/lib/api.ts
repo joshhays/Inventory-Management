@@ -113,6 +113,8 @@ export type Order = {
   total: number;
   status: string;
   createdAt: string;
+  pickingStartedAt?: string | null;
+  pickingCompletedAt?: string | null;
   items?: OrderItem[];
 };
 
