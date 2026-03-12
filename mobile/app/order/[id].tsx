@@ -1,8 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -46,7 +45,6 @@ function barcodeMatchesItem(scannedData: string, item: OrderItem): boolean {
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const navigation = useNavigation();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,29 +70,6 @@ export default function OrderDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
-
-  const handleBackToOrders = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/explore');
-    }
-  }, [router]);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerLeft: () => (
-        <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginLeft: 4 }}>
-          <MaterialIcons name="arrow-back" size={24} color={WebTheme.navText} />
-        </Pressable>
-      ),
-      headerRight: () => (
-        <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginRight: 4 }}>
-          <ThemedText style={{ color: WebTheme.accent, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>
-        </Pressable>
-      ),
-    });
-  }, [navigation, handleBackToOrders]);
 
   const handleStartPicking = async () => {
     if (!permission?.granted) {
@@ -187,6 +162,30 @@ export default function OrderDetailScreen() {
   const formatPrice = (n: number) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
+        <ActivityIndicator size="large" color={WebTheme.accent} />
+        <ThemedText style={styles.loadingText}>Loading order…</ThemedText>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
+        <ThemedText style={styles.errorText}>{error || 'Order not found'}</ThemedText>
+      </SafeAreaView>
+    );
+  }
+
+  const items = order.items || [];
+  const pickedCount = items.filter((i) => i.picked).length;
+  const allPicked = items.length > 0 && items.every((i) => i.picked);
+  const status = order.status?.toLowerCase() || 'pending';
+  const isReady = status === 'ready';
+  const isPicked = status === 'picked';
+
   /** Parse shipping address - supports JSON or plain text */
   const parseShipping = (addr: string | null | undefined): string | null => {
     if (!addr || !addr.trim()) return null;
@@ -211,30 +210,6 @@ export default function OrderDetailScreen() {
   };
 
   const shippingDisplay = parseShipping(order.shippingAddress);
-
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
-        <ActivityIndicator size="large" color={WebTheme.accent} />
-        <ThemedText style={styles.loadingText}>Loading order…</ThemedText>
-      </SafeAreaView>
-    );
-  }
-
-  if (error || !order) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]} edges={['top', 'left', 'right']}>
-        <ThemedText style={styles.errorText}>{error || 'Order not found'}</ThemedText>
-      </SafeAreaView>
-    );
-  }
-
-  const items = order.items || [];
-  const pickedCount = items.filter((i) => i.picked).length;
-  const allPicked = items.length > 0 && items.every((i) => i.picked);
-  const status = order.status?.toLowerCase() || 'pending';
-  const isReady = status === 'ready';
-  const isPicked = status === 'picked';
 
   const renderPrimaryAction = () => {
     if (isReady) {
