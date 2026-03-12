@@ -61,7 +61,6 @@ app.use("/api/product-files", requireAuth, require("./routes/productFile.routes"
 app.use("/api/user-groups", requireAuth, require("./routes/userGroup.routes"));
 app.use("/api/logs", requireAuth, requireAdmin, require("./routes/inventoryLog.routes"));
 app.use("/api/orders", requireAuth, requireAdmin, require("./routes/order.routes"));
-app.use("/api/email", requireAuth, requireAdmin, require("./routes/email.routes"));
 app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
 
 app.use(notFoundHandler);

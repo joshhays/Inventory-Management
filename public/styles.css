@@ -2445,6 +2445,21 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   border-bottom: 1px solid var(--border);
 }
 
+.btn-reorder {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-reorder:hover {
+  background: var(--accent-hover);
+}
+
 .store-status {
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);

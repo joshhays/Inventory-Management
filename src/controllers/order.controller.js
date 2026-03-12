@@ -1,5 +1,4 @@
 const orderService = require("../services/order.service");
-const emailService = require("../services/email.service");
 
 const createOrder = async (req, res, next) => {
   try {
@@ -69,24 +68,10 @@ const updateOrderStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    console.log("[order] PATCH status received: orderId=" + id + " status=" + JSON.stringify(status));
     if (!status || typeof status !== "string") {
       return res.status(400).json({ message: "status is required." });
     }
-    const newStatus = status.trim().toLowerCase();
     const order = await orderService.updateStatus(id, status.trim());
-    console.log("[order] Status updated to '" + newStatus + "' for order #" + order.id);
-
-    // Send email when order becomes ready for messenger pickup
-    if (newStatus === "ready") {
-      if (emailService.isEmailConfigured()) {
-        emailService.sendOrderReadyEmail(order).catch((err) => {
-          console.error("[order] Email notification failed:", err.message);
-        });
-      } else {
-        console.log("[order] Order #" + order.id + " marked ready – email skipped (not configured)");
-      }
-    }
 
     return res.status(200).json(order);
   } catch (error) {

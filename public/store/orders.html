@@ -64,18 +64,19 @@
         const html = `
           <table class="store-orders-table">
             <thead>
-              <tr><th>Date</th><th>Order #</th><th>Items</th><th class="num">Total</th><th>Status</th></tr>
+              <tr><th>Date</th><th>Order #</th><th>Items</th><th class="num">Total</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
               ${orders
                 .map(
                   (o) => `
-                <tr>
+                <tr data-order-id="${o.id}">
                   <td>${new Date(o.createdAt).toLocaleDateString()}</td>
                   <td>#${o.id}</td>
                   <td>${(o.items || []).map((i) => `${i.quantity}× ${escape(i.productName)}`).join(", ")}</td>
                   <td class="num">$${formatPrice(o.total)}</td>
                   <td><span class="store-status store-status-${escape(String(o.status).replace(/\s+/g, "-"))}">${escape(o.status)}</span></td>
+                  <td><button type="button" class="btn-reorder" data-order-id="${o.id}">Re-order</button></td>
                 </tr>
               `
                 )
@@ -84,6 +85,54 @@
           </table>
         `;
         document.getElementById("ordersContent").innerHTML += html;
+
+        function getCart() {
+          try {
+            return JSON.parse(localStorage.getItem("storeCart") || "[]");
+          } catch {
+            return [];
+          }
+        }
+
+        function setCart(cart) {
+          localStorage.setItem("storeCart", JSON.stringify(cart));
+        }
+
+        function reorder(order) {
+          const items = order.items || [];
+          if (items.length === 0) {
+            alert("This order has no items.");
+            return;
+          }
+          const cart = getCart();
+          for (const i of items) {
+            const existing = cart.find((c) => c.productId === i.productId);
+            const qty = i.quantity || 1;
+            const cartItem = {
+              productId: i.productId,
+              quantity: qty,
+              name: i.productName || "Product",
+              price: i.unitPrice ?? 0,
+              sku: i.sku || "",
+              imageUrl: null,
+            };
+            if (existing) {
+              existing.quantity = (existing.quantity || 1) + qty;
+            } else {
+              cart.push(cartItem);
+            }
+          }
+          setCart(cart);
+          window.location.href = "/store/cart.html";
+        }
+
+        document.querySelectorAll(".btn-reorder").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const orderId = Number(btn.dataset.orderId);
+            const order = orders.find((o) => o.id === orderId);
+            if (order) reorder(order);
+          });
+        });
       } catch (e) {
         document.getElementById("ordersContent").innerHTML = `<p class="store-empty error">${escape(e.message)}</p>`;
       }
