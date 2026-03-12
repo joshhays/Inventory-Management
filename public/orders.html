@@ -182,7 +182,7 @@
     async function openOrderDetail(id) {
       selectedOrderId = id;
       try {
-        const res = await fetch(`/api/orders/${id}`);
+        const res = await fetch(`/api/orders/${id}`, { credentials: "include" });
         const order = await res.json();
         if (!res.ok) throw new Error(order.message || "Failed to load");
         document.getElementById("orderDetailTitle").textContent = `Order #${order.id}`;
