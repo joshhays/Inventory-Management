@@ -86,6 +86,18 @@ body::before {
   font-size: 1.2rem;
   color: var(--sidebar-text-active);
   letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.top-nav-brand.nav-logo-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.nav-logo {
+  height: 36px;
+  width: auto;
+  display: block;
 }
 
 .top-nav-tabs {
@@ -221,6 +233,15 @@ body::before {
   border-radius: var(--radius-lg);
   border: 1px solid var(--glass-border);
   box-shadow: var(--card-shadow);
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.login-logo .nav-logo {
+  height: 48px;
 }
 
 .login-title {
