@@ -23,38 +23,38 @@
     <main class="main-content bento-main">
       <h1 class="bento-title">Dashboard</h1>
       <div class="dashboard-widgets" id="dashboardWidgets"></div>
-      <div class="bento-grid">
-        <a href="/products.html" class="bento-card bento-card-large">
+      <div class="bento-grid" id="bentoGrid">
+        <a href="/products.html" class="bento-card bento-card-large" data-bento-id="products" draggable="true">
           <span class="bento-icon">📦</span>
           <h2>Products</h2>
           <p>View inventory, adjust quantities, scan barcodes</p>
         </a>
-        <a href="/products-manage.html" class="bento-card">
+        <a href="/products-manage.html" class="bento-card" data-bento-id="products-manage" draggable="true">
           <span class="bento-icon">✏️</span>
           <h2>Manage Products</h2>
           <p>Create, edit, and organize products</p>
         </a>
-        <a href="/orders.html" class="bento-card">
+        <a href="/orders.html" class="bento-card" data-bento-id="orders" draggable="true">
           <span class="bento-icon">🛒</span>
           <h2>Orders</h2>
           <p>View and manage orders</p>
         </a>
-        <a href="/logs.html" class="bento-card">
+        <a href="/logs.html" class="bento-card" data-bento-id="logs" draggable="true">
           <span class="bento-icon">📋</span>
           <h2>Transaction Log</h2>
           <p>Audit trail of inventory changes</p>
         </a>
-        <a href="/users.html" class="bento-card">
+        <a href="/users.html" class="bento-card" data-bento-id="users" draggable="true">
           <span class="bento-icon">👥</span>
           <h2>Users</h2>
           <p>Manage accounts, permissions, and groups</p>
         </a>
-        <a href="/groups.html" class="bento-card">
+        <a href="/groups.html" class="bento-card" data-bento-id="groups" draggable="true">
           <span class="bento-icon">🏷️</span>
           <h2>Product Groups</h2>
           <p>Create groups and tag products</p>
         </a>
-        <a href="/reports.html" class="bento-card">
+        <a href="/reports.html" class="bento-card" data-bento-id="reports" draggable="true">
           <span class="bento-icon">📊</span>
           <h2>Reports</h2>
           <p>AI-powered reports – ask anything</p>
@@ -189,19 +189,19 @@
           const order = all.map((w) => w.dataset.id);
           order.splice(fromIdx, 1);
           order.splice(toIdx, 0, dragged.dataset.id);
+          if (fromIdx < toIdx) {
+            container.insertBefore(dragged, widget.nextSibling);
+          } else {
+            container.insertBefore(dragged, widget);
+          }
           fetch("/api/dashboard-widgets/reorder", {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
             body: JSON.stringify({ order }),
           }).then((res) => {
-            if (!res.ok) return;
-            if (fromIdx < toIdx) {
-              container.insertBefore(dragged, widget.nextSibling);
-            } else {
-              container.insertBefore(dragged, widget);
-            }
-          });
+            if (!res.ok) loadDashboardWidgets();
+          }).catch(() => loadDashboardWidgets());
         });
       });
     }
@@ -210,8 +210,94 @@
       d.textContent = s ?? "";
       return d.innerHTML;
     }
+    const BENTO_ORDER_KEY = "dashboardBentoOrder";
+    const BENTO_DEFAULT_ORDER = ["products", "products-manage", "orders", "logs", "users", "groups", "reports"];
+
+    function getBentoOrder() {
+      try {
+        const saved = localStorage.getItem(BENTO_ORDER_KEY);
+        if (saved) {
+          const arr = JSON.parse(saved);
+          if (Array.isArray(arr)) return arr;
+        }
+      } catch (_) {}
+      return BENTO_DEFAULT_ORDER.slice();
+    }
+
+    function setBentoOrder(order) {
+      localStorage.setItem(BENTO_ORDER_KEY, JSON.stringify(order));
+    }
+
+    function applyBentoOrder() {
+      const grid = document.getElementById("bentoGrid");
+      if (!grid) return;
+      const order = getBentoOrder();
+      const cards = Array.from(grid.querySelectorAll(".bento-card"));
+      const byId = Object.fromEntries(cards.map((c) => [c.dataset.bentoId, c]));
+      for (const id of order) {
+        const card = byId[id];
+        if (card) grid.appendChild(card);
+      }
+      for (const card of cards) {
+        if (!order.includes(card.dataset.bentoId)) grid.appendChild(card);
+      }
+    }
+
+    function setupBentoDragDrop() {
+      const grid = document.getElementById("bentoGrid");
+      if (!grid) return;
+      let dragged = null;
+      grid.querySelectorAll(".bento-card").forEach((card) => {
+        card.addEventListener("dragstart", (e) => {
+          dragged = card;
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", card.dataset.bentoId);
+          card.classList.add("bento-card-dragging");
+        });
+        card.addEventListener("dragend", () => {
+          card.classList.remove("bento-card-dragging");
+          grid.querySelectorAll(".bento-card").forEach((c) => c.classList.remove("bento-card-drag-over"));
+          dragged = null;
+        });
+        card.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          if (dragged && dragged !== card) card.classList.add("bento-card-drag-over");
+        });
+        card.addEventListener("dragleave", (e) => {
+          if (!card.contains(e.relatedTarget)) card.classList.remove("bento-card-drag-over");
+        });
+        card.addEventListener("drop", (e) => {
+          e.preventDefault();
+          card.classList.remove("bento-card-drag-over");
+          if (!dragged || dragged === card) return;
+          const all = Array.from(grid.querySelectorAll(".bento-card"));
+          const fromIdx = all.indexOf(dragged);
+          const toIdx = all.indexOf(card);
+          if (fromIdx < 0 || toIdx < 0) return;
+          const order = getBentoOrder();
+          const fromId = dragged.dataset.bentoId;
+          const toId = card.dataset.bentoId;
+          const fromOrderIdx = order.indexOf(fromId);
+          const toOrderIdx = order.indexOf(toId);
+          if (fromOrderIdx >= 0 && toOrderIdx >= 0) {
+            order.splice(fromOrderIdx, 1);
+            order.splice(toOrderIdx, 0, fromId);
+            setBentoOrder(order);
+          }
+          if (fromIdx < toIdx) {
+            grid.insertBefore(dragged, card.nextSibling);
+          } else {
+            grid.insertBefore(dragged, card);
+          }
+        });
+      });
+    }
+
     loadDashboardWidgets();
     setInterval(loadDashboardWidgets, 5 * 60 * 1000);
+    applyBentoOrder();
+    setupBentoDragDrop();
   </script>
 </body>
 </html>

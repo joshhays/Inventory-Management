@@ -2760,3 +2760,20 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   grid-column: span 2;
 }
 
+.bento-card {
+  cursor: grab;
+}
+
+.bento-card:active {
+  cursor: grabbing;
+}
+
+.bento-card-dragging {
+  opacity: 0.5;
+}
+
+.bento-card-drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
