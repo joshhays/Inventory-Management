@@ -85,8 +85,9 @@
           const div = document.createElement("div");
           div.className = "dashboard-widget dashboard-widget-" + size;
           div.dataset.id = w.id;
+          div.draggable = true;
           div.innerHTML = `
-            <span class="dashboard-widget-drag" draggable="true" title="Drag to reorder">⋮⋮</span>
+            <span class="dashboard-widget-drag" title="Drag to reorder">⋮⋮</span>
             <button type="button" class="dashboard-widget-size" data-id="${w.id}" title="Resize">⤢</button>
             <button type="button" class="dashboard-widget-remove" data-id="${w.id}" title="Remove">✕</button>
             <h3>${escapeHtml(w.title)}</h3>
@@ -141,31 +142,44 @@
     function setupWidgetDragDrop(container) {
       let dragged = null;
       container.querySelectorAll(".dashboard-widget").forEach((widget) => {
-        const handle = widget.querySelector(".dashboard-widget-drag");
-        if (handle) {
-          handle.addEventListener("dragstart", (e) => {
-            dragged = widget;
-            e.dataTransfer.effectAllowed = "move";
-            e.dataTransfer.setData("text/plain", widget.dataset.id);
-            widget.classList.add("dashboard-widget-dragging");
-          });
-          handle.addEventListener("dragend", () => {
-            widget.classList.remove("dashboard-widget-dragging");
-            dragged = null;
-          });
-        }
+        widget.addEventListener("dragstart", (e) => {
+          if (e.target.closest("button")) {
+            e.preventDefault();
+            return;
+          }
+          dragged = widget;
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", widget.dataset.id);
+          e.dataTransfer.setData("application/json", JSON.stringify({ id: widget.dataset.id }));
+          widget.classList.add("dashboard-widget-dragging");
+        });
+        widget.addEventListener("dragend", () => {
+          widget.classList.remove("dashboard-widget-dragging");
+          container.querySelectorAll(".dashboard-widget").forEach((w) => w.classList.remove("dashboard-widget-drag-over"));
+          dragged = null;
+        });
         widget.addEventListener("dragover", (e) => {
           e.preventDefault();
+          e.stopPropagation();
           e.dataTransfer.dropEffect = "move";
           if (dragged && dragged !== widget) {
             widget.classList.add("dashboard-widget-drag-over");
           }
         });
-        widget.addEventListener("dragleave", () => {
-          widget.classList.remove("dashboard-widget-drag-over");
+        widget.addEventListener("dragleave", (e) => {
+          if (!widget.contains(e.relatedTarget)) {
+            widget.classList.remove("dashboard-widget-drag-over");
+          }
+        });
+        widget.addEventListener("dragenter", (e) => {
+          e.preventDefault();
+          if (dragged && dragged !== widget) {
+            widget.classList.add("dashboard-widget-drag-over");
+          }
         });
         widget.addEventListener("drop", (e) => {
           e.preventDefault();
+          e.stopPropagation();
           widget.classList.remove("dashboard-widget-drag-over");
           if (!dragged || dragged === widget) return;
           const all = Array.from(container.querySelectorAll(".dashboard-widget"));

@@ -2694,6 +2694,7 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 
 .dashboard-widget canvas {
   max-height: 200px;
+  pointer-events: none;
 }
 
 .dashboard-widget-remove {
