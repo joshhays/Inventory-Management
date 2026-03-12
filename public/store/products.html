@@ -115,10 +115,23 @@
         alert("Out of stock: " + p.name + ". Only " + available + " available.");
         return;
       }
+      const imageFile = getFirstImageFile(p.files);
+      const pdfFile = getFirstFile(p.files);
+      const imgUrl = imageFile
+        ? getImageUrl(imageFile)
+        : pdfFile ? "/api/products/" + p.id + "/preview" : null;
       if (existing) {
         existing.quantity = (existing.quantity || 1) + qty;
+        if (!existing.imageUrl && imgUrl) existing.imageUrl = imgUrl;
       } else {
-        cart.push({ productId: p.id, sku: p.sku, quantity: qty, name: p.name, price: p.price });
+        cart.push({
+          productId: p.id,
+          sku: p.sku,
+          quantity: qty,
+          name: p.name,
+          price: p.price,
+          imageUrl: imgUrl || null,
+        });
       }
       setCart(cart);
     }

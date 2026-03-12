@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Pressable,
@@ -79,6 +80,35 @@ export default function OrdersByStatusScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load])
+  );
+
+  const handleBackToOrders = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/explore');
+    }
+  }, [router]);
+
+  useLayoutEffect(() => {
+    router.setOptions({
+      headerLeft: () => (
+        <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginLeft: 4 }}>
+          <MaterialIcons name="arrow-back" size={24} color={WebTheme.navText} />
+        </Pressable>
+      ),
+      headerRight: () => (
+        <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginRight: 4 }}>
+          <ThemedText style={{ color: WebTheme.accent, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>
+        </Pressable>
+      ),
+    });
+  }, [router, handleBackToOrders]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

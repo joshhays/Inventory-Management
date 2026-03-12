@@ -60,7 +60,9 @@ function AppContent() {
         options={{
           title: 'Product',
           headerShown: true,
-          headerBackTitle: 'Back',
+          headerBackTitle: 'Products',
+          headerStyle: { backgroundColor: WebTheme.navBg },
+          headerTintColor: WebTheme.navText,
         }}
       />
       <Stack.Screen
@@ -69,6 +71,8 @@ function AppContent() {
           title: 'Order',
           headerShown: true,
           headerBackTitle: 'Orders',
+          headerStyle: { backgroundColor: WebTheme.navBg },
+          headerTintColor: WebTheme.navText,
         }}
       />
       <Stack.Screen

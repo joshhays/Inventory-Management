@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -70,6 +70,29 @@ export default function OrderDetailScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const handleBackToOrders = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/explore');
+    }
+  }, [router]);
+
+  useLayoutEffect(() => {
+    router.setOptions({
+      headerLeft: () => (
+        <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginLeft: 4 }}>
+          <MaterialIcons name="arrow-back" size={24} color={WebTheme.navText} />
+        </Pressable>
+      ),
+      headerRight: () => (
+        <Pressable onPress={handleBackToOrders} hitSlop={12} style={{ padding: 8, marginRight: 4 }}>
+          <ThemedText style={{ color: WebTheme.accent, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>
+        </Pressable>
+      ),
+    });
+  }, [router, handleBackToOrders]);
 
   const handleStartPicking = async () => {
     if (!permission?.granted) {

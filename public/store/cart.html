@@ -9,28 +9,32 @@
 <body>
   <div class="app-layout">
     <header class="top-nav top-nav-simple store-nav">
-      <a href="/store/" class="top-nav-back">← Products</a>
+      <a href="/store/" class="top-nav-back">← Continue shopping</a>
       <a href="/store/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Store" class="nav-logo"></a>
-      <span class="top-nav-brand">Cart</span>
+      <a href="/store/cart.html" class="store-cart-link store-cart-link-active">Cart (<span id="cartCount">0</span>)</a>
     </header>
-    <main class="main-content store-main">
+    <main class="main-content store-cart-main">
       <div id="cartContent">
         <div class="loading" id="loading">Loading…</div>
       </div>
-      <div id="checkoutSection" style="display:none">
-        <div class="store-checkout-form">
-          <h2>Checkout</h2>
+      <aside id="checkoutSidebar" class="store-checkout-sidebar" style="display:none">
+        <div class="store-checkout-box">
+          <h2 class="store-checkout-title">Order summary</h2>
+          <div id="orderSummary" class="store-order-summary"></div>
+          <div class="store-checkout-divider"></div>
           <div class="store-form-row">
             <label for="shippingAddress">Shipping address</label>
-            <textarea id="shippingAddress" rows="3" placeholder="Street, city, state, zip"></textarea>
+            <textarea id="shippingAddress" rows="3" placeholder="Street address, city, state, ZIP code"></textarea>
           </div>
           <div class="store-form-row">
-            <label for="customerPhone">Phone</label>
-            <input type="tel" id="customerPhone" placeholder="Optional">
+            <label for="customerPhone">Phone (optional)</label>
+            <input type="tel" id="customerPhone" placeholder="For delivery updates">
           </div>
-          <button type="button" class="btn-apply store-place-order" id="placeOrderBtn">Place order</button>
+          <button type="button" class="btn-apply store-place-order" id="placeOrderBtn">
+            Place your order
+          </button>
         </div>
-      </div>
+      </aside>
     </main>
   </div>
   <script>
@@ -54,6 +58,9 @@
 
     function setCart(cart) {
       localStorage.setItem("storeCart", JSON.stringify(cart));
+      const count = cart.reduce((s, i) => s + (i.quantity || 1), 0);
+      const el = document.getElementById("cartCount");
+      if (el) el.textContent = count;
     }
 
     function updateQty(productId, delta) {
@@ -71,49 +78,77 @@
     function render() {
       const cart = getCart();
       const content = document.getElementById("cartContent");
-      const checkoutSection = document.getElementById("checkoutSection");
+      const sidebar = document.getElementById("checkoutSidebar");
+      const summaryEl = document.getElementById("orderSummary");
 
       if (cart.length === 0) {
-        content.innerHTML = '<p class="store-empty">Your cart is empty. <a href="/store/">Browse products</a></p>';
-        checkoutSection.style.display = "none";
+        content.innerHTML = `
+          <div class="store-cart-empty">
+            <h2>Your cart is empty</h2>
+            <p>Add items from the store to get started.</p>
+            <a href="/store/" class="btn-apply store-cart-empty-btn">Continue shopping</a>
+          </div>
+        `;
+        sidebar.style.display = "none";
         return;
       }
 
       const total = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
-      content.innerHTML = `
-        <table class="store-cart-table">
-          <thead>
-            <tr><th>Product</th><th>SKU</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th><th></th></tr>
-          </thead>
-          <tbody>
-            ${cart
-              .map(
-                (i) => `
-              <tr>
-                <td>${escape(i.name)}</td>
-                <td>${escape(i.sku)}</td>
-                <td class="num">
-                  <button type="button" class="store-qty-btn" data-id="${i.productId}" data-delta="-1">−</button>
-                  <span>${i.quantity || 1}</span>
-                  <button type="button" class="store-qty-btn" data-id="${i.productId}" data-delta="1">+</button>
-                </td>
-                <td class="num">$${formatPrice(i.price)}</td>
-                <td class="num">$${formatPrice((i.price || 0) * (i.quantity || 1))}</td>
-                <td><button type="button" class="store-remove-btn" data-id="${i.productId}">Remove</button></td>
-              </tr>
-            `
-              )
-              .join("")}
-          </tbody>
-        </table>
-        <p class="store-cart-total">Total: $${formatPrice(total)}</p>
-      `;
-      checkoutSection.style.display = "block";
+      const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
 
-      content.querySelectorAll(".store-qty-btn").forEach((btn) => {
+      content.innerHTML = `
+        <h1 class="store-cart-heading">Shopping cart</h1>
+        <p class="store-cart-subheading">${itemCount} ${itemCount === 1 ? "item" : "items"}</p>
+        <div class="store-cart-items">
+          ${cart
+            .map(
+              (i) => `
+            <div class="store-cart-card" data-id="${i.productId}">
+              <div class="store-cart-card-img">
+                ${i.imageUrl
+                  ? '<img src="' + (i.imageUrl || '').replace(/"/g, '&quot;') + '" alt="" loading="lazy">'
+                  : '<div class="store-cart-card-placeholder"><span>📦</span></div>'}
+              </div>
+              <div class="store-cart-card-body">
+                <h3 class="store-cart-card-title">${escape(i.name)}</h3>
+                <p class="store-cart-card-sku">SKU: ${escape(i.sku)}</p>
+                <p class="store-cart-card-price">$${formatPrice(i.price)}</p>
+                <div class="store-cart-card-actions">
+                  <div class="store-cart-qty-wrap">
+                    <button type="button" class="store-cart-qty-btn" data-id="${i.productId}" data-delta="-1" aria-label="Decrease">−</button>
+                    <span class="store-cart-qty-val">${i.quantity || 1}</span>
+                    <button type="button" class="store-cart-qty-btn" data-id="${i.productId}" data-delta="1" aria-label="Increase">+</button>
+                  </div>
+                  <button type="button" class="store-cart-delete" data-id="${i.productId}">Delete</button>
+                </div>
+              </div>
+              <div class="store-cart-card-total">
+                $${formatPrice((i.price || 0) * (i.quantity || 1))}
+              </div>
+            </div>
+          `
+            )
+            .join("")}
+        </div>
+      `;
+
+      summaryEl.innerHTML = `
+        <div class="store-summary-row">
+          <span>Subtotal (${itemCount} ${itemCount === 1 ? "item" : "items"})</span>
+          <span>$${formatPrice(total)}</span>
+        </div>
+        <div class="store-summary-row store-summary-total">
+          <span>Order total</span>
+          <span>$${formatPrice(total)}</span>
+        </div>
+      `;
+
+      sidebar.style.display = "block";
+
+      content.querySelectorAll(".store-cart-qty-btn").forEach((btn) => {
         btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), Number(btn.dataset.delta)));
       });
-      content.querySelectorAll(".store-remove-btn").forEach((btn) => {
+      content.querySelectorAll(".store-cart-delete").forEach((btn) => {
         btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), -999));
       });
     }
@@ -154,12 +189,13 @@
         alert("Error: " + (e.message || "Could not place order"));
       } finally {
         btn.disabled = false;
-        btn.textContent = "Place order";
+        btn.textContent = "Place your order";
       }
     });
 
     render();
     document.getElementById("loading").style.display = "none";
+    document.getElementById("cartCount").textContent = getCart().reduce((s, i) => s + (i.quantity || 1), 0);
   </script>
 </body>
 </html>

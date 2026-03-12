@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -75,6 +76,29 @@ export default function ProductDetailScreen() {
   useEffect(() => {
     setImageError(false);
   }, [product?.id]);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/products');
+    }
+  }, [router]);
+
+  useLayoutEffect(() => {
+    router.setOptions({
+      headerLeft: () => (
+        <Pressable onPress={handleBack} hitSlop={12} style={{ padding: 8, marginLeft: 4 }}>
+          <MaterialIcons name="arrow-back" size={24} color={WebTheme.navText} />
+        </Pressable>
+      ),
+      headerRight: () => (
+        <Pressable onPress={handleBack} hitSlop={12} style={{ padding: 8, marginRight: 4 }}>
+          <ThemedText style={{ color: WebTheme.accent, fontWeight: '600', fontSize: 16 }}>Done</ThemedText>
+        </Pressable>
+      ),
+    });
+  }, [router, handleBack]);
 
   const handleAdjust = async (action: 'deduct' | 'receive') => {
     if (!product || !adjustValue.trim()) return;
