@@ -10,9 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { API_BASE } from '@/constants/api';
+import { getApiBase } from '@/contexts/DeploymentContext';
 import { WebTheme } from '@/constants/web-theme';
-import { fetchLogs } from '@/lib/api';
+import { ApiError, fetchLogs } from '@/lib/api';
 
 type LogEntry = {
   id?: number;
@@ -39,13 +39,21 @@ export default function LogsScreen() {
       setLogs(data as LogEntry[]);
       setPage(pageNum);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Could not connect';
-      setError(
-        `Trying: ${API_BASE}\n\n${msg}\n\n` +
-          (API_BASE.includes('localhost')
-            ? 'On a real phone? Set DEVICE_IP in constants/api.ts.'
-            : 'Is your backend running?')
-      );
+      const isAuthError = e instanceof ApiError && (e.status === 401 || e.status === 403);
+      if (isAuthError) {
+        setError(
+          'Transaction log requires admin access.\n\nSign in via the web admin at your deployment URL.'
+        );
+      } else {
+        const msg = e instanceof Error ? e.message : 'Could not connect';
+        const base = getApiBase();
+        setError(
+          `Trying: ${base}\n\n${msg}\n\n` +
+            (base.includes('localhost')
+              ? 'On a real phone? Use a deployment with a public URL.'
+              : 'Is your backend running?')
+        );
+      }
       setLogs([]);
     } finally {
       setLoading(false);

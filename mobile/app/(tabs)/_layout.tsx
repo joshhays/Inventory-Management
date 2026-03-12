@@ -1,5 +1,7 @@
 import { Stack } from 'expo-router';
 
+import { WebTheme } from '@/constants/web-theme';
+
 export default function TabLayout() {
   return (
     <Stack
@@ -7,14 +9,14 @@ export default function TabLayout() {
         headerShown: true,
         headerBackTitle: 'Dashboard',
         headerStyle: {
-          backgroundColor: 'rgba(15, 23, 42, 0.85)',
+          backgroundColor: WebTheme.navBg,
         },
-        headerTintColor: 'rgba(255, 255, 255, 0.9)',
+        headerTintColor: WebTheme.navText,
         headerTitleStyle: {
           fontWeight: '600',
           fontSize: 17,
         },
-        contentStyle: { backgroundColor: '#F5F7FA' },
+        contentStyle: { backgroundColor: WebTheme.pageBg },
       }}>
       <Stack.Screen
         name="index"

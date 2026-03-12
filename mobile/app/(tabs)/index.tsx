@@ -5,8 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { WebTheme } from '@/constants/web-theme';
+import { useDeployment } from '@/contexts/DeploymentContext';
 
-const PAGE_BG = '#F5F7FA';
+const PAGE_BG = '#fafafa';
 
 type BentoCardProps = {
   icon: keyof typeof MaterialIcons.glyphMap;
@@ -38,14 +39,27 @@ function BentoCard({ icon, title, subtitle, onPress, large }: BentoCardProps) {
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const { deployment, clearDeployment } = useDeployment();
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <ThemedText type="title" style={styles.title}>
-          Dashboard
-        </ThemedText>
-        <ThemedText style={styles.subtitle}>Inventory</ThemedText>
+        <View style={styles.headerRow}>
+          <View>
+            <ThemedText type="title" style={styles.title}>
+              Dashboard
+            </ThemedText>
+            <ThemedText style={styles.subtitle}>
+              {deployment?.name ?? 'Inventory'}
+            </ThemedText>
+          </View>
+          <Pressable
+            style={styles.switchBtn}
+            onPress={clearDeployment}>
+            <MaterialIcons name="swap-horiz" size={20} color={WebTheme.accent} />
+            <ThemedText style={styles.switchText}>Switch</ThemedText>
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
@@ -85,6 +99,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 20,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  switchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(227, 24, 55, 0.08)',
+  },
+  switchText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: WebTheme.accent,
   },
   title: {
     color: WebTheme.text,
@@ -128,7 +161,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.12)',
+    backgroundColor: 'rgba(227, 24, 55, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -5,14 +5,14 @@
 
 import { Platform } from 'react-native';
 
-// Match web app's Glassmorphism theme
-const tintColorLight = '#6366f1';
-const tintColorDark = '#818cf8';
+// Match web app's @properties brand (PMS 1795 red + black)
+const tintColorLight = '#E31837';
+const tintColorDark = '#E31837';
 
 export const Colors = {
   light: {
-    text: '#1e293b',
-    background: '#e0e7ff',
+    text: '#000000',
+    background: '#fafafa',
     tint: tintColorLight,
     icon: '#64748b',
     tabIconDefault: '#64748b',
@@ -20,7 +20,7 @@ export const Colors = {
   },
   dark: {
     text: '#f1f5f9',
-    background: '#1e1b4b',
+    background: '#000000',
     tint: tintColorDark,
     icon: '#94a3b8',
     tabIconDefault: '#94a3b8',

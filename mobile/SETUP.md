@@ -1,6 +1,15 @@
 # Inventory Mobile Setup
 
-## 1. Start your backend
+## 1. Install dependencies
+
+```bash
+cd mobile
+npm install
+```
+
+If you see npm cache permission errors, run: `sudo chown -R $(whoami) ~/.npm` then retry.
+
+## 2. Start your backend (optional for local testing)
 
 From the `inventory-system-backend` folder:
 
@@ -10,17 +19,6 @@ npm start
 
 The API runs at `http://localhost:3000`.
 
-## 2. Configure API URL for device testing
-
-When testing on a **physical phone** with Expo Go, `localhost` won't work. Use your computer's IP address:
-
-1. Find your IP: `ipconfig getifaddr en0` (Mac) or `ipconfig` (Windows)
-2. Edit `constants/api.ts` and set:
-
-```ts
-export const API_BASE = 'http://YOUR_IP:3000';  // e.g. http://192.168.1.5:3000
-```
-
 ## 3. Run the app
 
 ```bash
@@ -29,7 +27,32 @@ npx expo start
 
 Scan the QR code with Expo Go (Camera on iOS, Expo Go app on Android).
 
-## 4. Optional: Use tunnel for different networks
+## 4. Deployment selection
+
+On first launch, you'll see a **Select deployment** screen. Choose **@properties** (or add more in `constants/deployments.ts` as customers onboard). The selection is saved and used for all API calls.
+
+To switch deployments later, tap **Switch** on the Dashboard.
+
+## 5. Adding new deployments
+
+Edit `constants/deployments.ts` and add entries:
+
+```ts
+{
+  id: 'acme',
+  name: 'Acme Corp',
+  apiBase: 'https://acme-inventory.railway.app',
+  logoUrl: 'https://acme-inventory.railway.app/logo.png',
+},
+```
+
+## 6. Auth & permissions
+
+- **Products (view)**: Works without login.
+- **Orders, Transaction Log**: Require admin. Sign in via the web admin first.
+- **Add product, Adjust quantity**: Require admin. Use the web admin for these actions.
+
+## 7. Optional: Use tunnel for different networks
 
 If your phone and computer are on different networks:
 
@@ -37,4 +60,4 @@ If your phone and computer are on different networks:
 npx expo start --tunnel
 ```
 
-You'll still need your backend accessible (e.g. deployed or via ngrok).
+You'll still need your backend accessible (e.g. deployed on Railway).

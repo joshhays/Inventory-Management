@@ -1,33 +1,33 @@
 /**
- * Matches the web app's Glassmorphism 2.0 theme
+ * Matches the web app's @properties brand theme (PMS 1795 red + black)
  */
 export const WebTheme = {
-  // Colors
-  accent: '#6366f1',
-  accentHover: '#4f46e5',
+  // Colors - @properties brand
+  accent: '#E31837',
+  accentHover: '#C41E3A',
   success: '#10b981',
   successHover: '#059669',
-  danger: '#ef4444',
-  dangerHover: '#dc2626',
+  danger: '#E31837',
+  dangerHover: '#C41E3A',
   warning: '#f59e0b',
-  purple: '#8b5cf6',
-  purpleHover: '#7c3aed',
+  purple: '#E31837',
+  purpleHover: '#C41E3A',
 
   // Text
-  text: '#1e293b',
-  textMuted: '#64748b',
+  text: '#000000',
+  textMuted: '#4a4a4a',
 
-  // Backgrounds (gradient approximation - lavender to soft blue)
-  pageBg: '#e0e7ff',
-  pageBgAlt: '#c7d2fe',
+  // Backgrounds
+  pageBg: '#fafafa',
+  pageBgAlt: '#f5f5f5',
 
   // Glass / cards
-  glassBg: 'rgba(255, 255, 255, 0.4)',
-  glassBgStrong: 'rgba(255, 255, 255, 0.6)',
-  glassBorder: 'rgba(255, 255, 255, 0.6)',
+  glassBg: 'rgba(255, 255, 255, 0.9)',
+  glassBgStrong: 'rgba(255, 255, 255, 0.95)',
+  glassBorder: 'rgba(0, 0, 0, 0.08)',
 
-  // Top nav (dark glass)
-  navBg: 'rgba(15, 23, 42, 0.85)',
+  // Top nav (black)
+  navBg: 'rgba(0, 0, 0, 0.92)',
   navText: 'rgba(255, 255, 255, 0.9)',
   navTextMuted: 'rgba(255, 255, 255, 0.7)',
 
@@ -40,8 +40,8 @@ export const WebTheme = {
   qtyZeroBg: '#fee2e2',
 
   // Kit badge
-  kitColor: '#5b21b6',
-  kitBg: '#ede9fe',
+  kitColor: '#E31837',
+  kitBg: '#fef2f2',
 
   // Radius
   radius: 16,
@@ -53,5 +53,5 @@ export const WebTheme = {
   successText: '#166534',
   warningBg: '#fef3c7',
   dangerBg: '#fee2e2',
-  kit: '#5b21b6',
+  kit: '#E31837',
 };

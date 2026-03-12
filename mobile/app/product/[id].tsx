@@ -17,9 +17,9 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { API_BASE } from '@/constants/api';
+import { getApiBase } from '@/contexts/DeploymentContext';
 import { WebTheme } from '@/constants/web-theme';
-import { fetchProduct, updateQuantity, type Product } from '@/lib/api';
+import { ApiError, fetchProduct, updateQuantity, type Product } from '@/lib/api';
 
 const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
 const PDF_EXT = /\.pdf$/i;
@@ -27,17 +27,18 @@ const PAGE_BG = '#F5F7FA';
 
 /** Returns preview URL: for images use direct file URL, for PDFs use backend preview (first page only) */
 function getPreviewUrl(product: Product): string | null {
+  const base = getApiBase();
   const files = product.files || [];
   const imageFile = files.find((f) => IMAGE_EXT.test(f.filename));
   const pdfFile = files.find((f) => PDF_EXT.test(f.filename));
 
   if (imageFile) {
-    if (imageFile.url) return imageFile.url.startsWith('/') ? `${API_BASE}${imageFile.url}` : imageFile.url;
+    if (imageFile.url) return imageFile.url.startsWith('/') ? `${base}${imageFile.url}` : imageFile.url;
     const encodedPath = imageFile.path.split('/').map(encodeURIComponent).join('/');
-    return `${API_BASE}/uploads/${encodedPath}`;
+    return `${base}/uploads/${encodedPath}`;
   }
   if (pdfFile && product.id) {
-    return `${API_BASE}/api/products/${product.id}/preview`;
+    return `${base}/api/products/${product.id}/preview`;
   }
   return null;
 }
@@ -89,7 +90,13 @@ export default function ProductDetailScreen() {
       setAdjustValue('');
       load();
     } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Update failed');
+      const msg =
+        e instanceof ApiError && (e.status === 401 || e.status === 403)
+          ? 'Adjusting quantity requires admin access. Use the web admin.'
+          : e instanceof Error
+            ? e.message
+            : 'Update failed';
+      Alert.alert('Error', msg);
     } finally {
       setSubmitting(false);
     }

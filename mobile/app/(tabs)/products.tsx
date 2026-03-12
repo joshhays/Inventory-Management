@@ -16,9 +16,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { InventoryCard } from '@/components/inventory-card';
 import { ThemedText } from '@/components/themed-text';
-import { API_BASE } from '@/constants/api';
+import { getApiBase } from '@/contexts/DeploymentContext';
 import { WebTheme } from '@/constants/web-theme';
 import {
+  ApiError,
   createProduct,
   fetchProducts,
   type Product,
@@ -44,10 +45,11 @@ export default function ProductsScreen() {
       setProducts(data);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not connect';
+      const base = getApiBase();
       setError(
-        `Trying: ${API_BASE}\n\n${msg}\n\n` +
-          (API_BASE.includes('localhost')
-            ? 'On a real phone? Set DEVICE_IP in constants/api.ts to your computer IP.'
+        `Trying: ${base}\n\n${msg}\n\n` +
+          (base.includes('localhost')
+            ? 'On a real phone? Use a deployment with a public URL.'
             : 'Is your backend running? Same Wi‑Fi?')
       );
       setProducts([]);
@@ -93,7 +95,13 @@ export default function ProductsScreen() {
       setAddForm({ name: '', sku: '', price: '', quantity: '0' });
       load();
     } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to add product');
+      const msg =
+        e instanceof ApiError && (e.status === 401 || e.status === 403)
+          ? 'Adding products requires admin access. Use the web admin.'
+          : e instanceof Error
+            ? e.message
+            : 'Failed to add product';
+      Alert.alert('Error', msg);
     } finally {
       setSubmitting(false);
     }

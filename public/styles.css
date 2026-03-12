@@ -1,33 +1,39 @@
-/* Inventory System - Glassmorphism 2.0 */
+/* Inventory System - @properties Brand (PMS 1795 red + black) */
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
+  /* @properties Brand: PMS 1795 red + black */
+  --brand-red: #E31837;
+  --brand-red-hover: #C41E3A;
+  --brand-black: #000000;
+  --brand-black-soft: #1a1a1a;
+
   --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --glass-bg: rgba(255, 255, 255, 0.25);
-  --glass-bg-strong: rgba(255, 255, 255, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.5);
-  --glass-border-subtle: rgba(255, 255, 255, 0.18);
-  --sidebar-bg: rgba(15, 23, 42, 0.5);
-  --sidebar-hover: rgba(255, 255, 255, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-bg-strong: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-subtle: rgba(0, 0, 0, 0.06);
+  --sidebar-bg: rgba(0, 0, 0, 0.92);
+  --sidebar-hover: rgba(255, 255, 255, 0.08);
   --sidebar-active: rgba(255, 255, 255, 0.12);
-  --sidebar-text: rgba(255, 255, 255, 0.7);
+  --sidebar-text: rgba(255, 255, 255, 0.85);
   --sidebar-text-active: #ffffff;
-  --page-bg: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 25%, #ddd6fe 50%, #fce7f3 75%, #e0f2fe 100%);
-  --card-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
-  --card-shadow-hover: 0 8px 32px rgba(31, 38, 135, 0.25);
-  --border: rgba(255, 255, 255, 0.3);
-  --text: #1e293b;
-  --text-muted: #64748b;
-  --accent: #6366f1;
-  --accent-hover: #4f46e5;
+  --page-bg: linear-gradient(135deg, #fafafa 0%, #f5f5f5 50%, #fef2f2 100%);
+  --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --card-shadow-hover: 0 8px 32px rgba(227, 24, 55, 0.15);
+  --border: rgba(0, 0, 0, 0.1);
+  --text: #000000;
+  --text-muted: #4a4a4a;
+  --accent: var(--brand-red);
+  --accent-hover: var(--brand-red-hover);
   --success: #10b981;
   --success-hover: #059669;
   --warning: #f59e0b;
-  --danger: #ef4444;
-  --danger-hover: #dc2626;
-  --dangerBg: #fee2e2;
-  --purple: #8b5cf6;
-  --purple-hover: #7c3aed;
+  --danger: var(--brand-red);
+  --danger-hover: var(--brand-red-hover);
+  --dangerBg: #fef2f2;
+  --purple: var(--brand-red);
+  --purple-hover: var(--brand-red-hover);
   --radius: 16px;
   --radius-sm: 6px;
   --radius-lg: 20px;
@@ -53,9 +59,8 @@ body::before {
   position: fixed;
   inset: 0;
   background: 
-    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(199, 210, 254, 0.4), transparent),
-    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(221, 214, 254, 0.35), transparent),
-    radial-gradient(ellipse 50% 30% at 50% 90%, rgba(254, 215, 226, 0.3), transparent);
+    radial-gradient(ellipse 80% 50% at 20% 40%, rgba(227, 24, 55, 0.06), transparent),
+    radial-gradient(ellipse 60% 40% at 80% 60%, rgba(0, 0, 0, 0.02), transparent);
   pointer-events: none;
   z-index: 0;
 }
@@ -928,12 +933,12 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 .badge-default { background: #e5e7eb; color: #374151; }
 .badge-deduct { background: #fee2e2; color: #b91c1c; }
 .badge-add { background: #dcfce7; color: #166534; }
-.badge-hard_count { background: #e0e7ff; color: #3730a3; }
+.badge-hard_count { background: #fef2f2; color: var(--brand-red); }
 .badge-import { background: #fef3c7; color: #92400e; }
 .badge-receive { background: #ede9fe; color: #5b21b6; }
 .badge-offline_ship { background: #fef3c7; color: #92400e; }
 .badge-kit { background: #ede9fe; color: #5b21b6; }
-.badge-scan { background: #e0e7ff; color: #3730a3; }
+.badge-scan { background: #fef2f2; color: var(--brand-red); }
 
 /* Modals - Glass */
 .modal-overlay {
