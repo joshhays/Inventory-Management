@@ -27,6 +27,8 @@ async function getWidgets(req, res, next) {
           chartType: w.chartType,
           size: w.size || "medium",
           sortOrder: w.sortOrder,
+          posX: w.posX ?? 0,
+          posY: w.posY ?? 0,
           chartData,
           error,
         };
@@ -41,13 +43,16 @@ async function getWidgets(req, res, next) {
 async function createWidget(req, res, next) {
   try {
     const userId = req.user.id;
-    const { title, reportName, reportParams, chartType, size } = req.body;
+    const { title, reportName, reportParams, chartType, size, posX, posY } = req.body;
     if (!title || !reportName) {
       return res.status(400).json({ message: "title and reportName are required" });
     }
     const paramsStr = typeof reportParams === "string" ? reportParams : JSON.stringify(reportParams || {});
-    const sortOrder = await prisma.dashboardWidget.count({ where: { userId } });
+    const count = await prisma.dashboardWidget.count({ where: { userId } });
+    const sortOrder = count;
     const validSize = ["small", "medium", "large"].includes(size) ? size : "medium";
+    const defaultX = (count % 3) * 340;
+    const defaultY = Math.floor(count / 3) * 280;
     const widget = await prisma.dashboardWidget.create({
       data: {
         userId,
@@ -57,6 +62,8 @@ async function createWidget(req, res, next) {
         chartType: chartType || "bar",
         size: validSize,
         sortOrder,
+        posX: typeof posX === "number" ? posX : defaultX,
+        posY: typeof posY === "number" ? posY : defaultY,
       },
     });
     return res.status(201).json(widget);
@@ -110,15 +117,19 @@ async function updateWidget(req, res, next) {
   try {
     const userId = req.user.id;
     const id = Number(req.params.id);
-    const { size } = req.body;
-    if (!["small", "medium", "large"].includes(size)) {
-      return res.status(400).json({ message: "size must be small, medium, or large" });
+    const { size, posX, posY } = req.body;
+    const data = {};
+    if (["small", "medium", "large"].includes(size)) data.size = size;
+    if (typeof posX === "number" && posX >= 0) data.posX = posX;
+    if (typeof posY === "number" && posY >= 0) data.posY = posY;
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ message: "Provide size and/or posX, posY" });
     }
-    const [updated] = await prisma.dashboardWidget.updateMany({
+    const result = await prisma.dashboardWidget.updateMany({
       where: { id, userId },
-      data: { size },
+      data,
     });
-    if (updated === 0) return res.status(404).json({ message: "Widget not found" });
+    if (result.count === 0) return res.status(404).json({ message: "Widget not found" });
     return res.status(200).json({ message: "Updated" });
   } catch (err) {
     next(err);

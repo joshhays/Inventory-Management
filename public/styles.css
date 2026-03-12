@@ -158,6 +158,33 @@ body::before {
   font-size: 1.75rem;
 }
 
+.board-hint {
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.dashboard-board {
+  position: relative;
+  min-height: 1200px;
+  margin-top: 0.5rem;
+}
+
+#dashboardWidgets,
+.bento-cards-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.board-item {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.bento-cards-layer .board-item.bento-card:hover {
+  transform: translateY(-2px);
+}
+
 .bento-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

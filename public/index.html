@@ -22,43 +22,10 @@
     </header>
     <main class="main-content bento-main">
       <h1 class="bento-title">Dashboard</h1>
-      <div class="dashboard-widgets" id="dashboardWidgets"></div>
-      <div class="bento-grid" id="bentoGrid">
-        <a href="/products.html" class="bento-card bento-card-large" data-bento-id="products" draggable="true">
-          <span class="bento-icon">📦</span>
-          <h2>Products</h2>
-          <p>View inventory, adjust quantities, scan barcodes</p>
-        </a>
-        <a href="/products-manage.html" class="bento-card" data-bento-id="products-manage" draggable="true">
-          <span class="bento-icon">✏️</span>
-          <h2>Manage Products</h2>
-          <p>Create, edit, and organize products</p>
-        </a>
-        <a href="/orders.html" class="bento-card" data-bento-id="orders" draggable="true">
-          <span class="bento-icon">🛒</span>
-          <h2>Orders</h2>
-          <p>View and manage orders</p>
-        </a>
-        <a href="/logs.html" class="bento-card" data-bento-id="logs" draggable="true">
-          <span class="bento-icon">📋</span>
-          <h2>Transaction Log</h2>
-          <p>Audit trail of inventory changes</p>
-        </a>
-        <a href="/users.html" class="bento-card" data-bento-id="users" draggable="true">
-          <span class="bento-icon">👥</span>
-          <h2>Users</h2>
-          <p>Manage accounts, permissions, and groups</p>
-        </a>
-        <a href="/groups.html" class="bento-card" data-bento-id="groups" draggable="true">
-          <span class="bento-icon">🏷️</span>
-          <h2>Product Groups</h2>
-          <p>Create groups and tag products</p>
-        </a>
-        <a href="/reports.html" class="bento-card" data-bento-id="reports" draggable="true">
-          <span class="bento-icon">📊</span>
-          <h2>Reports</h2>
-          <p>AI-powered reports – ask anything</p>
-        </a>
+      <p class="board-hint">Drag items anywhere on the board. Positions are saved automatically.</p>
+      <div class="dashboard-board" id="dashboardBoard">
+        <div id="dashboardWidgets"></div>
+        <div class="bento-cards-layer" id="bentoCardsLayer"></div>
       </div>
     </main>
   </div>
@@ -69,25 +36,28 @@
       window.location.href = "/login.html";
     });
 
+    const BOARD = document.getElementById("dashboardBoard");
+
     async function loadDashboardWidgets() {
       const el = document.getElementById("dashboardWidgets");
+      if (!el) return;
       try {
         const res = await fetch("/api/dashboard-widgets", { credentials: "include" });
         if (!res.ok) return;
         const { widgets } = await res.json();
-        if (!widgets || widgets.length === 0) return;
         el.innerHTML = "";
-        const charts = [];
         const sizeHeights = { small: 150, medium: 200, large: 300 };
-        widgets.forEach((w) => {
+        (widgets || []).forEach((w) => {
           const size = w.size || "medium";
           const chartHeight = sizeHeights[size] || 200;
           const div = document.createElement("div");
-          div.className = "dashboard-widget dashboard-widget-" + size;
+          div.className = "dashboard-widget dashboard-widget-" + size + " board-item";
           div.dataset.id = w.id;
           div.draggable = true;
+          div.style.left = (w.posX ?? 0) + "px";
+          div.style.top = (w.posY ?? 0) + "px";
           div.innerHTML = `
-            <span class="dashboard-widget-drag" title="Drag to reorder">⋮⋮</span>
+            <span class="dashboard-widget-drag" title="Drag to move">⋮⋮</span>
             <button type="button" class="dashboard-widget-size" data-id="${w.id}" title="Resize">⤢</button>
             <button type="button" class="dashboard-widget-remove" data-id="${w.id}" title="Remove">✕</button>
             <h3>${escapeHtml(w.title)}</h3>
@@ -117,7 +87,7 @@
                 scales: w.chartData.type === "pie" ? {} : { y: { beginAtZero: true } },
               },
             };
-            charts.push(new Chart(ctx, config));
+            new Chart(ctx, config);
           }
           el.appendChild(div);
           div.querySelector(".dashboard-widget-remove").addEventListener("click", async () => {
@@ -135,169 +105,149 @@
             if (res.ok) loadDashboardWidgets();
           });
         });
-        setupWidgetDragDrop(el);
+        renderBentoCards();
       } catch (_) {}
     }
 
-    function setupWidgetDragDrop(container) {
-      let dragged = null;
-      container.querySelectorAll(".dashboard-widget").forEach((widget) => {
-        widget.addEventListener("dragstart", (e) => {
-          if (e.target.closest("button")) {
-            e.preventDefault();
-            return;
+    const BENTO_POS_KEY = "dashboardBentoPositions";
+    const BENTO_ITEMS = [
+      { id: "products", href: "/products.html", icon: "📦", title: "Products", desc: "View inventory, adjust quantities, scan barcodes", large: true },
+      { id: "products-manage", href: "/products-manage.html", icon: "✏️", title: "Manage Products", desc: "Create, edit, and organize products", large: false },
+      { id: "orders", href: "/orders.html", icon: "🛒", title: "Orders", desc: "View and manage orders", large: false },
+      { id: "logs", href: "/logs.html", icon: "📋", title: "Transaction Log", desc: "Audit trail of inventory changes", large: false },
+      { id: "users", href: "/users.html", icon: "👥", title: "Users", desc: "Manage accounts, permissions, and groups", large: false },
+      { id: "groups", href: "/groups.html", icon: "🏷️", title: "Product Groups", desc: "Create groups and tag products", large: false },
+      { id: "reports", href: "/reports.html", icon: "📊", title: "Reports", desc: "AI-powered reports – ask anything", large: false },
+    ];
+
+    function getBentoPositions() {
+      try {
+        const s = localStorage.getItem(BENTO_POS_KEY);
+        if (s) return JSON.parse(s);
+      } catch (_) {}
+      const out = {};
+      BENTO_ITEMS.forEach((item, i) => {
+        const col = i % 3;
+        const row = Math.floor(i / 3);
+        out[item.id] = { x: col * 320, y: row * 260 };
+      });
+      return out;
+    }
+
+    function setBentoPosition(id, x, y) {
+      const pos = getBentoPositions();
+      pos[id] = { x, y };
+      localStorage.setItem(BENTO_POS_KEY, JSON.stringify(pos));
+    }
+
+    function renderBentoCards() {
+      const layer = document.getElementById("bentoCardsLayer");
+      if (!layer) return;
+      layer.innerHTML = "";
+      const positions = getBentoPositions();
+      BENTO_ITEMS.forEach((item) => {
+        const pos = positions[item.id] || { x: 0, y: 0 };
+        const a = document.createElement("a");
+        a.href = item.href;
+        a.className = "bento-card board-item" + (item.large ? " bento-card-large" : "");
+        a.dataset.bentoId = item.id;
+        a.draggable = true;
+        a.style.left = pos.x + "px";
+        a.style.top = pos.y + "px";
+        a.innerHTML = "<span class=\"bento-icon\">" + item.icon + "</span><h2>" + escapeHtml(item.title) + "</h2><p>" + escapeHtml(item.desc) + "</p>";
+        layer.appendChild(a);
+      });
+      setupBoardDragDrop();
+    }
+
+    function setupBoardDragDrop() {
+      if (!BOARD) return;
+      BOARD.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+      BOARD.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const json = e.dataTransfer.getData("application/json");
+        if (!json) return;
+        let payload;
+        try { payload = JSON.parse(json); } catch (_) { return; }
+        const rect = BOARD.getBoundingClientRect();
+        const boardX = e.clientX - rect.left + BOARD.scrollLeft;
+        const boardY = e.clientY - rect.top + BOARD.scrollTop;
+        const left = Math.max(0, boardX - (payload.offsetX ?? 0));
+        const top = Math.max(0, boardY - (payload.offsetY ?? 0));
+        if (payload.type === "widget") {
+          const el = document.querySelector(".dashboard-widget[data-id=\"" + payload.id + "\"]");
+          if (el) {
+            el.style.left = left + "px";
+            el.style.top = top + "px";
+            fetch("/api/dashboard-widgets/" + payload.id, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ posX: Math.round(left), posY: Math.round(top) }),
+            }).catch(() => {});
           }
-          dragged = widget;
+        } else if (payload.type === "bento") {
+          const el = document.querySelector(".bento-card[data-bento-id=\"" + payload.id + "\"]");
+          if (el) {
+            el.style.left = left + "px";
+            el.style.top = top + "px";
+            setBentoPosition(payload.id, Math.round(left), Math.round(top));
+          }
+        }
+      });
+      document.querySelectorAll(".dashboard-widget").forEach((widget) => {
+        widget.addEventListener("dragstart", (e) => {
+          if (e.target.closest("button")) { e.preventDefault(); return; }
           e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", widget.dataset.id);
-          e.dataTransfer.setData("application/json", JSON.stringify({ id: widget.dataset.id }));
+          e.dataTransfer.setData("application/json", JSON.stringify({
+            type: "widget",
+            id: widget.dataset.id,
+            offsetX: e.clientX - widget.getBoundingClientRect().left,
+            offsetY: e.clientY - widget.getBoundingClientRect().top,
+          }));
           widget.classList.add("dashboard-widget-dragging");
         });
-        widget.addEventListener("dragend", () => {
-          widget.classList.remove("dashboard-widget-dragging");
-          container.querySelectorAll(".dashboard-widget").forEach((w) => w.classList.remove("dashboard-widget-drag-over"));
-          dragged = null;
+        widget.addEventListener("dragend", () => widget.classList.remove("dashboard-widget-dragging"));
+      });
+      let bentoJustDragged = false;
+      document.querySelectorAll(".bento-card").forEach((card) => {
+        card.addEventListener("dragstart", (e) => {
+          bentoJustDragged = true;
+          const r = card.getBoundingClientRect();
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("application/json", JSON.stringify({
+            type: "bento",
+            id: card.dataset.bentoId,
+            offsetX: e.clientX - r.left,
+            offsetY: e.clientY - r.top,
+          }));
+          card.classList.add("bento-card-dragging");
         });
-        widget.addEventListener("dragover", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          e.dataTransfer.dropEffect = "move";
-          if (dragged && dragged !== widget) {
-            widget.classList.add("dashboard-widget-drag-over");
-          }
+        card.addEventListener("dragend", () => {
+          card.classList.remove("bento-card-dragging");
+          setTimeout(() => { bentoJustDragged = false; }, 100);
         });
-        widget.addEventListener("dragleave", (e) => {
-          if (!widget.contains(e.relatedTarget)) {
-            widget.classList.remove("dashboard-widget-drag-over");
+        card.addEventListener("click", (e) => {
+          if (bentoJustDragged) {
+            e.preventDefault();
+            bentoJustDragged = false;
           }
-        });
-        widget.addEventListener("dragenter", (e) => {
-          e.preventDefault();
-          if (dragged && dragged !== widget) {
-            widget.classList.add("dashboard-widget-drag-over");
-          }
-        });
-        widget.addEventListener("drop", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          widget.classList.remove("dashboard-widget-drag-over");
-          if (!dragged || dragged === widget) return;
-          const all = Array.from(container.querySelectorAll(".dashboard-widget"));
-          const fromIdx = all.indexOf(dragged);
-          const toIdx = all.indexOf(widget);
-          if (fromIdx < 0 || toIdx < 0) return;
-          const order = all.map((w) => w.dataset.id);
-          order.splice(fromIdx, 1);
-          order.splice(toIdx, 0, dragged.dataset.id);
-          if (fromIdx < toIdx) {
-            container.insertBefore(dragged, widget.nextSibling);
-          } else {
-            container.insertBefore(dragged, widget);
-          }
-          fetch("/api/dashboard-widgets/reorder", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ order }),
-          }).then((res) => {
-            if (!res.ok) loadDashboardWidgets();
-          }).catch(() => loadDashboardWidgets());
         });
       });
     }
+
     function escapeHtml(s) {
       const d = document.createElement("div");
       d.textContent = s ?? "";
       return d.innerHTML;
     }
-    const BENTO_ORDER_KEY = "dashboardBentoOrder";
-    const BENTO_DEFAULT_ORDER = ["products", "products-manage", "orders", "logs", "users", "groups", "reports"];
-
-    function getBentoOrder() {
-      try {
-        const saved = localStorage.getItem(BENTO_ORDER_KEY);
-        if (saved) {
-          const arr = JSON.parse(saved);
-          if (Array.isArray(arr)) return arr;
-        }
-      } catch (_) {}
-      return BENTO_DEFAULT_ORDER.slice();
-    }
-
-    function setBentoOrder(order) {
-      localStorage.setItem(BENTO_ORDER_KEY, JSON.stringify(order));
-    }
-
-    function applyBentoOrder() {
-      const grid = document.getElementById("bentoGrid");
-      if (!grid) return;
-      const order = getBentoOrder();
-      const cards = Array.from(grid.querySelectorAll(".bento-card"));
-      const byId = Object.fromEntries(cards.map((c) => [c.dataset.bentoId, c]));
-      for (const id of order) {
-        const card = byId[id];
-        if (card) grid.appendChild(card);
-      }
-      for (const card of cards) {
-        if (!order.includes(card.dataset.bentoId)) grid.appendChild(card);
-      }
-    }
-
-    function setupBentoDragDrop() {
-      const grid = document.getElementById("bentoGrid");
-      if (!grid) return;
-      let dragged = null;
-      grid.querySelectorAll(".bento-card").forEach((card) => {
-        card.addEventListener("dragstart", (e) => {
-          dragged = card;
-          e.dataTransfer.effectAllowed = "move";
-          e.dataTransfer.setData("text/plain", card.dataset.bentoId);
-          card.classList.add("bento-card-dragging");
-        });
-        card.addEventListener("dragend", () => {
-          card.classList.remove("bento-card-dragging");
-          grid.querySelectorAll(".bento-card").forEach((c) => c.classList.remove("bento-card-drag-over"));
-          dragged = null;
-        });
-        card.addEventListener("dragover", (e) => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-          if (dragged && dragged !== card) card.classList.add("bento-card-drag-over");
-        });
-        card.addEventListener("dragleave", (e) => {
-          if (!card.contains(e.relatedTarget)) card.classList.remove("bento-card-drag-over");
-        });
-        card.addEventListener("drop", (e) => {
-          e.preventDefault();
-          card.classList.remove("bento-card-drag-over");
-          if (!dragged || dragged === card) return;
-          const all = Array.from(grid.querySelectorAll(".bento-card"));
-          const fromIdx = all.indexOf(dragged);
-          const toIdx = all.indexOf(card);
-          if (fromIdx < 0 || toIdx < 0) return;
-          const order = getBentoOrder();
-          const fromId = dragged.dataset.bentoId;
-          const toId = card.dataset.bentoId;
-          const fromOrderIdx = order.indexOf(fromId);
-          const toOrderIdx = order.indexOf(toId);
-          if (fromOrderIdx >= 0 && toOrderIdx >= 0) {
-            order.splice(fromOrderIdx, 1);
-            order.splice(toOrderIdx, 0, fromId);
-            setBentoOrder(order);
-          }
-          if (fromIdx < toIdx) {
-            grid.insertBefore(dragged, card.nextSibling);
-          } else {
-            grid.insertBefore(dragged, card);
-          }
-        });
-      });
-    }
 
     loadDashboardWidgets();
+    renderBentoCards();
     setInterval(loadDashboardWidgets, 5 * 60 * 1000);
-    applyBentoOrder();
-    setupBentoDragDrop();
   </script>
 </body>
 </html>
