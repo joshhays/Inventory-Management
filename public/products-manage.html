@@ -83,6 +83,10 @@
         <textarea id="productDescription" placeholder="Optional description"></textarea>
       </div>
       <div class="form-row">
+        <label>Store Category</label>
+        <input type="text" id="productCategory" placeholder="e.g. stationery, office">
+      </div>
+      <div class="form-row">
         <label>User Group</label>
         <select id="productGroup">
           <option value="">All groups (global)</option>
@@ -332,6 +336,7 @@
       document.getElementById("productQuantity").value = p.quantity;
       document.getElementById("productPrice").value = p.price;
       document.getElementById("productDescription").value = p.description || "";
+      document.getElementById("productCategory").value = p.category || "";
       document.getElementById("productGroup").value = p.groupId ?? "";
       document.getElementById("productType").value = p.productType || "regular";
       toggleQuantityRow();
@@ -344,6 +349,7 @@
       document.getElementById("formSidebarTitle").textContent = "Create Product";
       productForm.reset();
       document.getElementById("productQuantity").value = "0";
+      document.getElementById("productCategory").value = "";
       document.getElementById("productGroup").value = "";
       document.getElementById("productType").value = "regular";
       toggleQuantityRow();
@@ -382,6 +388,7 @@
         quantity: isKit ? 0 : (Math.max(0, parseInt(document.getElementById("productQuantity").value, 10) || 0)),
         price: parseFloat(document.getElementById("productPrice").value) || 0,
         description: document.getElementById("productDescription").value.trim() || null,
+        category: document.getElementById("productCategory").value.trim() || null,
         groupId: document.getElementById("productGroup").value || null,
         productType: isKit ? "kit" : "regular",
       };

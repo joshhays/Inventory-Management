@@ -7,6 +7,7 @@ const uploadCsv = require("../middleware/uploadCsv");
 const router = express.Router();
 
 router.get("/", productController.getProducts);
+router.get("/categories", productController.getCategories);
 router.get("/export/csv", productController.exportCsv);
 router.get("/:id", productController.getProduct);
 router.post("/import", (req, res, next) => {

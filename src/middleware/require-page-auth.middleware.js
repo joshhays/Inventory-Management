@@ -3,7 +3,7 @@
  * Must run after session middleware, before express.static.
  */
 const ADMIN_PATHS = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html"];
-const STORE_PATHS = ["/store/", "/store/index.html", "/store/cart.html", "/store/orders.html"];
+const STORE_PATHS = ["/store/", "/store/index.html", "/store/products.html", "/store/cart.html", "/store/orders.html"];
 
 function requirePageAuth(req, res, next) {
   if (req.method !== "GET") return next();

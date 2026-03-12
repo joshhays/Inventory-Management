@@ -19,8 +19,12 @@ const calculateKitQuantity = async (kitId) => {
 };
 
 const getAllProducts = async (options = {}) => {
-  const { groupId, allowedGroupIds } = options;
+  const { groupId, allowedGroupIds, category } = options;
   const conditions = [];
+
+  if (category != null && category !== "") {
+    conditions.push({ category: String(category).trim() });
+  }
 
   if (allowedGroupIds !== null && allowedGroupIds !== undefined && allowedGroupIds.length > 0) {
     conditions.push({
@@ -60,6 +64,7 @@ const createProduct = (productData) => {
       quantity: isKit ? 0 : (Number(productData.quantity) || 0),
       price: Number(productData.price) || 0,
       description: productData.description,
+      category: productData.category ? String(productData.category).trim() : null,
       productType: isKit ? "kit" : "regular",
       ...(productData.groupId != null && productData.groupId !== "" && {
         groupId: Number(productData.groupId) || null,
@@ -90,6 +95,9 @@ const updateProduct = async (id, productData) => {
       ...(productData.quantity !== undefined && !isKit && { quantity: newQty }),
       ...(productData.price !== undefined && { price: Number(productData.price) }),
       ...(productData.description !== undefined && { description: productData.description }),
+      ...(productData.category !== undefined && {
+        category: productData.category == null || productData.category === "" ? null : String(productData.category).trim(),
+      }),
       ...(productData.productType !== undefined && { productType: productData.productType }),
       ...(productData.groupId !== undefined && {
         groupId: productData.groupId == null || productData.groupId === "" ? null : Number(productData.groupId),
@@ -259,6 +267,7 @@ const importFromCsv = async (rows) => {
           quantity: row.quantity,
           price: row.price,
           description: row.description,
+          ...(row.category != null && { category: row.category }),
         },
       });
       await inventoryLog.create({
@@ -279,6 +288,7 @@ const importFromCsv = async (rows) => {
           quantity: row.quantity,
           price: row.price,
           description: row.description,
+          category: row.category || null,
         },
       });
       await inventoryLog.create({
@@ -297,8 +307,18 @@ const importFromCsv = async (rows) => {
   return { updated, created };
 };
 
+const getCategories = async (options = {}) => {
+  const products = await getAllProducts(options);
+  const set = new Set();
+  for (const p of products) {
+    if (p.category && p.category.trim()) set.add(p.category.trim());
+  }
+  return Array.from(set).sort();
+};
+
 module.exports = {
   getAllProducts,
+  getCategories,
   createProduct,
   updateProduct,
   updateQuantity,

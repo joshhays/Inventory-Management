@@ -47,6 +47,7 @@ model Product {
   quantity    Int          @default(0)
   price       Float
   description String?
+  category    String?      // Store category tag (e.g. stationery)
   productType String       @default("regular") // "regular" | "kit"
   groupId     Int?
   group       UserGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)

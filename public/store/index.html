@@ -16,51 +16,21 @@
         <a href="#" id="logoutLink" class="top-nav-back">Log out</a>
       </div>
     </header>
-    <main class="main-content store-main">
-      <div class="store-toolbar">
-        <h1>Products</h1>
-        <input type="search" id="searchInput" placeholder="Search products..." class="store-search">
-      </div>
-      <div class="store-grid" id="productGrid">
+    <main class="main-content store-bento-main">
+      <h1 class="bento-title">Shop by category</h1>
+      <div class="store-bento-grid" id="categoryGrid">
         <div class="loading" id="loading">Loading…</div>
       </div>
     </main>
   </div>
   <script>
-    let products = [];
-    const grid = document.getElementById("productGrid");
+    const grid = document.getElementById("categoryGrid");
     const cartCount = document.getElementById("cartCount");
-    const searchInput = document.getElementById("searchInput");
 
     function escape(s) {
       const div = document.createElement("div");
       div.textContent = s ?? "";
       return div.innerHTML;
-    }
-
-    function formatPrice(n) {
-      return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function isImageFile(filename) {
-      const ext = (filename || "").toLowerCase();
-      return [".jpg", ".jpeg", ".png", ".gif", ".webp"].some((e) => ext.endsWith(e));
-    }
-
-    function getFirstImageFile(files) {
-      return (files || []).find((f) => isImageFile(f.filename));
-    }
-
-    function getFirstFile(files) {
-      return (files || [])[0];
-    }
-
-    function getImageUrl(file) {
-      if (!file) return "";
-      if (typeof file === "object" && file.url) return file.url;
-      const p = typeof file === "string" ? file : file?.path;
-      if (!p) return "";
-      return "/uploads/" + p.split("/").map(encodeURIComponent).join("/");
     }
 
     function getCart() {
@@ -71,108 +41,70 @@
       }
     }
 
-    function setCart(cart) {
-      localStorage.setItem("storeCart", JSON.stringify(cart));
-      cartCount.textContent = cart.reduce((s, i) => s + (i.quantity || 1), 0);
-    }
+    const CATEGORY_ICONS = {
+      stationery: "✏️",
+      office: "📎",
+      supplies: "📦",
+      default: "🏷️",
+    };
 
-    function addToCart(productId, qty) {
-      const cart = getCart();
-      const existing = cart.find((i) => i.productId === productId);
-      if (existing) {
-        existing.quantity = (existing.quantity || 1) + qty;
-      } else {
-        const p = products.find((x) => x.id === productId);
-        if (!p) return;
-        cart.push({ productId: p.id, sku: p.sku, quantity: qty, name: p.name, price: p.price });
-      }
-      setCart(cart);
-    }
-
-    function render(rows) {
-      const q = searchInput.value.trim().toLowerCase();
-      const filtered = q
-        ? rows.filter((p) => (p.name || "").toLowerCase().includes(q) || (p.sku || "").toLowerCase().includes(q))
-        : rows;
-      const regular = filtered.filter((p) => (p.productType || "regular") !== "kit" || !p.kitItems?.length);
-      if (regular.length === 0) {
-        grid.innerHTML = '<p class="store-empty">No products found.</p>';
-        return;
-      }
-      grid.innerHTML = regular
-        .map((p) => {
-          const imageFile = getFirstImageFile(p.files);
-          const pdfFile = getFirstFile(p.files);
-          const imgUrl = imageFile
-            ? getImageUrl(imageFile)
-            : pdfFile
-              ? "/api/products/" + p.id + "/preview"
-              : null;
-          const isPdfOnly = pdfFile && !imageFile;
-          const thumb = imgUrl
-            ? isPdfOnly
-              ? '<a href="' + getImageUrl(pdfFile) + '" target="_blank" class="store-thumb store-thumb-pdf" title="PDF"><img src="' + imgUrl + '" alt="" class="store-thumb"></a>'
-              : '<img src="' + imgUrl + '" alt="" class="store-thumb" loading="lazy">'
-            : '<div class="store-thumb store-thumb-placeholder">—</div>';
-          return (
-            '<div class="store-card" data-id="' +
-            p.id +
-            '">' +
-            '<div class="store-card-img">' +
-            thumb +
-            "</div>" +
-            '<div class="store-card-body">' +
-            '<h3 class="store-card-title">' +
-            escape(p.name) +
-            "</h3>" +
-            '<p class="store-card-sku">' +
-            escape(p.sku) +
-            "</p>" +
-            '<p class="store-card-price">$' +
-            formatPrice(p.price) +
-            "</p>" +
-            '<div class="store-card-actions">' +
-            '<input type="number" min="1" value="1" class="store-qty-input" data-id="' +
-            p.id +
-            '">' +
-            '<button type="button" class="btn-apply store-add-btn" data-id="' +
-            p.id +
-            '">Add to cart</button>' +
-            "</div>" +
-            "</div>" +
-            "</div>"
-          );
-        })
-        .join("");
-      grid.querySelectorAll(".store-add-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          const id = Number(btn.dataset.id);
-          const input = grid.querySelector('.store-qty-input[data-id="' + id + '"]');
-          const qty = Math.max(1, parseInt(input?.value, 10) || 1);
-          addToCart(id, qty);
-        });
-      });
+    function getCategoryIcon(cat) {
+      const key = (cat || "").toLowerCase();
+      return CATEGORY_ICONS[key] || CATEGORY_ICONS.default;
     }
 
     async function load() {
       try {
-        const res = await fetch("/api/products", { credentials: "include" });
-        if (!res.ok) {
-          if (res.status === 401) {
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch("/api/products", { credentials: "include" }),
+          fetch("/api/products/categories", { credentials: "include" }),
+        ]);
+        if (!productsRes.ok || !categoriesRes.ok) {
+          if (productsRes.status === 401 || categoriesRes.status === 401) {
             window.location.href = "/store/login.html";
             return;
           }
-          throw new Error("Failed to load products");
+          throw new Error("Failed to load");
         }
-        products = await res.json();
+        const products = await productsRes.json();
+        const categories = await categoriesRes.json();
+        const regular = products.filter((p) => (p.productType || "regular") !== "kit" || !p.kitItems?.length);
+
         document.getElementById("loading").style.display = "none";
-        render(products);
+
+        let html =
+          '<a href="/store/products.html" class="store-bento-card store-bento-card-large">' +
+          '<span class="bento-icon">📦</span>' +
+          "<h2>All products</h2>" +
+          "<p>" +
+          regular.length +
+          " items</p>" +
+          "</a>";
+        for (const cat of categories) {
+          const count = regular.filter((p) => (p.category || "").trim() === cat).length;
+          if (count > 0) {
+            html +=
+              '<a href="/store/products.html?category=' +
+              encodeURIComponent(cat) +
+              '" class="store-bento-card">' +
+              '<span class="bento-icon">' +
+              getCategoryIcon(cat) +
+              "</span>" +
+              "<h2>" +
+              escape(cat) +
+              "</h2>" +
+              "<p>" +
+              count +
+              " items</p>" +
+              "</a>";
+          }
+        }
+        grid.innerHTML = html;
       } catch (e) {
         grid.innerHTML = '<p class="store-empty error">' + escape(e.message) + "</p>";
       }
     }
 
-    searchInput.addEventListener("input", () => render(products));
     cartCount.textContent = getCart().reduce((s, i) => s + (i.quantity || 1), 0);
 
     document.getElementById("logoutLink").addEventListener("click", async (e) => {

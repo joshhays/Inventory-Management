@@ -21,15 +21,27 @@ function withFileUrlsList(products) {
 const getProducts = async (req, res, next) => {
   try {
     const groupId = req.query.groupId ?? req.get("X-User-Group-Id");
+    const category = req.query.category;
     const user = req.user;
-    const allowedGroupIds = user?.isAdmin ? null : (user?.groupIds || []);
+    const allowedGroupIds = user?.isAdmin ? null : (user?.groupIds?.length ? user.groupIds : null);
 
     if (groupId && !user?.isAdmin && allowedGroupIds?.length && !allowedGroupIds.includes(Number(groupId))) {
       return res.status(403).json({ message: "You do not have access to this group." });
     }
 
-    const products = await productService.getAllProducts({ groupId, allowedGroupIds });
+    const products = await productService.getAllProducts({ groupId, allowedGroupIds, category });
     res.status(200).json(withFileUrlsList(products));
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getCategories = async (req, res, next) => {
+  try {
+    const user = req.user;
+    const allowedGroupIds = user?.isAdmin ? null : (user?.groupIds?.length ? user.groupIds : null);
+    const categories = await productService.getCategories({ allowedGroupIds });
+    res.status(200).json(categories);
   } catch (error) {
     next(error);
   }
@@ -58,7 +70,7 @@ const getProduct = async (req, res, next) => {
 const createProduct = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Authentication required." });
-    const { name, sku, quantity, price, description, groupId, productType } = req.body;
+    const { name, sku, quantity, price, description, category, groupId, productType } = req.body;
 
     if (!name || !sku || price === undefined) {
       return res.status(400).json({
@@ -85,6 +97,7 @@ const createProduct = async (req, res, next) => {
       quantity,
       price,
       description,
+      category,
       groupId,
       productType,
     });
@@ -133,7 +146,7 @@ const updateProduct = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
-    const { name, sku, quantity, price, description, groupId, productType } = req.body;
+    const { name, sku, quantity, price, description, category, groupId, productType } = req.body;
 
     if (!name || !sku || price === undefined) {
       return res.status(400).json({
@@ -153,6 +166,7 @@ const updateProduct = async (req, res, next) => {
       quantity,
       price,
       description,
+      category,
       groupId,
       productType,
     });
@@ -254,6 +268,7 @@ const getLabel = async (req, res, next) => {
 
 module.exports = {
   getProducts,
+  getCategories,
   getProduct,
   createProduct,
   updateQuantity,

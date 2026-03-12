@@ -22,6 +22,7 @@ function mapRowToProduct(row) {
   const quantity = parseInt(quantityVal, 10);
   const price = get("price", "unit_price", "cost") ?? "0";
   const description = get("description", "desc", "notes");
+  const category = get("category", "categories", "type");
 
   if (!name || !sku) return null;
 
@@ -32,6 +33,7 @@ function mapRowToProduct(row) {
     quantity: isNaN(quantity) ? 0 : Math.max(0, quantity),
     price: isNaN(priceNum) ? 0 : priceNum,
     description: description ? String(description).trim() : null,
+    category: category ? String(category).trim() : null,
   };
 }
 
