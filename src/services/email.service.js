@@ -31,11 +31,21 @@ function getTransporter() {
     secure: port === 465,
     auth: { user, pass },
   });
+  console.log("[email] SMTP configured: " + host + ":" + (port || 587) + " (user: " + user + ")");
   return transporter;
 }
 
 function isEmailConfigured() {
-  return !!(env.smtpHost && env.smtpUser && env.smtpPass && env.emailReadyTo);
+  const ok = !!(env.smtpHost && env.smtpUser && env.smtpPass && env.emailReadyTo);
+  if (!ok) {
+    const missing = [];
+    if (!env.smtpHost) missing.push("SMTP_HOST");
+    if (!env.smtpUser) missing.push("SMTP_USER");
+    if (!env.smtpPass) missing.push("SMTP_PASS");
+    if (!env.emailReadyTo) missing.push("EMAIL_READY_TO");
+    console.log("[email] Not configured – missing:", missing.join(", "));
+  }
+  return ok;
 }
 
 /**
@@ -87,6 +97,7 @@ async function sendOrderReadyEmail(order) {
   `;
 
   try {
+    console.log("[email] Sending order-ready notification for order #" + orderId + " to " + to);
     await transport.sendMail({
       from,
       to,
@@ -94,9 +105,11 @@ async function sendOrderReadyEmail(order) {
       text: `Order #${orderId} is ready for pickup. Customer: ${customerName}. Total: $${total}. Please set messenger pickup.`,
       html,
     });
+    console.log("[email] Sent successfully to " + to);
     return true;
   } catch (err) {
-    console.error("[email] Failed to send order-ready notification:", err.message);
+    console.error("[email] Failed to send:", err.message);
+    if (err.response) console.error("[email] SMTP response:", err.response);
     return false;
   }
 }

@@ -76,10 +76,14 @@ const updateOrderStatus = async (req, res, next) => {
     const order = await orderService.updateStatus(id, status.trim());
 
     // Send email when order becomes ready for messenger pickup
-    if (newStatus === "ready" && emailService.isEmailConfigured()) {
-      emailService.sendOrderReadyEmail(order).catch((err) => {
-        console.error("[order] Email notification failed:", err.message);
-      });
+    if (newStatus === "ready") {
+      if (emailService.isEmailConfigured()) {
+        emailService.sendOrderReadyEmail(order).catch((err) => {
+          console.error("[order] Email notification failed:", err.message);
+        });
+      } else {
+        console.log("[order] Order #" + order.id + " marked ready – email skipped (not configured)");
+      }
     }
 
     return res.status(200).json(order);
