@@ -42,6 +42,19 @@
       return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function isImageFile(filename) {
+      const ext = (filename || "").toLowerCase();
+      return [".jpg", ".jpeg", ".png", ".gif", ".webp"].some((e) => ext.endsWith(e));
+    }
+
+    function getFirstImageFile(files) {
+      return (files || []).find((f) => isImageFile(f.filename));
+    }
+
+    function getFirstFile(files) {
+      return (files || [])[0];
+    }
+
     function getImageUrl(file) {
       if (!file) return "";
       if (typeof file === "object" && file.url) return file.url;
@@ -88,13 +101,18 @@
       }
       grid.innerHTML = regular
         .map((p) => {
-          const firstFile = (p.files || [])[0];
-          const imgUrl = firstFile ? getImageUrl(firstFile) : null;
-          const isPdf = firstFile && (firstFile.filename || "").toLowerCase().endsWith(".pdf");
+          const imageFile = getFirstImageFile(p.files);
+          const pdfFile = getFirstFile(p.files);
+          const imgUrl = imageFile
+            ? getImageUrl(imageFile)
+            : pdfFile
+              ? "/api/products/" + p.id + "/preview"
+              : null;
+          const isPdfOnly = pdfFile && !imageFile;
           const thumb = imgUrl
-            ? isPdf
-              ? '<a href="' + imgUrl + '" target="_blank" class="store-thumb store-thumb-pdf">PDF</a>'
-              : '<img src="' + imgUrl + '" alt="" class="store-thumb" onerror="this.style.display=\'none\'">'
+            ? isPdfOnly
+              ? '<a href="' + getImageUrl(pdfFile) + '" target="_blank" class="store-thumb store-thumb-pdf" title="PDF"><img src="' + imgUrl + '" alt="" class="store-thumb"></a>'
+              : '<img src="' + imgUrl + '" alt="" class="store-thumb" loading="lazy">'
             : '<div class="store-thumb store-thumb-placeholder">—</div>';
           return (
             '<div class="store-card" data-id="' +
