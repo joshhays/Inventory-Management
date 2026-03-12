@@ -78,13 +78,19 @@
         if (!widgets || widgets.length === 0) return;
         el.innerHTML = "";
         const charts = [];
+        const sizeHeights = { small: 150, medium: 200, large: 300 };
         widgets.forEach((w) => {
+          const size = w.size || "medium";
+          const chartHeight = sizeHeights[size] || 200;
           const div = document.createElement("div");
-          div.className = "dashboard-widget";
+          div.className = "dashboard-widget dashboard-widget-" + size;
+          div.dataset.id = w.id;
           div.innerHTML = `
+            <span class="dashboard-widget-drag" draggable="true" title="Drag to reorder">⋮⋮</span>
+            <button type="button" class="dashboard-widget-size" data-id="${w.id}" title="Resize">⤢</button>
             <button type="button" class="dashboard-widget-remove" data-id="${w.id}" title="Remove">✕</button>
             <h3>${escapeHtml(w.title)}</h3>
-            <div class="dashboard-widget-chart" style="height:200px"></div>
+            <div class="dashboard-widget-chart" style="height:${chartHeight}px"></div>
           `;
           if (w.error) {
             div.querySelector(".dashboard-widget-chart").innerHTML = "<p style='color:var(--text-muted);font-size:0.9rem'>" + escapeHtml(w.error) + "</p>";
@@ -117,8 +123,73 @@
             await fetch("/api/dashboard-widgets/" + w.id, { method: "DELETE", credentials: "include" });
             loadDashboardWidgets();
           });
+          div.querySelector(".dashboard-widget-size").addEventListener("click", async () => {
+            const next = { small: "medium", medium: "large", large: "small" }[size];
+            const res = await fetch("/api/dashboard-widgets/" + w.id, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ size: next }),
+            });
+            if (res.ok) loadDashboardWidgets();
+          });
         });
+        setupWidgetDragDrop(el);
       } catch (_) {}
+    }
+
+    function setupWidgetDragDrop(container) {
+      let dragged = null;
+      container.querySelectorAll(".dashboard-widget").forEach((widget) => {
+        const handle = widget.querySelector(".dashboard-widget-drag");
+        if (handle) {
+          handle.addEventListener("dragstart", (e) => {
+            dragged = widget;
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", widget.dataset.id);
+            widget.classList.add("dashboard-widget-dragging");
+          });
+          handle.addEventListener("dragend", () => {
+            widget.classList.remove("dashboard-widget-dragging");
+            dragged = null;
+          });
+        }
+        widget.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          if (dragged && dragged !== widget) {
+            widget.classList.add("dashboard-widget-drag-over");
+          }
+        });
+        widget.addEventListener("dragleave", () => {
+          widget.classList.remove("dashboard-widget-drag-over");
+        });
+        widget.addEventListener("drop", (e) => {
+          e.preventDefault();
+          widget.classList.remove("dashboard-widget-drag-over");
+          if (!dragged || dragged === widget) return;
+          const all = Array.from(container.querySelectorAll(".dashboard-widget"));
+          const fromIdx = all.indexOf(dragged);
+          const toIdx = all.indexOf(widget);
+          if (fromIdx < 0 || toIdx < 0) return;
+          const order = all.map((w) => w.dataset.id);
+          order.splice(fromIdx, 1);
+          order.splice(toIdx, 0, dragged.dataset.id);
+          fetch("/api/dashboard-widgets/reorder", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ order }),
+          }).then((res) => {
+            if (!res.ok) return;
+            if (fromIdx < toIdx) {
+              container.insertBefore(dragged, widget.nextSibling);
+            } else {
+              container.insertBefore(dragged, widget);
+            }
+          });
+        });
+      });
     }
     function escapeHtml(s) {
       const d = document.createElement("div");
@@ -126,6 +197,7 @@
       return d.innerHTML;
     }
     loadDashboardWidgets();
+    setInterval(loadDashboardWidgets, 5 * 60 * 1000);
   </script>
 </body>
 </html>

@@ -2712,3 +2712,50 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   color: var(--danger);
 }
 
+.dashboard-widget .dashboard-widget-drag {
+  cursor: grab;
+}
+
+.dashboard-widget .dashboard-widget-drag:active {
+  cursor: grabbing;
+}
+
+.dashboard-widget-dragging {
+  opacity: 0.5;
+}
+
+.dashboard-widget-drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.dashboard-widget-drag {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: grab;
+  user-select: none;
+}
+
+.dashboard-widget-size {
+  position: absolute;
+  top: 0.5rem;
+  right: 2rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dashboard-widget-size:hover {
+  color: var(--accent);
+}
+
+.dashboard-widget-large {
+  grid-column: span 2;
+}
+

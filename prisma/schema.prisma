@@ -36,6 +36,7 @@ model DashboardWidget {
   reportName   String   // e.g. getSalesByPeriod, getOrdersSummary
   reportParams String   @default("{}") // JSON
   chartType    String   @default("bar") // bar, line, pie
+  size         String   @default("medium") // small, medium, large
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
