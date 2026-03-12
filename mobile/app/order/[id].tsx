@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useCallback, useEffect, useState } from 'react';
@@ -44,6 +44,7 @@ function barcodeMatchesItem(scannedData: string, item: OrderItem): boolean {
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,11 +123,14 @@ export default function OrderDetailScreen() {
 
   const handleDonePicking = async () => {
     const itemsList = order?.items || [];
-    if (order && itemsList.length > 0 && itemsList.every((i) => i.picked)) {
+    const allPicked = order && itemsList.length > 0 && itemsList.every((i) => i.picked);
+    if (order && allPicked) {
       try {
         await updateOrderStatus(order.id, 'picked');
-        const updated = await fetchOrder(order.id);
-        setOrder(updated);
+        setPickingMode(false);
+        setSelectedItem(null);
+        router.back();
+        return;
       } catch {
         // ignore
       }
@@ -158,6 +162,7 @@ export default function OrderDetailScreen() {
   const items = order.items || [];
   const unpickedItems = items.filter((i) => !i.picked);
   const pickedCount = items.filter((i) => i.picked).length;
+  const allPicked = items.length > 0 && items.every((i) => i.picked);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -178,18 +183,29 @@ export default function OrderDetailScreen() {
             </ThemedText>
           </View>
 
-          {!pickingMode ? (
+          {!pickingMode && !allPicked ? (
             <Pressable style={styles.startBtn} onPress={handleStartPicking}>
               <MaterialIcons name="qr-code-scanner" size={24} color="#fff" />
               <ThemedText style={styles.startBtnText}>Start Picking</ThemedText>
             </Pressable>
+          ) : allPicked ? (
+            <Pressable style={[styles.startBtn, styles.completeBtn]} onPress={handleDonePicking}>
+              <MaterialIcons name="check-circle" size={24} color="#fff" />
+              <ThemedText style={[styles.startBtnText, styles.completeBtnText]}>Complete</ThemedText>
+            </Pressable>
           ) : (
             <View style={styles.pickingActions}>
               <ThemedText style={styles.pickingHint}>
-                Tap an item below, then scan its barcode to confirm.
+                {allPicked
+                  ? 'All items picked. Tap Complete to move to Picked.'
+                  : 'Tap an item below, then scan its barcode to confirm.'}
               </ThemedText>
-              <Pressable style={styles.doneBtn} onPress={handleDonePicking}>
-                <ThemedText style={styles.doneBtnText}>Done Picking</ThemedText>
+              <Pressable
+                style={[styles.doneBtn, allPicked && styles.completeBtn]}
+                onPress={handleDonePicking}>
+                <ThemedText style={[styles.doneBtnText, allPicked && styles.completeBtnText]}>
+                  {allPicked ? 'Complete' : 'Done Picking'}
+                </ThemedText>
               </Pressable>
             </View>
           )}
@@ -312,7 +328,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.06)',
     borderRadius: 8,
   },
+  completeBtn: {
+    backgroundColor: WebTheme.accent,
+  },
   doneBtnText: { fontSize: 15, fontWeight: '600', color: WebTheme.text },
+  completeBtnText: { color: '#fff' },
   section: { marginTop: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: WebTheme.text, marginBottom: 12 },
   itemRow: {

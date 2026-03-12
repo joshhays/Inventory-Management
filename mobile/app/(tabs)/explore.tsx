@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { getApiBase } from '@/contexts/DeploymentContext';
 import { WebTheme } from '@/constants/web-theme';
-import { ApiError, fetchOrders, type Order } from '@/lib/api';
+import { ApiError, fetchOrders, updateOrderStatus, type Order } from '@/lib/api';
 
 const STATUS_ORDER = ['pending', 'in process', 'picked', 'ready', 'shipped'];
 const STATUS_LABELS: Record<string, string> = {
@@ -95,28 +95,59 @@ export default function OrdersScreen() {
 
   const formatDate = (s: string) => new Date(s).toLocaleDateString();
 
-  const renderOrderCard = (item: Order) => {
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  const handleDoubleCheckComplete = useCallback(
+    async (orderId: number) => {
+      setUpdatingId(orderId);
+      try {
+        await updateOrderStatus(orderId, 'ready');
+        load();
+      } catch {
+        // ignore
+      } finally {
+        setUpdatingId(null);
+      }
+    },
+    [load]
+  );
+
+  const renderOrderCard = (item: Order, statusKey?: string) => {
     const itemCount = item.items?.reduce((s, i) => s + i.quantity, 0) || 0;
+    const isPicked = statusKey === 'picked';
+    const isUpdating = updatingId === item.id;
     return (
-      <Pressable
-        key={item.id}
-        style={styles.card}
-        onPress={() => router.push(`/order/${item.id}`)}>
-        <View style={styles.cardContent}>
-          <View style={styles.cardMain}>
-            <ThemedText style={styles.customer}>{item.customerName}</ThemedText>
-            <ThemedText style={styles.meta}>
-              #{item.id} · {formatDate(item.createdAt)} · {itemCount} items
-            </ThemedText>
+      <View key={item.id} style={styles.card}>
+        <Pressable
+          style={styles.cardPressable}
+          onPress={() => !isUpdating && router.push(`/order/${item.id}`)}>
+          <View style={styles.cardContent}>
+            <View style={styles.cardMain}>
+              <ThemedText style={styles.customer}>{item.customerName}</ThemedText>
+              <ThemedText style={styles.meta}>
+                #{item.id} · {formatDate(item.createdAt)} · {itemCount} items
+              </ThemedText>
+            </View>
+            <View style={styles.right}>
+              <ThemedText style={styles.total}>{formatPrice(item.total)}</ThemedText>
+              <ThemedText style={[styles.badge, styles[`badge${item.status?.replace(/\s/g, '')}` as keyof typeof styles] || styles.badgeDefault]}>
+                {getStatusLabel(item.status)}
+              </ThemedText>
+            </View>
           </View>
-          <View style={styles.right}>
-            <ThemedText style={styles.total}>{formatPrice(item.total)}</ThemedText>
-            <ThemedText style={[styles.badge, styles[`badge${item.status?.replace(/\s/g, '')}` as keyof typeof styles] || styles.badgeDefault]}>
-              {getStatusLabel(item.status)}
+        </Pressable>
+        {isPicked && (
+          <Pressable
+            style={[styles.doubleCheckBtn, isUpdating && styles.doubleCheckBtnDisabled]}
+            onPress={() => !isUpdating && handleDoubleCheckComplete(item.id)}
+            disabled={isUpdating}>
+            <MaterialIcons name="verified" size={18} color="#fff" />
+            <ThemedText style={styles.doubleCheckBtnText}>
+              {isUpdating ? '…' : 'Double check complete'}
             </ThemedText>
-          </View>
-        </View>
-      </Pressable>
+          </Pressable>
+        )}
+      </View>
     );
   };
 
@@ -131,7 +162,7 @@ export default function OrdersScreen() {
           <ThemedText style={styles.bentoCount}>{list.length}</ThemedText>
         </View>
         <View style={styles.bentoCards}>
-          {list.map((o) => renderOrderCard(o))}
+          {list.map((o) => renderOrderCard(o, statusKey))}
         </View>
       </View>
     );
@@ -187,7 +218,7 @@ export default function OrdersScreen() {
               <ThemedText style={styles.bentoTitle}>Other</ThemedText>
             </View>
             <View style={styles.bentoCards}>
-              {(ordersByStatus['_other'] || []).map((o) => renderOrderCard(o))}
+              {(ordersByStatus['_other'] || []).map((o) => renderOrderCard(o, '_other'))}
             </View>
           </View>
         )}
@@ -241,7 +272,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderRadius: WebTheme.radius,
-    padding: 16,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)',
     shadowColor: '#000',
@@ -250,7 +280,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardPressable: { padding: 16 },
   cardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  doubleCheckBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingVertical: 10,
+    backgroundColor: WebTheme.success,
+    borderRadius: 8,
+  },
+  doubleCheckBtnDisabled: { opacity: 0.7 },
+  doubleCheckBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   cardMain: { flex: 1 },
   customer: { fontSize: 16, fontWeight: '600', color: WebTheme.text },
   meta: { fontSize: 13, marginTop: 2, color: WebTheme.textMuted },
