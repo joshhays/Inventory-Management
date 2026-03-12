@@ -135,6 +135,15 @@ export async function updateOrderItemPick(orderId: number, itemId: number, picke
   return res.json();
 }
 
+export async function updateOrderStatus(orderId: number, status: string): Promise<Order> {
+  const res = await fetch(`${api().orders}/${orderId}/status`, fetchOpts({
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  }));
+  if (!res.ok) throw new ApiError(await res.text().catch(() => 'Failed to update'), res.status);
+  return res.json();
+}
+
 export async function fetchLogs(page = 1, limit = 50): Promise<{
   logs: Array<unknown>;
   total: number;

@@ -4,17 +4,42 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
   return prisma.$transaction(async (tx) => {
     let total = 0;
     const orderItems = [];
+    const outOfStock = [];
 
     for (const item of items) {
       const product = item.productId
-        ? await tx.product.findUnique({ where: { id: Number(item.productId) } })
-        : await tx.product.findUnique({ where: { sku: String(item.sku) } });
+        ? await tx.product.findUnique({
+            where: { id: Number(item.productId) },
+            include: { kitItems: { include: { product: true } } },
+          })
+        : await tx.product.findUnique({
+            where: { sku: String(item.sku) },
+            include: { kitItems: { include: { product: true } } },
+          });
 
       if (!product) {
         throw new Error(`Product not found: ${item.productId || item.sku}`);
       }
 
       const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+      let available = 0;
+      if (product.productType === "kit" && product.kitItems?.length) {
+        let minAvailable = Infinity;
+        for (const ki of product.kitItems) {
+          const childQty = ki.product?.quantity ?? 0;
+          const qtyPerKit = Math.max(1, ki.quantity);
+          const avail = Math.floor(childQty / qtyPerKit);
+          minAvailable = Math.min(minAvailable, avail);
+        }
+        available = minAvailable === Infinity ? 0 : minAvailable;
+      } else {
+        available = product.quantity ?? 0;
+      }
+
+      if (quantity > available) {
+        outOfStock.push(`${product.name} (need ${quantity}, only ${available} in stock)`);
+      }
+
       const unitPrice = product.price;
       const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
 
@@ -28,6 +53,10 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
         picked: false,
       });
       total += lineTotal;
+    }
+
+    if (outOfStock.length > 0) {
+      throw new Error(`Out of stock: ${outOfStock.join("; ")}`);
     }
 
     total = Math.round(total * 100) / 100;

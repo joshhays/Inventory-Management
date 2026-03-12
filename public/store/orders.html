@@ -71,7 +71,7 @@
                   <td>#${o.id}</td>
                   <td>${(o.items || []).map((i) => `${i.quantity}× ${escape(i.productName)}`).join(", ")}</td>
                   <td class="num">$${formatPrice(o.total)}</td>
-                  <td><span class="store-status store-status-${escape(o.status)}">${escape(o.status)}</span></td>
+                  <td><span class="store-status store-status-${escape(String(o.status).replace(/\s+/g, "-"))}">${escape(o.status)}</span></td>
                 </tr>
               `
                 )

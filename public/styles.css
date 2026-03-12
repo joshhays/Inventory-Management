@@ -926,9 +926,10 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 }
 
 .badge-pending { background: #fef3c7; color: #92400e; }
-.badge-confirmed { background: #dbeafe; color: #1e40af; }
+.badge-in-process { background: #dbeafe; color: #1e40af; }
+.badge-picked { background: #e0e7ff; color: #3730a3; }
+.badge-ready { background: #d1fae5; color: #065f46; }
 .badge-shipped { background: #dcfce7; color: #166534; }
-.badge-completed { background: #e5e7eb; color: #374151; }
 .badge-cancelled { background: #fee2e2; color: #b91c1c; }
 .badge-default { background: #e5e7eb; color: #374151; }
 .badge-deduct { background: #fee2e2; color: #b91c1c; }
@@ -2094,15 +2095,24 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   color: #92400e;
 }
 
-.store-status-confirmed,
-.store-status-shipped {
+.store-status-in-process {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.store-status-picked {
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.store-status-ready {
   background: #d1fae5;
   color: #065f46;
 }
 
-.store-status-completed {
-  background: #dbeafe;
-  color: #1e40af;
+.store-status-shipped {
+  background: #dcfce7;
+  color: #166534;
 }
 
 .store-status-cancelled {

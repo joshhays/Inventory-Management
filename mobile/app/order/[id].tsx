@@ -19,6 +19,7 @@ import { WebTheme } from '@/constants/web-theme';
 import {
   fetchOrder,
   updateOrderItemPick,
+  updateOrderStatus,
   type Order,
   type OrderItem,
 } from '@/lib/api';
@@ -69,10 +70,18 @@ export default function OrderDetailScreen() {
     load();
   }, [load]);
 
-  const handleStartPicking = () => {
+  const handleStartPicking = async () => {
     if (!permission?.granted) {
       requestPermission?.();
       return;
+    }
+    if (!order) return;
+    try {
+      await updateOrderStatus(order.id, 'in process');
+      const updated = await fetchOrder(order.id);
+      setOrder(updated);
+    } catch {
+      // ignore
     }
     setPickingMode(true);
     setSelectedItem(null);
@@ -111,7 +120,17 @@ export default function OrderDetailScreen() {
     [selectedItem, order]
   );
 
-  const handleDonePicking = () => {
+  const handleDonePicking = async () => {
+    const itemsList = order?.items || [];
+    if (order && itemsList.length > 0 && itemsList.every((i) => i.picked)) {
+      try {
+        await updateOrderStatus(order.id, 'picked');
+        const updated = await fetchOrder(order.id);
+        setOrder(updated);
+      } catch {
+        // ignore
+      }
+    }
     setPickingMode(false);
     setSelectedItem(null);
   };

@@ -1,19 +1,33 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { getApiBase } from '@/contexts/DeploymentContext';
 import { WebTheme } from '@/constants/web-theme';
 import { ApiError, fetchOrders, type Order } from '@/lib/api';
+
+const STATUS_ORDER = ['pending', 'in process', 'picked', 'ready', 'shipped'];
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  'in process': 'In Process',
+  picked: 'Picked',
+  ready: 'Ready',
+  shipped: 'Shipped',
+};
+
+function getStatusLabel(status: string): string {
+  return STATUS_LABELS[status] ?? status;
+}
 
 export default function OrdersScreen() {
   const router = useRouter();
@@ -59,15 +73,35 @@ export default function OrdersScreen() {
     load();
   }, [load]);
 
+  const ordersByStatus = useMemo(() => {
+    const map: Record<string, Order[]> = {};
+    for (const s of STATUS_ORDER) {
+      map[s] = [];
+    }
+    for (const o of orders) {
+      const key = o.status?.toLowerCase() || 'pending';
+      if (map[key]) {
+        map[key].push(o);
+      } else {
+        if (!map['_other']) map['_other'] = [];
+        map['_other'].push(o);
+      }
+    }
+    return map;
+  }, [orders]);
+
   const formatPrice = (n: number) =>
     Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const formatDate = (s: string) => new Date(s).toLocaleDateString();
 
-  const renderItem = ({ item }: { item: Order }) => {
+  const renderOrderCard = (item: Order) => {
     const itemCount = item.items?.reduce((s, i) => s + i.quantity, 0) || 0;
     return (
-      <Pressable style={styles.card} onPress={() => router.push(`/order/${item.id}`)}>
+      <Pressable
+        key={item.id}
+        style={styles.card}
+        onPress={() => router.push(`/order/${item.id}`)}>
         <View style={styles.cardContent}>
           <View style={styles.cardMain}>
             <ThemedText style={styles.customer}>{item.customerName}</ThemedText>
@@ -77,18 +111,29 @@ export default function OrdersScreen() {
           </View>
           <View style={styles.right}>
             <ThemedText style={styles.total}>{formatPrice(item.total)}</ThemedText>
-            <ThemedText
-              style={[
-                styles.badge,
-                item.status === 'shipped' && styles.badgeShipped,
-                item.status === 'completed' && styles.badgeCompleted,
-                item.status === 'cancelled' && styles.badgeCancelled,
-              ]}>
-              {item.status}
+            <ThemedText style={[styles.badge, styles[`badge${item.status?.replace(/\s/g, '')}` as keyof typeof styles] || styles.badgeDefault]}>
+              {getStatusLabel(item.status)}
             </ThemedText>
           </View>
         </View>
       </Pressable>
+    );
+  };
+
+  const renderBentoSection = (statusKey: string, title: string, icon: keyof typeof MaterialIcons.glyphMap) => {
+    const list = ordersByStatus[statusKey] || [];
+    if (list.length === 0) return null;
+    return (
+      <View key={statusKey} style={styles.bentoSection}>
+        <View style={styles.bentoHeader}>
+          <MaterialIcons name={icon} size={20} color={WebTheme.accent} />
+          <ThemedText style={styles.bentoTitle}>{title}</ThemedText>
+          <ThemedText style={styles.bentoCount}>{list.length}</ThemedText>
+        </View>
+        <View style={styles.bentoCards}>
+          {list.map((o) => renderOrderCard(o))}
+        </View>
+      </View>
     );
   };
 
@@ -120,11 +165,9 @@ export default function OrdersScreen() {
         <ThemedText style={styles.headerSub}>Pull to refresh</ThemedText>
       </View>
 
-      <FlatList
-        data={orders}
-        keyExtractor={(item) => String(item.id)}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -132,16 +175,32 @@ export default function OrdersScreen() {
             tintColor={WebTheme.accent}
           />
         }
-        ListEmptyComponent={
+        showsVerticalScrollIndicator={false}>
+        {renderBentoSection('pending', 'Pending', 'schedule')}
+        {renderBentoSection('in process', 'In Process', 'inventory-2')}
+        {renderBentoSection('picked', 'Picked', 'check-circle')}
+        {renderBentoSection('ready', 'Ready', 'local-shipping')}
+        {renderBentoSection('shipped', 'Shipped', 'done-all')}
+        {(ordersByStatus['_other']?.length ?? 0) > 0 && (
+          <View style={styles.bentoSection}>
+            <View style={styles.bentoHeader}>
+              <ThemedText style={styles.bentoTitle}>Other</ThemedText>
+            </View>
+            <View style={styles.bentoCards}>
+              {(ordersByStatus['_other'] || []).map((o) => renderOrderCard(o))}
+            </View>
+          </View>
+        )}
+        {orders.length === 0 && (
           <ThemedText style={styles.empty}>No orders yet.</ThemedText>
-        }
-      />
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  container: { flex: 1, backgroundColor: '#fafafa' },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -161,17 +220,35 @@ const styles = StyleSheet.create({
   header: { padding: 20, paddingBottom: 12 },
   headerTitle: { color: WebTheme.text },
   headerSub: { color: WebTheme.textMuted, marginTop: 4 },
-  list: { padding: 16, paddingBottom: 24 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  bentoSection: {
+    marginBottom: 24,
+  },
+  bentoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  bentoTitle: { fontSize: 16, fontWeight: '600', color: WebTheme.text },
+  bentoCount: {
+    fontSize: 13,
+    color: WebTheme.textMuted,
+    marginLeft: 4,
+  },
+  bentoCards: { gap: 10 },
   card: {
     backgroundColor: '#fff',
     borderRadius: WebTheme.radius,
     padding: 16,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardMain: { flex: 1 },
@@ -188,8 +265,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: 'hidden',
   },
-  badgeShipped: { backgroundColor: WebTheme.successBg, color: WebTheme.successText },
-  badgeCompleted: { backgroundColor: '#e5e7eb', color: '#374151' },
-  badgeCancelled: { backgroundColor: WebTheme.dangerBg, color: WebTheme.danger },
+  badgeDefault: { backgroundColor: '#e5e7eb', color: '#374151' },
+  badgepending: { backgroundColor: '#fef3c7', color: '#92400e' },
+  badgeinprocess: { backgroundColor: '#dbeafe', color: '#1e40af' },
+  badgepicked: { backgroundColor: '#e0e7ff', color: '#3730a3' },
+  badgeready: { backgroundColor: '#d1fae5', color: '#065f46' },
+  badgeshipped: { backgroundColor: '#dcfce7', color: '#166534' },
   empty: { padding: 24, textAlign: 'center', color: WebTheme.textMuted },
 });

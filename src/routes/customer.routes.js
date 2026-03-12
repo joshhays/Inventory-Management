@@ -27,7 +27,10 @@ router.post("/orders", requireAuth, async (req, res, next) => {
 
     return res.status(201).json(order);
   } catch (error) {
-    if (error.message?.includes("Product not found")) {
+    if (
+      error.message?.includes("Product not found") ||
+      error.message?.includes("Out of stock")
+    ) {
       return res.status(400).json({ message: error.message });
     }
     next(error);

@@ -139,7 +139,15 @@
           }),
         });
         const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || "Order failed");
+        if (!res.ok) {
+          const msg = data.message || "Order failed";
+          if (msg.includes("Out of stock")) {
+            alert(msg + "\n\nPlease remove out-of-stock items from your cart and try again.");
+          } else {
+            throw new Error(msg);
+          }
+          return;
+        }
         setCart([]);
         window.location.href = "/store/orders.html?placed=1";
       } catch (e) {

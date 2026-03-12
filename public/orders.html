@@ -21,9 +21,10 @@
         <select id="statusFilter">
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
-          <option value="confirmed">Confirmed</option>
+          <option value="in process">In Process</option>
+          <option value="picked">Picked</option>
+          <option value="ready">Ready</option>
           <option value="shipped">Shipped</option>
-          <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
         </select>
         <select id="pageSize">
@@ -80,9 +81,10 @@
       <label>Status</label>
       <select id="orderDetailStatus" class="status-select">
         <option value="pending">Pending</option>
-        <option value="confirmed">Confirmed</option>
+        <option value="in process">In Process</option>
+        <option value="picked">Picked</option>
+        <option value="ready">Ready</option>
         <option value="shipped">Shipped</option>
-        <option value="completed">Completed</option>
         <option value="cancelled">Cancelled</option>
       </select>
     </div>
@@ -143,7 +145,7 @@
                 <td>${escapeHtml(o.customerEmail)}</td>
                 <td>${itemCount}</td>
                 <td class="num">${formatPrice(o.total)}</td>
-                <td><span class="badge badge-${o.status}">${o.status}</span></td>
+                <td><span class="badge badge-${String(o.status).replace(/\s+/g, "-")}">${o.status}</span></td>
               </tr>
             `;
           }).join("");

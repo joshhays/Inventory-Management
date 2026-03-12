@@ -91,14 +91,33 @@
       cartCount.textContent = cart.reduce((s, i) => s + (i.quantity || 1), 0);
     }
 
+    function getAvailableQty(p) {
+      if ((p.productType || "regular") === "kit" && p.kitItems?.length) {
+        let min = Infinity;
+        for (const ki of p.kitItems) {
+          const childQty = ki.product?.quantity ?? 0;
+          const qtyPerKit = Math.max(1, ki.quantity);
+          min = Math.min(min, Math.floor(childQty / qtyPerKit));
+        }
+        return min === Infinity ? 0 : min;
+      }
+      return p.quantity ?? 0;
+    }
+
     function addToCart(productId, qty) {
+      const p = products.find((x) => x.id === productId);
+      if (!p) return;
+      const available = getAvailableQty(p);
       const cart = getCart();
       const existing = cart.find((i) => i.productId === productId);
+      const requested = (existing ? existing.quantity : 0) + qty;
+      if (requested > available) {
+        alert("Out of stock: " + p.name + ". Only " + available + " available.");
+        return;
+      }
       if (existing) {
         existing.quantity = (existing.quantity || 1) + qty;
       } else {
-        const p = products.find((x) => x.id === productId);
-        if (!p) return;
         cart.push({ productId: p.id, sku: p.sku, quantity: qty, name: p.name, price: p.price });
       }
       setCart(cart);
