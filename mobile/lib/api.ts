@@ -80,11 +80,10 @@ export async function updateQuantity(
   id: number,
   data: { quantity?: number; adjust?: number; source?: string }
 ): Promise<Product> {
-  const res = await fetch(`${api().products}/${id}`, {
+  const res = await fetch(`${api().products}/${id}`, fetchOpts({
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
-  });
+  }));
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new ApiError(
@@ -95,6 +94,16 @@ export async function updateQuantity(
   return res.json();
 }
 
+export type OrderItem = {
+  id: number;
+  sku: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  picked: boolean;
+};
+
 export type Order = {
   id: number;
   customerName: string;
@@ -102,12 +111,27 @@ export type Order = {
   total: number;
   status: string;
   createdAt: string;
-  items?: Array<{ quantity: number }>;
+  items?: OrderItem[];
 };
 
 export async function fetchOrders(): Promise<{ orders: Order[] }> {
   const res = await fetch(api().orders, fetchOpts());
   if (!res.ok) throw new ApiError(await res.text().catch(() => 'Failed to fetch orders'), res.status);
+  return res.json();
+}
+
+export async function fetchOrder(id: number): Promise<Order> {
+  const res = await fetch(`${api().orders}/${id}`, fetchOpts());
+  if (!res.ok) throw new ApiError(await res.text().catch(() => 'Failed to fetch order'), res.status);
+  return res.json();
+}
+
+export async function updateOrderItemPick(orderId: number, itemId: number, picked: boolean): Promise<Order> {
+  const res = await fetch(`${api().orders}/${orderId}/items/${itemId}/pick`, fetchOpts({
+    method: 'PATCH',
+    body: JSON.stringify({ picked }),
+  }));
+  if (!res.ok) throw new ApiError(await res.text().catch(() => 'Failed to update'), res.status);
   return res.json();
 }
 

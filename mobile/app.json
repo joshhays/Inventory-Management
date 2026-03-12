@@ -26,6 +26,12 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to scan barcodes when picking orders"
+        }
+      ],
       "expo-router",
       [
         "expo-splash-screen",

@@ -78,9 +78,24 @@ const updateOrderStatus = async (req, res, next) => {
   }
 };
 
+const updateOrderItemPicked = async (req, res, next) => {
+  try {
+    const { id, itemId } = req.params;
+    const { picked } = req.body;
+    const order = await orderService.updateItemPicked(id, itemId, picked);
+    if (!order) {
+      return res.status(404).json({ message: "Order or item not found." });
+    }
+    return res.status(200).json(order);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
   getOrder,
   updateOrderStatus,
+  updateOrderItemPicked,
 };

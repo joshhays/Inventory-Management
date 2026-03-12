@@ -7,5 +7,6 @@ router.post("/", orderController.createOrder);
 router.get("/", orderController.getOrders);
 router.get("/:id", orderController.getOrder);
 router.patch("/:id/status", orderController.updateOrderStatus);
+router.patch("/:id/items/:itemId/pick", orderController.updateOrderItemPicked);
 
 module.exports = router;

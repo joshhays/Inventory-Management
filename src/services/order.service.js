@@ -25,6 +25,7 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
         quantity,
         unitPrice,
         lineTotal,
+        picked: false,
       });
       total += lineTotal;
     }
@@ -105,10 +106,23 @@ function updateStatus(id, status) {
   });
 }
 
+async function updateItemPicked(orderId, itemId, picked) {
+  const item = await prisma.orderItem.findFirst({
+    where: { id: Number(itemId), orderId: Number(orderId) },
+  });
+  if (!item) return null;
+  await prisma.orderItem.update({
+    where: { id: Number(itemId) },
+    data: { picked: !!picked },
+  });
+  return findById(orderId);
+}
+
 module.exports = {
   create,
   findMany,
   findManyByEmail,
   findById,
   updateStatus,
+  updateItemPicked,
 };

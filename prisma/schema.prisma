@@ -113,4 +113,5 @@ model OrderItem {
   quantity    Int
   unitPrice   Float
   lineTotal   Float
+  picked      Boolean @default(false)
 }

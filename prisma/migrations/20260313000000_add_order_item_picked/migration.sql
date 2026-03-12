@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "OrderItem" ADD COLUMN "picked" BOOLEAN NOT NULL DEFAULT 0;

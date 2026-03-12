@@ -63,6 +63,14 @@ function AppContent() {
           headerBackTitle: 'Back',
         }}
       />
+      <Stack.Screen
+        name="order/[id]"
+        options={{
+          title: 'Order',
+          headerShown: true,
+          headerBackTitle: 'Orders',
+        }}
+      />
       <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
     </Stack>
   );

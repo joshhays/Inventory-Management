@@ -1489,6 +1489,59 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   text-align: right;
 }
 
+/* Order pick list */
+.pick-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0.5rem;
+}
+
+.pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  margin-top: 0.5rem;
+}
+
+.pick-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.35rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pick-item:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.pick-item.picked {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.pick-item.picked .pick-status {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.pick-status {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  min-width: 5rem;
+}
+
+.pick-details {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
 /* Low stock indicator */
 .qty-low {
   color: var(--danger);

@@ -87,11 +87,9 @@
       </select>
     </div>
     <div class="detail-section">
-      <label>Items</label>
-      <table class="items-table" id="orderDetailItems">
-        <thead><tr><th>SKU</th><th>Product</th><th class="num">Qty</th><th class="num">Price</th><th class="num">Total</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <label>Pick list</label>
+      <p class="pick-hint">Click an item to mark it picked or not picked.</p>
+      <ul class="pick-list" id="orderDetailItems"></ul>
     </div>
     <div class="detail-section">
       <label>Total</label>
@@ -192,16 +190,16 @@
         document.getElementById("orderDetailAddress").textContent = order.shippingAddress || "—";
         document.getElementById("orderDetailStatus").value = order.status;
         document.getElementById("orderDetailTotal").textContent = formatPrice(order.total);
-        const tbody = document.querySelector("#orderDetailItems tbody");
-        tbody.innerHTML = (order.items || []).map(i => `
-          <tr>
-            <td>${escapeHtml(i.sku)}</td>
-            <td>${escapeHtml(i.productName)}</td>
-            <td class="num">${i.quantity}</td>
-            <td class="num">${formatPrice(i.unitPrice)}</td>
-            <td class="num">${formatPrice(i.lineTotal)}</td>
-          </tr>
+        const itemsList = document.getElementById("orderDetailItems");
+        itemsList.innerHTML = (order.items || []).map(i => `
+          <li class="pick-item ${i.picked ? 'picked' : ''}" data-item-id="${i.id}">
+            <span class="pick-status">${i.picked ? '✓ Picked' : '○ Not picked'}</span>
+            <span class="pick-details">${escapeHtml(i.productName)} · ${i.quantity} × ${formatPrice(i.unitPrice)}</span>
+          </li>
         `).join("");
+        itemsList.querySelectorAll(".pick-item").forEach(li => {
+          li.addEventListener("click", () => toggleItemPick(Number(li.dataset.itemId), li.classList.contains("picked")));
+        });
         orderDetailSidebar.classList.add("open");
         orderDetailOverlay.classList.add("open");
       } catch (e) {
@@ -217,6 +215,21 @@
 
     document.getElementById("btnCloseOrderDetail").addEventListener("click", closeOrderDetail);
     orderDetailOverlay.addEventListener("click", closeOrderDetail);
+
+    async function toggleItemPick(itemId, currentlyPicked) {
+      if (!selectedOrderId) return;
+      try {
+        const res = await fetch(`/api/orders/${selectedOrderId}/items/${itemId}/pick`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ picked: !currentlyPicked }),
+        });
+        if (!res.ok) throw new Error((await res.json()).message || res.statusText);
+        openOrderDetail(selectedOrderId);
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
 
     document.getElementById("orderDetailStatus").addEventListener("change", async (e) => {
       if (!selectedOrderId) return;

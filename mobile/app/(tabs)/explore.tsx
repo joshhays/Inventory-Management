@@ -7,6 +7,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -15,6 +16,7 @@ import { WebTheme } from '@/constants/web-theme';
 import { ApiError, fetchOrders, type Order } from '@/lib/api';
 
 export default function OrdersScreen() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -65,7 +67,7 @@ export default function OrdersScreen() {
   const renderItem = ({ item }: { item: Order }) => {
     const itemCount = item.items?.reduce((s, i) => s + i.quantity, 0) || 0;
     return (
-      <View style={styles.card}>
+      <Pressable style={styles.card} onPress={() => router.push(`/order/${item.id}`)}>
         <View style={styles.cardContent}>
           <View style={styles.cardMain}>
             <ThemedText style={styles.customer}>{item.customerName}</ThemedText>
@@ -86,7 +88,7 @@ export default function OrdersScreen() {
             </ThemedText>
           </View>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
