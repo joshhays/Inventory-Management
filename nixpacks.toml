@@ -1,0 +1,6 @@
+# Railway build config for Node.js + Prisma
+[phases.setup]
+nixPkgs = ["nodejs_20", "openssl"]
+
+[phases.build]
+cmds = ["npm run build"]
