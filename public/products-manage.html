@@ -100,7 +100,7 @@
       <div class="form-row" id="printTemplateRow" style="display: none;">
         <label>Print template config (JSON)</label>
         <textarea id="productPrintTemplateConfig" rows="6" placeholder='{"layout":"business_card","fields":[{"key":"name","label":"Full Name"},{"key":"title","label":"Title"},{"key":"company","label":"Company"},{"key":"phone","label":"Phone"},{"key":"email","label":"Email"}]}'></textarea>
-        <p class="form-hint">Define <code>layout</code> (e.g. business_card) and <code>fields</code> array with <code>key</code> and <code>label</code>. Customers will fill these and see a live proof before adding to cart.</p>
+        <p class="form-hint">Define <code>layout</code> (e.g. business_card) and <code>fields</code> array with <code>key</code> and <code>label</code>. Customers will fill these and see a live proof before adding to cart. To use an uploaded PDF as the print master, add <strong>PDF form fields</strong> whose names match these <code>key</code> values (see <code>docs/PRINT-ON-DEMAND-PDF.md</code>).</p>
       </div>
       <div class="form-row" id="kitComponentsRow" style="display: none;">
         <label>Kit Components</label>
