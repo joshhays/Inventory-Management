@@ -154,4 +154,5 @@ model OrderItem {
   lineTotal   Float
   picked      Boolean @default(false)
   printData   String? // JSON: customer-provided data for print-on-demand (e.g. name, title for business card)
+  printPdfPath String? // Relative path under /uploads where the approved POD PDF is stored
 }

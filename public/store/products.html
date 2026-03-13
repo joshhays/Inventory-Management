@@ -54,6 +54,10 @@
           <div class="pod-proof-wrap">
             <div class="pod-proof-label">Live preview</div>
             <div id="podProof" class="pod-proof"></div>
+            <div class="pod-proof-label" style="margin-top:0.75rem;">PDF preview</div>
+            <div class="pod-proof-pdf-wrap">
+              <iframe id="podPdfFrame" class="pod-proof-pdf" title="PDF proof" loading="lazy"></iframe>
+            </div>
           </div>
         </div>
         <div class="pod-modal-actions">
@@ -330,12 +334,54 @@
           })
           .join("");
       }
+      schedulePdfPreview(config, values);
     }
 
     function closePODModal() {
       document.getElementById("podModal").style.display = "none";
       document.getElementById("podModal").setAttribute("aria-hidden", "true");
+      const frame = document.getElementById("podPdfFrame");
+      if (frame) frame.src = "";
       currentPODProduct = null;
+    }
+
+    let pdfPreviewTimeout = null;
+    let currentPdfObjectUrl = null;
+
+    function schedulePdfPreview(config, values) {
+      if (!currentPODProduct) return;
+      if (pdfPreviewTimeout) {
+        clearTimeout(pdfPreviewTimeout);
+      }
+      pdfPreviewTimeout = setTimeout(() => {
+        loadPdfPreview(currentPODProduct.id, values);
+      }, 500);
+    }
+
+    async function loadPdfPreview(productId, printData) {
+      try {
+        const res = await fetch("/api/products/" + productId + "/pod-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ printData }),
+        });
+        if (!res.ok) {
+          return;
+        }
+        const blob = await res.blob();
+        if (currentPdfObjectUrl) {
+          URL.revokeObjectURL(currentPdfObjectUrl);
+        }
+        const url = URL.createObjectURL(blob);
+        currentPdfObjectUrl = url;
+        const frame = document.getElementById("podPdfFrame");
+        if (frame) {
+          frame.src = url;
+        }
+      } catch (_) {
+        // ignore preview errors for now
+      }
     }
 
     document.getElementById("podCancelBtn").addEventListener("click", closePODModal);

@@ -3,6 +3,7 @@ const csv = require("csv-parser");
 const productService = require("../services/product.service");
 const productFileService = require("../services/productFile.service");
 const labelService = require("../services/label.service");
+const podPdfService = require("../services/podPdf.service");
 const { mapRowToProduct } = require("../lib/csvParser");
 const { canAccessProduct } = require("../lib/auth-helpers");
 
@@ -270,6 +271,29 @@ const getLabel = async (req, res, next) => {
   }
 };
 
+const getPodPreview = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const product = await productService.getProductWithFiles(id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found." });
+    }
+    if (!product.isPrintOnDemand || !product.printTemplateConfig) {
+      return res.status(400).json({ message: "Product is not configured for print-on-demand." });
+    }
+
+    const cfg = JSON.parse(product.printTemplateConfig || "{}");
+    const printData = req.body?.printData || {};
+    const buffer = await podPdfService.generatePodPdfBuffer(product, cfg, printData);
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Cache-Control", "no-store");
+    return res.send(buffer);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getProducts,
   getCategories,
@@ -280,4 +304,5 @@ module.exports = {
   exportCsv,
   importCsv,
   getLabel,
+  getPodPreview,
 };
