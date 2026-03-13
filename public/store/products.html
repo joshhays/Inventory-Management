@@ -54,10 +54,6 @@
           <div class="pod-proof-wrap">
             <div class="pod-proof-label">Live preview</div>
             <div id="podProof" class="pod-proof"></div>
-            <div class="pod-proof-label" style="margin-top:0.75rem;">PDF preview</div>
-            <div class="pod-proof-pdf-wrap">
-              <iframe id="podPdfFrame" class="pod-proof-pdf" title="PDF proof" loading="lazy"></iframe>
-            </div>
           </div>
         </div>
         <div class="pod-modal-actions">
@@ -260,10 +256,29 @@
         config.fields = [
           { key: "name", label: "Full Name" },
           { key: "title", label: "Title" },
+          { key: "role", label: "Role" },
           { key: "company", label: "Company" },
-          { key: "phone", label: "Phone" },
           { key: "email", label: "Email" },
+          { key: "phone", label: "Phone" },
+          { key: "address", label: "Address" },
+          {
+            key: "website",
+            label: "Website",
+            type: "select",
+            required: true,
+            options: ["example.com", "mycompany.com", "acme.com", "other"],
+          },
         ];
+      } else {
+        // Ensure website is a required dropdown even when product has custom config
+        const websiteField = config.fields.find((f) => (f.key || "").toLowerCase() === "website");
+        if (websiteField && websiteField.type !== "select" && !Array.isArray(websiteField.options)) {
+          websiteField.type = "select";
+          websiteField.required = true;
+          websiteField.options = websiteField.options || ["example.com", "mycompany.com", "acme.com", "other"];
+        } else if (websiteField) {
+          websiteField.required = true;
+        }
       }
       return config;
     }
@@ -281,20 +296,44 @@
       const values = {};
       config.fields.forEach((f) => {
         const key = f.key || "field";
-        values[key] = "";
+        const isSelect = f.type === "select" || (Array.isArray(f.options) && f.options.length > 0);
+        values[key] = isSelect ? "" : "";
         const label = document.createElement("label");
-        label.textContent = f.label || key;
+        label.textContent = (f.label || key) + (f.required ? " *" : "");
         label.setAttribute("for", "pod-" + key);
-        const input = document.createElement("input");
-        input.type = "text";
-        input.id = "pod-" + key;
-        input.name = key;
-        input.placeholder = f.label || key;
-        input.className = "pod-input";
-        input.addEventListener("input", () => updatePODProof(config, getPODFormValues(config)));
-        input.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
-        formWrap.appendChild(label);
-        formWrap.appendChild(input);
+        if (isSelect) {
+          const select = document.createElement("select");
+          select.id = "pod-" + key;
+          select.name = key;
+          select.className = "pod-input pod-select";
+          if (f.required) select.required = true;
+          const choices = Array.isArray(f.options) ? f.options : [];
+          const opt0 = document.createElement("option");
+          opt0.value = "";
+          opt0.textContent = "Choose one...";
+          select.appendChild(opt0);
+          choices.forEach((opt) => {
+            const o = document.createElement("option");
+            o.value = typeof opt === "object" && opt != null && "value" in opt ? opt.value : opt;
+            o.textContent = typeof opt === "object" && opt != null && "label" in opt ? opt.label : opt;
+            select.appendChild(o);
+          });
+          select.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
+          formWrap.appendChild(label);
+          formWrap.appendChild(select);
+        } else {
+          const input = document.createElement("input");
+          input.type = "text";
+          input.id = "pod-" + key;
+          input.name = key;
+          input.placeholder = f.label || key;
+          input.className = "pod-input";
+          if (f.required) input.required = true;
+          input.addEventListener("input", () => updatePODProof(config, getPODFormValues(config)));
+          input.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
+          formWrap.appendChild(label);
+          formWrap.appendChild(input);
+        }
       });
       document.getElementById("podModal").style.display = "flex";
       document.getElementById("podModal").setAttribute("aria-hidden", "false");
@@ -306,9 +345,20 @@
       (config.fields || []).forEach((f) => {
         const key = f.key || "field";
         const el = document.getElementById("pod-" + key);
-        values[key] = el ? el.value.trim() : "";
+        values[key] = el ? (el.tagName === "SELECT" ? el.value : el.value.trim()) : "";
       });
       return values;
+    }
+
+    function validatePODRequired(config, values) {
+      for (const f of config.fields || []) {
+        if (!f.required) continue;
+        const v = values[f.key];
+        if (v == null || String(v).trim() === "") {
+          return { ok: false, message: "Please choose " + (f.label || f.key) + "." };
+        }
+      }
+      return { ok: true };
     }
 
     function updatePODProof(config, values) {
@@ -324,6 +374,7 @@
           "<div class=\"pod-proof-contact\">" +
           escape(values.phone || "Phone") +
           (values.email ? " · " + escape(values.email) : "") +
+          (values.website ? " · " + escape(values.website) : "") +
           "</div>" +
           "</div>";
       } else {
@@ -334,63 +385,26 @@
           })
           .join("");
       }
-      schedulePdfPreview(config, values);
     }
 
     function closePODModal() {
       document.getElementById("podModal").style.display = "none";
       document.getElementById("podModal").setAttribute("aria-hidden", "true");
-      const frame = document.getElementById("podPdfFrame");
-      if (frame) frame.src = "";
       currentPODProduct = null;
-    }
-
-    let pdfPreviewTimeout = null;
-    let currentPdfObjectUrl = null;
-
-    function schedulePdfPreview(config, values) {
-      if (!currentPODProduct) return;
-      if (pdfPreviewTimeout) {
-        clearTimeout(pdfPreviewTimeout);
-      }
-      pdfPreviewTimeout = setTimeout(() => {
-        loadPdfPreview(currentPODProduct.id, values);
-      }, 500);
-    }
-
-    async function loadPdfPreview(productId, printData) {
-      try {
-        const res = await fetch("/api/products/" + productId + "/pod-preview", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ printData }),
-        });
-        if (!res.ok) {
-          return;
-        }
-        const blob = await res.blob();
-        if (currentPdfObjectUrl) {
-          URL.revokeObjectURL(currentPdfObjectUrl);
-        }
-        const url = URL.createObjectURL(blob);
-        currentPdfObjectUrl = url;
-        const frame = document.getElementById("podPdfFrame");
-        if (frame) {
-          frame.src = url;
-        }
-      } catch (_) {
-        // ignore preview errors for now
-      }
     }
 
     document.getElementById("podCancelBtn").addEventListener("click", closePODModal);
     document.querySelector(".pod-modal-backdrop").addEventListener("click", closePODModal);
     document.getElementById("podAddToCartBtn").addEventListener("click", () => {
       if (!currentPODProduct) return;
-      const qty = Math.max(1, parseInt(document.getElementById("podQty").value, 10) || 1);
       const config = getPODConfig(currentPODProduct);
       const printData = getPODFormValues(config);
+      const validation = validatePODRequired(config, printData);
+      if (!validation.ok) {
+        alert(validation.message);
+        return;
+      }
+      const qty = Math.max(1, parseInt(document.getElementById("podQty").value, 10) || 1);
       addToCart(currentPODProduct.id, qty, printData);
       closePODModal();
     });

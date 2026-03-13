@@ -7,6 +7,7 @@ const env = require("./config/env");
 const productRoutes = require("./routes/product.routes");
 const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
+const podRoutes = require("./routes/pod.routes");
 const { notFoundHandler, errorHandler } = require("./middleware/error.middleware");
 const { requireAuth, requireAdmin, optionalAuth } = require("./middleware/auth.middleware");
 const { requirePageAuth } = require("./middleware/require-page-auth.middleware");
@@ -57,6 +58,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", requireAuth, requireAdmin, userRoutes);
 
 app.use("/api/products", optionalAuth, productRoutes);
+app.use("/api/pod", podRoutes);
 app.use("/api/product-files", requireAuth, require("./routes/productFile.routes"));
 app.use("/api/user-groups", requireAuth, require("./routes/userGroup.routes"));
 app.use("/api/logs", requireAuth, requireAdmin, require("./routes/inventoryLog.routes"));

@@ -1,9 +1,7 @@
 const prisma = require("../lib/prisma");
-const podPdfService = require("./podPdf.service");
 
-async function create({ customerName, customerEmail, customerPhone, shippingAddress, items }) {
-  // First create the order + items and store printData JSON on the items.
-  const order = await prisma.$transaction(async (tx) => {
+function create({ customerName, customerEmail, customerPhone, shippingAddress, items }) {
+  return prisma.$transaction(async (tx) => {
     let total = 0;
     const orderItems = [];
     const outOfStock = [];
@@ -87,44 +85,6 @@ async function create({ customerName, customerEmail, customerPhone, shippingAddr
     });
 
     return order;
-  });
-
-  // After the order is created, generate POD PDFs for any items with printData.
-  try {
-    const itemsWithPrint = order.items.filter((it) => it.printData);
-    if (itemsWithPrint.length) {
-      for (const it of itemsWithPrint) {
-        const product = await prisma.product.findUnique({
-          where: { id: it.productId },
-        });
-        if (!product || !product.printTemplateConfig) continue;
-        let cfg = null;
-        try {
-          cfg = JSON.parse(product.printTemplateConfig);
-        } catch (_) {
-          cfg = null;
-        }
-        let printDataObj = {};
-        try {
-          printDataObj = JSON.parse(it.printData || "{}");
-        } catch (_) {
-          printDataObj = {};
-        }
-        const relPath = await podPdfService.writePodPdfToDisk(product, cfg, printDataObj, order.id, it.id);
-        await prisma.orderItem.update({
-          where: { id: it.id },
-          data: { printPdfPath: relPath },
-        });
-      }
-    }
-  } catch (e) {
-    // If PDF generation fails, we still want the order to exist.
-    console.error("Failed to generate POD PDF(s) for order", order.id, e.message);
-  }
-
-  return prisma.order.findUnique({
-    where: { id: order.id },
-    include: { items: true },
   });
 }
 

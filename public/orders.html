@@ -142,11 +142,10 @@
           ordersTable.style.display = "table";
           ordersBody.innerHTML = orders.map(o => {
             const itemCount = o.items?.reduce((s, i) => s + i.quantity, 0) || 0;
-            const hasPod = (o.items || []).some(i => i.printPdfPath);
             return `
               <tr data-id="${o.id}">
                 <td>${new Date(o.createdAt).toLocaleString()}</td>
-                <td>#${o.id}${hasPod ? ' <span class="badge badge-pod">POD</span>' : ''}</td>
+                <td>#${o.id}</td>
                 <td>${escapeHtml(o.customerName)}</td>
                 <td>${escapeHtml(o.customerEmail)}</td>
                 <td>${itemCount}</td>
@@ -212,17 +211,12 @@
           pickWrap.style.display = "none";
         }
         const itemsList = document.getElementById("orderDetailItems");
-        itemsList.innerHTML = (order.items || []).map(i => {
-          const hasPod = !!i.printPdfPath;
-          const podLink = hasPod ? `<a href="/uploads/${i.printPdfPath}" target="_blank" rel="noopener" class="pod-download-link">Download POD PDF</a>` : "";
-          return `
+        itemsList.innerHTML = (order.items || []).map(i => `
           <li class="pick-item ${i.picked ? 'picked' : ''}" data-item-id="${i.id}">
             <span class="pick-status">${i.picked ? '✓ Picked' : '○ Not picked'}</span>
-            <span class="pick-details">${escapeHtml(i.productName)} · ${i.quantity} × ${formatPrice(i.unitPrice)}${hasPod ? ' · <span class="badge badge-pod-inline">POD</span>' : ''}</span>
-            ${podLink}
+            <span class="pick-details">${escapeHtml(i.productName)} · ${i.quantity} × ${formatPrice(i.unitPrice)}</span>
           </li>
-        `;
-        }).join("");
+        `).join("");
         itemsList.querySelectorAll(".pick-item").forEach(li => {
           li.addEventListener("click", () => toggleItemPick(Number(li.dataset.itemId), li.classList.contains("picked")));
         });

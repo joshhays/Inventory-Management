@@ -10,7 +10,6 @@ router.get("/", productController.getProducts);
 router.get("/categories", productController.getCategories);
 router.get("/export/csv", productController.exportCsv);
 router.get("/:id", productController.getProduct);
-router.post("/:id/pod-preview", express.json(), productController.getPodPreview);
 router.post("/import", (req, res, next) => {
   uploadCsv(req, res, (err) => {
     if (err) return res.status(400).json({ message: err.message || "Upload failed." });

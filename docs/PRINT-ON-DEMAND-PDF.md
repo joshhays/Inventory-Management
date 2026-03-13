@@ -26,10 +26,13 @@ Example template config:
     { "key": "title", "label": "Title" },
     { "key": "company", "label": "Company" },
     { "key": "phone", "label": "Phone" },
-    { "key": "email", "label": "Email" }
+    { "key": "email", "label": "Email" },
+    { "key": "website", "label": "Website", "type": "select", "required": true, "options": ["example.com", "mycompany.com"] }
   ]
 }
 ```
+
+- **Select (dropdown):** Use `"type": "select"` and `"options": ["value1", "value2"]`. Optional `"required": true` blocks Add to cart until a choice is made. In the store, the first option is "Choose one..."; the customer must pick a value.
 
 So in the PDF you must have form fields named exactly:
 

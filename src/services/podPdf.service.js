@@ -1,120 +1,200 @@
-const PDFDocument = require("pdfkit");
-const fs = require("fs");
 const path = require("path");
+const fs = require("fs");
+const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
+const fontkit = require("@pdf-lib/fontkit");
 
-// Generate a POD proof/production PDF buffer from template + data.
-// For now we support "business_card" and "generic_list".
-function generatePodPdfBuffer(product, templateConfig, printData = {}) {
-  const cfg = templateConfig || {};
-  const layout = (cfg.layout || "business_card").toLowerCase();
-  const fields = Array.isArray(cfg.fields) ? cfg.fields : [];
+const FONTS_DIR = path.resolve(__dirname, "../../fonts");
 
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    const doc = new PDFDocument({
-      size: layout === "business_card" ? [3.5 * 72, 2 * 72] : "LETTER",
-      margin: layout === "business_card" ? 24 : 50,
-    });
+/**
+ * Load and embed a custom font from the fonts folder, or fall back to Helvetica.
+ * @param {PDFDocument} pdfDoc
+ * @param {string} [fontFile] - Filename in fonts folder (e.g. "ITCGaramondStd-BkCond.otf"). If omitted, uses Helvetica.
+ * @returns {Promise<PDFFont>}
+ */
+async function getFont(pdfDoc, fontFile) {
+  if (!fontFile || typeof fontFile !== "string") {
+    return pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
+  const fontPath = path.join(FONTS_DIR, fontFile.trim());
+  if (!path.resolve(fontPath).startsWith(FONTS_DIR) || !fs.existsSync(fontPath)) {
+    return pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
+  try {
+    const bytes = fs.readFileSync(fontPath);
+    return pdfDoc.embedFont(bytes);
+  } catch {
+    return pdfDoc.embedFont(StandardFonts.Helvetica);
+  }
+}
 
-    doc.on("data", (c) => chunks.push(c));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
+/**
+ * Example templateConfig:
+ * {
+ *   fields: [
+ *     {
+ *       key: "name",
+ *       page: 0,
+ *       xInches: 0.5,
+ *       yInches: 1.0,
+ *       fontSize: 14,
+ *       color: "#111827",
+ *       maxWidthInches: 2    // copyfitting width for name
+ *     },
+ *     { key: "title",  page: 0, xInches: 0.5, yInches: 1.3, fontSize: 10, color: "#4b5563" },
+ *     {
+ *       key: "company",
+ *       page: 0,
+ *       xInches: 0.5,
+ *       yInches: 1.6,
+ *       fontSize: 10,
+ *       color: "#4b5563"
+ *       // vertical stacking is handled in code: if 'title' is empty, this line is moved up by 12pt
+ *     },
+ *     { key: "email",  page: 0, xInches: 0.5, yInches: 1.9, fontSize: 9,  color: "#6b7280" }
+ *   ]
+ * }
+ */
 
-    if (layout === "business_card") {
-      renderBusinessCard(doc, product, fields, printData);
-    } else {
-      renderGenericList(doc, product, fields, printData);
+/**
+ * Generate a personalized business card PDF from a base PDF.
+ *
+ * @param {Uint8Array|Buffer} basePdfBytes - The base (template) PDF contents.
+ * @param {Object} userData - e.g. { name: "Jane Doe", title: "Manager", email: "jane@acme.com" }
+ * @param {Object} templateConfig - JSON describing where to place each field.
+ * @returns {Promise<Buffer>} - The modified PDF bytes as a Node Buffer.
+ */
+async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
+  const pdfDoc = await PDFDocument.load(basePdfBytes);
+  pdfDoc.registerFontkit(fontkit);
+
+  // Cache fonts by filename so we can use multiple fonts per document (e.g. Knockout 49 vs 30).
+  const fontCache = new Map();
+  const defaultFontFile = templateConfig?.fontFile;
+  async function fontForField(fieldFontFile) {
+    const file = fieldFontFile || defaultFontFile;
+    if (!fontCache.has(file)) {
+      fontCache.set(file, await getFont(pdfDoc, file));
+    }
+    return fontCache.get(file);
+  }
+
+  const fields = Array.isArray(templateConfig?.fields) ? templateConfig.fields : [];
+
+  const drawCommands = [];
+
+  for (const field of fields) {
+    const key = field.key;
+    if (!key) continue;
+
+    const rawValue = userData[key];
+    // Suppression: if the data is empty, draw nothing (including any implied label/prefix)
+    if (rawValue == null || String(rawValue).trim() === "") continue;
+    const text = String(rawValue).trim();
+
+    const pageIndex = typeof field.page === "number" ? field.page : 0;
+    const page = pdfDoc.getPage(pageIndex);
+    if (!page) continue;
+
+    const font = await fontForField(field.fontFile);
+
+    const { height } = page.getSize();
+
+    // Coordinates are inches from top-left; convert to PDF points.
+    const xIn = Number(field.xInches || 0);
+    const yIn = Number(field.yInches || 0);
+    const x = xIn * 72;
+    const yFromTop = yIn * 72;
+    let y = height - yFromTop; // pdf-lib origin is bottom-left
+
+    // Vertical stacking: if title is empty, move company line up by 12pt (no gap)
+    if (key === "company") {
+      const titleValue = userData.title;
+      if (titleValue == null || String(titleValue).trim() === "") {
+        y += 12; // 12 points closer to the top
+      }
     }
 
-    doc.end();
-  });
-}
+    let fontSize = Number(field.fontSize || 10);
 
-function renderBusinessCard(doc, product, fields, printData) {
-  const width = doc.page.width;
-  const height = doc.page.height;
+    let color = rgb(0, 0, 0);
+    if (typeof field.color === "string") {
+      const hex = field.color.replace("#", "");
+      if (hex.length === 6) {
+        const r = parseInt(hex.slice(0, 2), 16) / 255;
+        const g = parseInt(hex.slice(2, 4), 16) / 255;
+        const b = parseInt(hex.slice(4, 6), 16) / 255;
+        if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
+          color = rgb(r, g, b);
+        }
+      }
+    }
 
-  // simple background band
-  doc.rect(0, 0, width, height).fill("#ffffff");
-  doc.rect(0, 0, width, 18).fill("#111827");
-  doc.fill("#ffffff").fontSize(9).font("Helvetica-Bold").text(product.name || "Business Card", 10, 4, {
-    width: width - 20,
-    align: "left",
-  });
+    // Copyfitting: if maxWidthInches is provided, shrink font size so text fits (single-line fields)
+    const maxWidthInches = typeof field.maxWidthInches === "number" ? field.maxWidthInches : null;
+    let wrapWidthPts = null;
+    if (key === "disclosure" && maxWidthInches && maxWidthInches > 0) {
+      // For disclosure, we use maxWidth as a wrapping width (multi-line), not to shrink font.
+      wrapWidthPts = maxWidthInches * 72;
+    } else if (maxWidthInches && maxWidthInches > 0) {
+      const maxWidthPts = maxWidthInches * 72;
+      const widthAtSize = font.widthOfTextAtSize(text, fontSize);
+      if (widthAtSize > maxWidthPts) {
+        const scale = maxWidthPts / widthAtSize;
+        const minFontSize = field.minFontSize ? Number(field.minFontSize) || 6 : 6;
+        fontSize = Math.max(minFontSize, Math.floor(fontSize * scale));
+      }
+    }
 
-  const valueFor = (key, fallback) => {
-    const v = printData[key];
-    return typeof v === "string" && v.trim() ? v.trim() : fallback;
-  };
-
-  const name = valueFor("name", "Your Name");
-  const title = valueFor("title", "");
-  const company = valueFor("company", "");
-  const phone = valueFor("phone", "");
-  const email = valueFor("email", "");
-
-  let y = 32;
-  doc.fill("#111827").fontSize(14).font("Helvetica-Bold").text(name, 20, y, { width: width - 40 });
-  y += 18;
-
-  if (title) {
-    doc.fontSize(10).font("Helvetica").fill("#4b5563").text(title, 20, y, { width: width - 40 });
-    y += 14;
-  }
-  if (company) {
-    doc.fontSize(9).font("Helvetica").fill("#6b7280").text(company, 20, y, { width: width - 40 });
-    y += 13;
-  }
-
-  const contactParts = [];
-  if (phone) contactParts.push(phone);
-  if (email) contactParts.push(email);
-  if (contactParts.length) {
-    doc.fontSize(8).font("Helvetica").fill("#6b7280").text(contactParts.join("  ·  "), 20, height - 26, {
-      width: width - 40,
-      align: "left",
+    drawCommands.push({
+      key,
+      pageIndex,
+      text,
+      x,
+      y,
+      fontSize,
+      color,
+      wrapWidthPts,
+      font,
     });
   }
-}
 
-function renderGenericList(doc, product, fields, printData) {
-  const title = product.name || "Print item";
-  doc.fontSize(18).font("Helvetica-Bold").fill("#111827").text(title, { align: "left" });
-  doc.moveDown(0.5);
-  if (product.description) {
-    doc.fontSize(11).font("Helvetica").fill("#4b5563").text(product.description, { align: "left" });
-    doc.moveDown(0.75);
+  // Normalize font size across contact block (email, phone, address, website)
+  const groupKeys = new Set(["email", "phone", "address", "website"]);
+  let groupMinSize = null;
+  for (const cmd of drawCommands) {
+    if (groupKeys.has(cmd.key)) {
+      if (groupMinSize === null || cmd.fontSize < groupMinSize) {
+        groupMinSize = cmd.fontSize;
+      }
+    }
   }
 
-  const valueFor = (key) => {
-    const v = printData[key];
-    return typeof v === "string" ? v.trim() : v == null ? "" : String(v);
-  };
+  for (const cmd of drawCommands) {
+    const page = pdfDoc.getPage(cmd.pageIndex);
+    if (!page) continue;
+    let size = cmd.fontSize;
+    if (groupMinSize && groupKeys.has(cmd.key)) {
+      size = groupMinSize;
+    }
+    const drawOpts = {
+      x: cmd.x,
+      y: cmd.y,
+      size,
+      font: cmd.font,
+      color: cmd.color,
+    };
+    if (cmd.wrapWidthPts) {
+      drawOpts.maxWidth = cmd.wrapWidthPts;
+      drawOpts.lineHeight = size * 1.2;
+    }
+    page.drawText(cmd.text, drawOpts);
+  }
 
-  doc.moveDown(0.5);
-  fields.forEach((f) => {
-    const key = f.key;
-    if (!key) return;
-    const label = f.label || key;
-    const val = valueFor(key) || "—";
-    doc.fontSize(10).font("Helvetica-Bold").fill("#111827").text(label + ":", { continued: true });
-    doc.fontSize(10).font("Helvetica").fill("#111827").text(" " + val);
-  });
-}
-
-async function writePodPdfToDisk(product, templateConfig, printData, orderId, orderItemId) {
-  const buffer = await generatePodPdfBuffer(product, templateConfig, printData);
-  const baseDir = path.resolve(__dirname, "../../uploads/pod-orders");
-  await fs.promises.mkdir(baseDir, { recursive: true });
-  const filename = `order-${orderId}-item-${orderItemId}.pdf`;
-  const abs = path.join(baseDir, filename);
-  await fs.promises.writeFile(abs, buffer);
-  // We store path relative to /uploads
-  return path.posix.join("pod-orders", filename);
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
 
 module.exports = {
-  generatePodPdfBuffer,
-  writePodPdfToDisk,
+  generateBusinessCardPdf,
 };
 
