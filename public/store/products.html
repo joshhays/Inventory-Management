@@ -40,6 +40,28 @@
         </table>
       </div>
     </main>
+    <div id="podModal" class="pod-modal" style="display:none" aria-hidden="true">
+      <div class="pod-modal-backdrop"></div>
+      <div class="pod-modal-box">
+        <h2 class="pod-modal-title" id="podModalTitle">Customize your print</h2>
+        <p class="pod-modal-subtitle">Enter your information. The preview updates as you type.</p>
+        <div class="pod-qty-row">
+          <label for="podQty">Quantity</label>
+          <input type="number" id="podQty" min="1" value="1" class="pod-qty-input">
+        </div>
+        <div class="pod-modal-body">
+          <div class="pod-form-wrap" id="podFormWrap"></div>
+          <div class="pod-proof-wrap">
+            <div class="pod-proof-label">Live preview</div>
+            <div id="podProof" class="pod-proof"></div>
+          </div>
+        </div>
+        <div class="pod-modal-actions">
+          <button type="button" class="btn-apply" id="podAddToCartBtn">Add to cart</button>
+          <button type="button" class="btn-secondary pod-modal-cancel" id="podCancelBtn">Cancel</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script>
     let products = [];
@@ -106,12 +128,12 @@
       return p.quantity ?? 0;
     }
 
-    function addToCart(productId, qty) {
+    function addToCart(productId, qty, printData) {
       const p = products.find((x) => x.id === productId);
       if (!p) return;
       const available = getAvailableQty(p);
       const cart = getCart();
-      const existing = cart.find((i) => i.productId === productId);
+      const existing = cart.find((i) => i.productId === productId && JSON.stringify(i.printData || {}) === JSON.stringify(printData || {}));
       const requested = (existing ? existing.quantity : 0) + qty;
       if (requested > available) {
         alert("Out of stock: " + p.name + ". Only " + available + " available.");
@@ -126,14 +148,16 @@
         existing.quantity = (existing.quantity || 1) + qty;
         if (!existing.imageUrl && imgUrl) existing.imageUrl = imgUrl;
       } else {
-        cart.push({
+        const item = {
           productId: p.id,
           sku: p.sku,
           quantity: qty,
           name: p.name,
           price: p.price,
           imageUrl: imgUrl || null,
-        });
+        };
+        if (printData && typeof printData === "object" && Object.keys(printData).length) item.printData = printData;
+        cart.push(item);
       }
       setCart(cart);
     }
@@ -174,6 +198,11 @@
                 '" alt="" class="store-list-thumb-img store-list-thumb-contain"></a>'
               : '<img src="' + imgUrl + '" alt="" class="store-list-thumb-img store-list-thumb-contain" loading="lazy">'
             : '<div class="store-list-thumb-placeholder">—</div>';
+          const isPOD = !!(p.isPrintOnDemand && p.printTemplateConfig);
+          const actionsCell = isPOD
+            ? '<button type="button" class="btn-apply store-pod-customize-btn" data-id="' + p.id + '">Customize & Add</button>'
+            : '<input type="number" min="1" value="1" class="store-qty-input store-list-qty" data-id="' + p.id + '">' +
+              '<button type="button" class="btn-apply store-add-btn" data-id="' + p.id + '">Add</button>';
           return (
             "<tr>" +
             '<td class="store-list-thumb-cell">' +
@@ -192,12 +221,7 @@
             formatPrice(p.price) +
             "</td>" +
             '<td class="store-list-actions">' +
-            '<input type="number" min="1" value="1" class="store-qty-input store-list-qty" data-id="' +
-            p.id +
-            '">' +
-            '<button type="button" class="btn-apply store-add-btn" data-id="' +
-            p.id +
-            '">Add</button>' +
+            actionsCell +
             "</td>" +
             "</tr>"
           );
@@ -212,7 +236,121 @@
           addToCart(id, qty);
         });
       });
+      body.querySelectorAll(".store-pod-customize-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = Number(btn.dataset.id);
+          const p = products.find((x) => x.id === id);
+          if (p) openPODModal(p);
+        });
+      });
     }
+
+    function getPODConfig(product) {
+      let config = { layout: "business_card", fields: [] };
+      try {
+        const raw = product.printTemplateConfig;
+        if (raw && typeof raw === "string") config = JSON.parse(raw);
+        else if (raw && typeof raw === "object") config = raw;
+      } catch (_) {}
+      if (!config.fields || !Array.isArray(config.fields)) {
+        config.fields = [
+          { key: "name", label: "Full Name" },
+          { key: "title", label: "Title" },
+          { key: "company", label: "Company" },
+          { key: "phone", label: "Phone" },
+          { key: "email", label: "Email" },
+        ];
+      }
+      return config;
+    }
+
+    let currentPODProduct = null;
+    let currentPODQty = 1;
+
+    function openPODModal(product) {
+      currentPODProduct = product;
+      currentPODQty = 1;
+      const config = getPODConfig(product);
+      document.getElementById("podModalTitle").textContent = "Customize: " + (product.name || "Print");
+      const formWrap = document.getElementById("podFormWrap");
+      formWrap.innerHTML = "";
+      const values = {};
+      config.fields.forEach((f) => {
+        const key = f.key || "field";
+        values[key] = "";
+        const label = document.createElement("label");
+        label.textContent = f.label || key;
+        label.setAttribute("for", "pod-" + key);
+        const input = document.createElement("input");
+        input.type = "text";
+        input.id = "pod-" + key;
+        input.name = key;
+        input.placeholder = f.label || key;
+        input.className = "pod-input";
+        input.addEventListener("input", () => updatePODProof(config, getPODFormValues(config)));
+        input.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
+        formWrap.appendChild(label);
+        formWrap.appendChild(input);
+      });
+      document.getElementById("podModal").style.display = "flex";
+      document.getElementById("podModal").setAttribute("aria-hidden", "false");
+      updatePODProof(config, values);
+    }
+
+    function getPODFormValues(config) {
+      const values = {};
+      (config.fields || []).forEach((f) => {
+        const key = f.key || "field";
+        const el = document.getElementById("pod-" + key);
+        values[key] = el ? el.value.trim() : "";
+      });
+      return values;
+    }
+
+    function updatePODProof(config, values) {
+      const proof = document.getElementById("podProof");
+      const layout = (config.layout || "business_card").toLowerCase();
+      proof.className = "pod-proof pod-proof-" + layout;
+      if (layout === "business_card") {
+        proof.innerHTML =
+          "<div class=\"pod-proof-card\">" +
+          "<div class=\"pod-proof-name\">" + escape(values.name || "Your Name") + "</div>" +
+          "<div class=\"pod-proof-title\">" + escape(values.title || "Title") + "</div>" +
+          "<div class=\"pod-proof-company\">" + escape(values.company || "Company") + "</div>" +
+          "<div class=\"pod-proof-contact\">" +
+          escape(values.phone || "Phone") +
+          (values.email ? " · " + escape(values.email) : "") +
+          "</div>" +
+          "</div>";
+      } else {
+        proof.innerHTML = (config.fields || [])
+          .map((f) => {
+            const v = values[f.key] || "";
+            return "<div class=\"pod-proof-line\"><strong>" + escape(f.label) + "</strong> " + escape(v) + "</div>";
+          })
+          .join("");
+      }
+    }
+
+    function closePODModal() {
+      document.getElementById("podModal").style.display = "none";
+      document.getElementById("podModal").setAttribute("aria-hidden", "true");
+      currentPODProduct = null;
+    }
+
+    document.getElementById("podCancelBtn").addEventListener("click", closePODModal);
+    document.querySelector(".pod-modal-backdrop").addEventListener("click", closePODModal);
+    document.getElementById("podAddToCartBtn").addEventListener("click", () => {
+      if (!currentPODProduct) return;
+      const qty = Math.max(1, parseInt(document.getElementById("podQty").value, 10) || 1);
+      const config = getPODConfig(currentPODProduct);
+      const printData = getPODFormValues(config);
+      addToCart(currentPODProduct.id, qty, printData);
+      closePODModal();
+    });
+    document.getElementById("podModal").addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closePODModal();
+    });
 
     async function load() {
       try {

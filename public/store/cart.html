@@ -150,6 +150,7 @@
               </div>
               <div class="store-cart-card-body">
                 <h3 class="store-cart-card-title">${escape(i.name)}</h3>
+                ${i.printData && Object.keys(i.printData).length ? "<p class=\"store-cart-card-print\">Custom print: " + escape(Object.values(i.printData).filter(Boolean).join(", ") || "—") + "</p>" : ""}
                 <p class="store-cart-card-sku">SKU: ${escape(i.sku)}</p>
                 <p class="store-cart-card-price">$${formatPrice(i.price)}</p>
                 <div class="store-cart-card-actions">
@@ -263,7 +264,11 @@
               zip,
             },
             customerPhone: document.getElementById("customerPhone").value.trim() || undefined,
-            items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity || 1 })),
+            items: cart.map((i) => ({
+              productId: i.productId,
+              quantity: i.quantity || 1,
+              ...(i.printData && Object.keys(i.printData).length ? { printData: i.printData } : {}),
+            })),
           }),
         });
         const data = await res.json().catch(() => ({}));

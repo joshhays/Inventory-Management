@@ -43,6 +43,13 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
       const unitPrice = product.price;
       const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
 
+      const printDataStr =
+        item.printData != null && typeof item.printData === "object"
+          ? JSON.stringify(item.printData)
+          : typeof item.printData === "string" && item.printData.trim()
+            ? item.printData.trim()
+            : null;
+
       orderItems.push({
         productId: product.id,
         sku: product.sku,
@@ -51,6 +58,7 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
         unitPrice,
         lineTotal,
         picked: false,
+        printData: printDataStr,
       });
       total += lineTotal;
     }

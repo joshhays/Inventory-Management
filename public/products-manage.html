@@ -92,6 +92,16 @@
           <option value="">All groups (global)</option>
         </select>
       </div>
+      <div class="form-row">
+        <label class="form-check-label">
+          <input type="checkbox" id="productPrintOnDemand"> Print on demand (customer customizes; e.g. business cards)
+        </label>
+      </div>
+      <div class="form-row" id="printTemplateRow" style="display: none;">
+        <label>Print template config (JSON)</label>
+        <textarea id="productPrintTemplateConfig" rows="6" placeholder='{"layout":"business_card","fields":[{"key":"name","label":"Full Name"},{"key":"title","label":"Title"},{"key":"company","label":"Company"},{"key":"phone","label":"Phone"},{"key":"email","label":"Email"}]}'></textarea>
+        <p class="form-hint">Define <code>layout</code> (e.g. business_card) and <code>fields</code> array with <code>key</code> and <code>label</code>. Customers will fill these and see a live proof before adding to cart.</p>
+      </div>
       <div class="form-row" id="kitComponentsRow" style="display: none;">
         <label>Kit Components</label>
         <p class="kit-modal-hint" style="margin: 0 0 0.5rem;">Add products that make up this kit. Select a product and quantity per kit, then click Add.</p>
@@ -339,7 +349,10 @@
       document.getElementById("productCategory").value = p.category || "";
       document.getElementById("productGroup").value = p.groupId ?? "";
       document.getElementById("productType").value = p.productType || "regular";
+      document.getElementById("productPrintOnDemand").checked = !!p.isPrintOnDemand;
+      document.getElementById("productPrintTemplateConfig").value = (p.printTemplateConfig || "").trim() || "";
       toggleQuantityRow();
+      togglePrintTemplateRow();
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
     }
@@ -352,10 +365,19 @@
       document.getElementById("productCategory").value = "";
       document.getElementById("productGroup").value = "";
       document.getElementById("productType").value = "regular";
+      document.getElementById("productPrintOnDemand").checked = false;
+      document.getElementById("productPrintTemplateConfig").value = "";
       toggleQuantityRow();
+      togglePrintTemplateRow();
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
     }
+
+    function togglePrintTemplateRow() {
+      const row = document.getElementById("printTemplateRow");
+      row.style.display = document.getElementById("productPrintOnDemand").checked ? "block" : "none";
+    }
+    document.getElementById("productPrintOnDemand").addEventListener("change", togglePrintTemplateRow);
 
     function toggleQuantityRow() {
       const isKit = document.getElementById("productType").value === "kit";
@@ -391,6 +413,8 @@
         category: document.getElementById("productCategory").value.trim() || null,
         groupId: document.getElementById("productGroup").value || null,
         productType: isKit ? "kit" : "regular",
+        isPrintOnDemand: document.getElementById("productPrintOnDemand").checked,
+        printTemplateConfig: document.getElementById("productPrintTemplateConfig").value.trim() || null,
       };
       if (!payload.name || !payload.sku || payload.price === undefined) {
         alert("Name, SKU, and price are required.");

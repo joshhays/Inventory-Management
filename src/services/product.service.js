@@ -66,6 +66,11 @@ const createProduct = (productData) => {
       description: productData.description,
       category: productData.category ? String(productData.category).trim() : null,
       productType: isKit ? "kit" : "regular",
+      isPrintOnDemand: !!productData.isPrintOnDemand,
+      printTemplateConfig:
+        productData.printTemplateConfig != null && String(productData.printTemplateConfig).trim()
+          ? String(productData.printTemplateConfig).trim()
+          : null,
       ...(productData.groupId != null && productData.groupId !== "" && {
         groupId: Number(productData.groupId) || null,
       }),
@@ -101,6 +106,13 @@ const updateProduct = async (id, productData) => {
       ...(productData.productType !== undefined && { productType: productData.productType }),
       ...(productData.groupId !== undefined && {
         groupId: productData.groupId == null || productData.groupId === "" ? null : Number(productData.groupId),
+      }),
+      ...(productData.isPrintOnDemand !== undefined && { isPrintOnDemand: !!productData.isPrintOnDemand }),
+      ...(productData.printTemplateConfig !== undefined && {
+        printTemplateConfig:
+          productData.printTemplateConfig == null || String(productData.printTemplateConfig).trim() === ""
+            ? null
+            : String(productData.printTemplateConfig).trim(),
       }),
     },
   });
