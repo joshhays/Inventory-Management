@@ -98,9 +98,30 @@
         </label>
       </div>
       <div class="form-row" id="printTemplateRow" style="display: none;">
-        <label>Print template config (JSON)</label>
-        <textarea id="productPrintTemplateConfig" rows="6" placeholder='{"layout":"business_card","fields":[{"key":"name","label":"Full Name"},{"key":"title","label":"Title"},{"key":"company","label":"Company"},{"key":"phone","label":"Phone"},{"key":"email","label":"Email"}]}'></textarea>
-        <p class="form-hint">Define <code>layout</code> (e.g. business_card) and <code>fields</code> array with <code>key</code> and <code>label</code>. Customers will fill these and see a live proof before adding to cart. To use an uploaded PDF as the print master, add <strong>PDF form fields</strong> whose names match these <code>key</code> values (see <code>docs/PRINT-ON-DEMAND-PDF.md</code>).</p>
+        <label>Print-on-demand template</label>
+        <div class="pod-admin-layout-row">
+          <div>
+            <label for="podLayoutSelect">Layout</label>
+            <select id="podLayoutSelect">
+              <option value="business_card">Business card</option>
+              <option value="generic_list">Generic list</option>
+            </select>
+          </div>
+        </div>
+        <div class="pod-admin-fields">
+          <div class="pod-admin-fields-header">
+            <span>Field label (what you see)</span>
+            <span>Field key (PDF form field name)</span>
+          </div>
+          <div id="podFieldsBody"></div>
+          <button type="button" class="btn-apply pod-admin-add-field" id="podAddFieldBtn">Add field</button>
+        </div>
+        <textarea id="productPrintTemplateConfig" style="display:none"></textarea>
+        <p class="form-hint">
+          Define the fields customers will fill in. Each <strong>Field key</strong> should match a PDF form field name
+          in your print-ready PDF. The system builds the JSON for you and uses it for the live proof and PDF merge.
+          See <code>docs/PRINT-ON-DEMAND-PDF.md</code> for details.
+        </p>
       </div>
       <div class="form-row" id="kitComponentsRow" style="display: none;">
         <label>Kit Components</label>
@@ -336,6 +357,110 @@
     const formSidebarOverlay = document.getElementById("formSidebarOverlay");
     const productForm = document.getElementById("productForm");
 
+    function getDefaultPODConfig() {
+      return {
+        layout: "business_card",
+        fields: [
+          { key: "name", label: "Full Name" },
+          { key: "title", label: "Title" },
+          { key: "company", label: "Company" },
+          { key: "phone", label: "Phone" },
+          { key: "email", label: "Email" },
+        ],
+      };
+    }
+
+    function renderPODFields(config) {
+      const body = document.getElementById("podFieldsBody");
+      if (!body) return;
+      body.innerHTML = "";
+      (config.fields || []).forEach((field, index) => {
+        const row = document.createElement("div");
+        row.className = "pod-admin-field-row";
+        row.innerHTML =
+          '<input type="text" class="pod-field-label" placeholder="Label" value="' + (field.label || "") + '">' +
+          '<input type="text" class="pod-field-key" placeholder="key (e.g. name)" value="' + (field.key || "") + '">' +
+          '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>';
+        row.querySelector(".pod-field-remove").addEventListener("click", () => {
+          row.remove();
+        });
+        body.appendChild(row);
+      });
+    }
+
+    function loadPODConfigFromJson(jsonStr) {
+      let config = getDefaultPODConfig();
+      if (jsonStr && jsonStr.trim()) {
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && typeof parsed === "object") {
+            config = {
+              layout: parsed.layout || config.layout,
+              fields: Array.isArray(parsed.fields) && parsed.fields.length ? parsed.fields : config.fields,
+            };
+          }
+        } catch (_) {}
+      }
+      const layoutSelect = document.getElementById("podLayoutSelect");
+      if (layoutSelect) {
+        layoutSelect.value = config.layout || "business_card";
+      }
+      renderPODFields(config);
+    }
+
+    function collectPODConfig() {
+      const layoutSelect = document.getElementById("podLayoutSelect");
+      const layout = layoutSelect ? layoutSelect.value || "business_card" : "business_card";
+      const body = document.getElementById("podFieldsBody");
+      const fields = [];
+      if (body) {
+        body.querySelectorAll(".pod-admin-field-row").forEach((row) => {
+          const labelInput = row.querySelector(".pod-field-label");
+          const keyInput = row.querySelector(".pod-field-key");
+          const label = labelInput ? labelInput.value.trim() : "";
+          const key = keyInput ? keyInput.value.trim() : "";
+          if (key) {
+            fields.push({ key, label: label || key });
+          }
+        });
+      }
+      return { layout, fields };
+    }
+
+    function syncPODConfigToHidden() {
+      const enabled = document.getElementById("productPrintOnDemand").checked;
+      const hidden = document.getElementById("productPrintTemplateConfig");
+      if (!hidden) return;
+      if (!enabled) {
+        hidden.value = "";
+        return;
+      }
+      const cfg = collectPODConfig();
+      if (!cfg.fields.length) {
+        hidden.value = "";
+        return;
+      }
+      hidden.value = JSON.stringify(cfg);
+    }
+
+    const podAddFieldBtn = document.getElementById("podAddFieldBtn");
+    if (podAddFieldBtn) {
+      podAddFieldBtn.addEventListener("click", () => {
+        const body = document.getElementById("podFieldsBody");
+        if (!body) return;
+        const row = document.createElement("div");
+        row.className = "pod-admin-field-row";
+        row.innerHTML =
+          '<input type="text" class="pod-field-label" placeholder="Label">' +
+          '<input type="text" class="pod-field-key" placeholder="key (e.g. name)">' +
+          '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>';
+        row.querySelector(".pod-field-remove").addEventListener("click", () => {
+          row.remove();
+        });
+        body.appendChild(row);
+      });
+    }
+
     function openForm(id) {
       editingId = id;
       const p = data.find(x => x.id === id);
@@ -350,7 +475,7 @@
       document.getElementById("productGroup").value = p.groupId ?? "";
       document.getElementById("productType").value = p.productType || "regular";
       document.getElementById("productPrintOnDemand").checked = !!p.isPrintOnDemand;
-      document.getElementById("productPrintTemplateConfig").value = (p.printTemplateConfig || "").trim() || "";
+      loadPODConfigFromJson(p.printTemplateConfig || "");
       toggleQuantityRow();
       togglePrintTemplateRow();
       formSidebar.classList.add("open");
@@ -366,7 +491,7 @@
       document.getElementById("productGroup").value = "";
       document.getElementById("productType").value = "regular";
       document.getElementById("productPrintOnDemand").checked = false;
-      document.getElementById("productPrintTemplateConfig").value = "";
+      loadPODConfigFromJson("");
       toggleQuantityRow();
       togglePrintTemplateRow();
       formSidebar.classList.add("open");
@@ -403,6 +528,7 @@
 
     productForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      syncPODConfigToHidden();
       const isKit = document.getElementById("productType").value === "kit";
       const payload = {
         name: document.getElementById("productName").value.trim(),
