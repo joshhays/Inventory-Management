@@ -117,6 +117,14 @@
             }
           }
           el.appendChild(div);
+          const openLink = div.querySelector(".dashboard-widget-open");
+          if (openLink) {
+            openLink.addEventListener("click", (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(openLink.getAttribute("href") || ("/report-view.html?id=" + w.id), "_blank", "noopener");
+            });
+          }
           div.querySelector(".dashboard-widget-remove").addEventListener("click", async (e) => {
             e.preventDefault();
             e.stopPropagation();
