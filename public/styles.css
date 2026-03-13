@@ -153,9 +153,13 @@ body::before {
   margin: 0 auto;
 }
 
-/* Free-form board uses full width */
+/* Free-form board uses full viewport */
 .bento-main:has(.dashboard-board) {
   max-width: none;
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  box-sizing: border-box;
 }
 
 .bento-title {
@@ -171,8 +175,11 @@ body::before {
 
 .dashboard-board {
   position: relative;
-  min-height: 1200px;
+  width: 100%;
+  min-width: 100%;
+  min-height: calc(100vh - 8rem);
   margin-top: 0.5rem;
+  box-sizing: border-box;
 }
 
 #dashboardWidgets,
@@ -403,6 +410,13 @@ body::before {
 .main-content {
   flex: 1;
   padding: 1.5rem;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* Dashboard: use full width and ensure board can scroll */
+.main-content.bento-main:has(.dashboard-board) {
+  width: 100%;
   min-width: 0;
   overflow: auto;
 }
