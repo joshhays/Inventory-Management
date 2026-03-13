@@ -139,14 +139,14 @@
           chartWrap.appendChild(chartTitle);
           renderChart(chartWrap, chartData);
           inner.appendChild(chartWrap);
-          if (reportConfig) {
-            const addBtn = document.createElement("button");
-            addBtn.type = "button";
-            addBtn.className = "btn-add-dashboard";
-            addBtn.textContent = "Add to dashboard";
-            addBtn.onclick = () => addToDashboard(reportConfig);
-            inner.appendChild(addBtn);
-          }
+        }
+        if (reportConfig) {
+          const addBtn = document.createElement("button");
+          addBtn.type = "button";
+          addBtn.className = "btn-add-dashboard";
+          addBtn.textContent = "Add to dashboard";
+          addBtn.onclick = () => addToDashboard(reportConfig);
+          inner.appendChild(addBtn);
         }
       }
       div.appendChild(inner);
@@ -201,14 +201,14 @@
           return;
         }
         const chartData = data.chartData;
-        const reportConfig = chartData
+        const reportConfig = data.reportConfig || (chartData
           ? {
               title: chartData.title,
               reportName: chartData.reportName,
               reportParams: chartData.reportParams || {},
               type: chartData.type,
             }
-          : null;
+          : null);
         addMessage("assistant", data.message?.content || "No response.", chartData, reportConfig);
       } catch (e) {
         addMessage("assistant", "Error: " + (e.message || "Could not connect"));

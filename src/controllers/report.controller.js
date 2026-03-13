@@ -184,6 +184,18 @@ async function chat(req, res, next) {
     let choice = response.choices?.[0];
     const resultMessages = [...messages];
     let lastChartData = null;
+    let lastReportConfig = null;
+
+    const REPORT_TITLES = {
+      getOrders: "Orders",
+      getOrdersSummary: "Orders Summary",
+      getSalesByPeriod: "Sales by Period",
+      getProducts: "Products",
+      getLowStockProducts: "Low Stock Products",
+      getPickTimeStats: "Pick Time Stats",
+      getInventoryLogs: "Inventory Log",
+      getTopProductsByQuantity: "Top Products",
+    };
 
     while (choice?.message?.tool_calls?.length) {
       const toolCalls = choice.message.tool_calls;
@@ -205,10 +217,18 @@ async function chat(req, res, next) {
         } catch (err) {
           result = { error: err.message };
         }
-        if (CHARTABLE_REPORTS.includes(name) && result && !result.error) {
-          const chartConfig = reportService.toChartConfig(name, result);
-          if (chartConfig) {
-            lastChartData = { ...chartConfig, reportName: name, reportParams: args };
+        if (result && !result.error) {
+          lastReportConfig = {
+            title: REPORT_TITLES[name] || name,
+            reportName: name,
+            reportParams: args,
+            type: CHARTABLE_REPORTS.includes(name) ? "bar" : "table",
+          };
+          if (CHARTABLE_REPORTS.includes(name)) {
+            const chartConfig = reportService.toChartConfig(name, result);
+            if (chartConfig) {
+              lastChartData = { ...chartConfig, reportName: name, reportParams: args };
+            }
           }
         }
         resultMessages.push({
@@ -236,6 +256,7 @@ async function chat(req, res, next) {
     return res.json({
       message: { role: "assistant", content },
       chartData: lastChartData || undefined,
+      reportConfig: lastReportConfig || undefined,
       usage: response.usage,
     });
   } catch (error) {
