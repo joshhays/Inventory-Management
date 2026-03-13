@@ -141,7 +141,7 @@
         <div class="store-cart-items">
           ${cart
             .map(
-              (i) => `
+              (i, idx) => `
             <div class="store-cart-card" data-id="${i.productId}">
               <div class="store-cart-card-img">
                 ${i.imageUrl
@@ -161,6 +161,7 @@
                   </div>
                   <button type="button" class="store-cart-delete" data-id="${i.productId}">Delete</button>
                 </div>
+                ${i.printData && Object.keys(i.printData).length ? `<div class="store-cart-pod-preview" data-cart-index="${idx}" aria-live="polite"><div class="store-cart-pod-preview-loading">Loading final preview…</div></div>` : ""}
               </div>
               <div class="store-cart-card-total">
                 $${formatPrice((i.price || 0) * (i.quantity || 1))}
@@ -192,6 +193,39 @@
       content.querySelectorAll(".store-cart-delete").forEach((btn) => {
         btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), -999));
       });
+
+      loadCartPODPreviews(cart, content);
+    }
+
+    const cartPODBlobUrls = [];
+    function revokeCartPODBlobUrls() {
+      cartPODBlobUrls.forEach((u) => URL.revokeObjectURL(u));
+      cartPODBlobUrls.length = 0;
+    }
+
+    async function loadCartPODPreviews(cart, content) {
+      revokeCartPODBlobUrls();
+      for (let idx = 0; idx < cart.length; idx++) {
+        const item = cart[idx];
+        if (!item.printData || !Object.keys(item.printData).length) continue;
+        const container = content.querySelector(".store-cart-pod-preview[data-cart-index=\"" + idx + "\"]");
+        if (!container) continue;
+        try {
+          const res = await fetch("/api/pod/preview", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(item.printData),
+          });
+          if (!res.ok) throw new Error("Preview failed");
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          cartPODBlobUrls.push(url);
+          container.innerHTML = "<p class=\"store-cart-pod-preview-label\">Final product for review</p><iframe class=\"store-cart-pod-iframe\" src=\"" + url.replace(/"/g, "&quot;") + "\" title=\"Print preview\"></iframe>";
+        } catch (e) {
+          container.innerHTML = "<p class=\"store-cart-pod-preview-error\">Preview unavailable</p>";
+        }
+      }
     }
 
     let savedAddressesBound = false;

@@ -53,6 +53,7 @@
           <div class="pod-form-wrap" id="podFormWrap"></div>
           <div class="pod-proof-wrap">
             <div class="pod-proof-label">Live preview</div>
+            <p class="pod-proof-hint">Shows your filled business card (front).</p>
             <div id="podProof" class="pod-proof"></div>
           </div>
         </div>
@@ -338,6 +339,9 @@
       document.getElementById("podModal").style.display = "flex";
       document.getElementById("podModal").setAttribute("aria-hidden", "false");
       updatePODProof(config, values);
+      if ((config.layout || "business_card").toLowerCase() === "business_card") {
+        fetchPODPreviewAndShow(values);
+      }
     }
 
     function getPODFormValues(config) {
@@ -361,23 +365,51 @@
       return { ok: true };
     }
 
+    let podProofBlobUrl = null;
+    let podProofDebounceTimer = null;
+    const POD_PREVIEW_DEBOUNCE_MS = 500;
+
+    function revokePodProofUrl() {
+      if (podProofBlobUrl) {
+        URL.revokeObjectURL(podProofBlobUrl);
+        podProofBlobUrl = null;
+      }
+    }
+
+    async function fetchPODPreviewAndShow(values) {
+      const proof = document.getElementById("podProof");
+      const container = proof?.querySelector(".pod-proof-pdf-container");
+      if (!container) return;
+      container.innerHTML = "<div class=\"pod-proof-loading\">Loading preview…</div>";
+      try {
+        const res = await fetch("/api/pod/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(values),
+        });
+        if (!res.ok) throw new Error("Preview failed");
+        const blob = await res.blob();
+        revokePodProofUrl();
+        podProofBlobUrl = URL.createObjectURL(blob);
+        container.innerHTML = "<iframe class=\"pod-proof-iframe\" src=\"" + podProofBlobUrl.replace(/"/g, "&quot;") + "\" title=\"Print preview\"></iframe>";
+      } catch (e) {
+        container.innerHTML = "<div class=\"pod-proof-error\">Preview unavailable. Check your details and try again.</div>";
+      }
+    }
+
     function updatePODProof(config, values) {
       const proof = document.getElementById("podProof");
       const layout = (config.layout || "business_card").toLowerCase();
       proof.className = "pod-proof pod-proof-" + layout;
       if (layout === "business_card") {
-        proof.innerHTML =
-          "<div class=\"pod-proof-card\">" +
-          "<div class=\"pod-proof-name\">" + escape(values.name || "Your Name") + "</div>" +
-          "<div class=\"pod-proof-title\">" + escape(values.title || "Title") + "</div>" +
-          "<div class=\"pod-proof-company\">" + escape(values.company || "Company") + "</div>" +
-          "<div class=\"pod-proof-contact\">" +
-          escape(values.phone || "Phone") +
-          (values.email ? " · " + escape(values.email) : "") +
-          (values.website ? " · " + escape(values.website) : "") +
-          "</div>" +
-          "</div>";
+        if (!proof.querySelector(".pod-proof-pdf-container")) {
+          proof.innerHTML = "<div class=\"pod-proof-pdf-container\"><div class=\"pod-proof-loading\">Loading preview…</div></div>";
+        }
+        clearTimeout(podProofDebounceTimer);
+        podProofDebounceTimer = setTimeout(() => fetchPODPreviewAndShow(values), POD_PREVIEW_DEBOUNCE_MS);
       } else {
+        revokePodProofUrl();
         proof.innerHTML = (config.fields || [])
           .map((f) => {
             const v = values[f.key] || "";
@@ -388,6 +420,8 @@
     }
 
     function closePODModal() {
+      revokePodProofUrl();
+      clearTimeout(podProofDebounceTimer);
       document.getElementById("podModal").style.display = "none";
       document.getElementById("podModal").setAttribute("aria-hidden", "true");
       currentPODProduct = null;
