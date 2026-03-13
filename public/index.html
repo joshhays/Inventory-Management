@@ -117,9 +117,11 @@
             }
           }
           el.appendChild(div);
-          div.querySelector(".dashboard-widget-remove").addEventListener("click", async () => {
-            await fetch("/api/dashboard-widgets/" + w.id, { method: "DELETE", credentials: "include" });
-            loadDashboardWidgets();
+          div.querySelector(".dashboard-widget-remove").addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const res = await fetch("/api/dashboard-widgets/" + w.id, { method: "DELETE", credentials: "include" });
+            if (res.ok || res.status === 204) loadDashboardWidgets();
           });
           div.querySelector(".dashboard-widget-size").addEventListener("click", async () => {
             const next = { small: "medium", medium: "large", large: "small" }[size];

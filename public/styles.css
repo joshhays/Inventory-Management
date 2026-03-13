@@ -179,6 +179,12 @@ body::before {
 .bento-cards-layer {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+}
+
+#dashboardWidgets .dashboard-widget,
+.bento-cards-layer .bento-card {
+  pointer-events: auto;
 }
 
 .board-item {
