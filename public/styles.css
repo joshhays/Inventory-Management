@@ -153,6 +153,11 @@ body::before {
   margin: 0 auto;
 }
 
+/* Free-form board uses full width */
+.bento-main:has(.dashboard-board) {
+  max-width: none;
+}
+
 .bento-title {
   margin-bottom: 1.5rem;
   font-size: 1.75rem;
@@ -2543,6 +2548,45 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   font-size: 0.95rem;
 }
 
+.report-view-main {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.report-view-main h1 {
+  margin-bottom: 1rem;
+}
+
+.report-view-chart {
+  margin-bottom: 1.5rem;
+  max-height: 360px;
+}
+
+.report-view-error-msg {
+  color: var(--text-muted);
+}
+
+.report-view-table-wrap {
+  overflow-x: auto;
+}
+
+.report-view-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.report-view-table th,
+.report-view-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--glass-border-subtle);
+}
+
+.report-view-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .reports-chat {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border-subtle);
@@ -2724,10 +2768,26 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   pointer-events: none;
 }
 
-.dashboard-widget-remove {
+.dashboard-widget-actions {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dashboard-widget-open {
+  font-size: 0.8rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.dashboard-widget-open:hover {
+  text-decoration: underline;
+}
+
+.dashboard-widget-remove {
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
   background: transparent;
@@ -2768,9 +2828,6 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 }
 
 .dashboard-widget-size {
-  position: absolute;
-  top: 0.5rem;
-  right: 2rem;
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
   background: transparent;
@@ -2785,6 +2842,42 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 
 .dashboard-widget-large {
   grid-column: span 2;
+}
+
+.dashboard-widget-table-wrap {
+  display: none;
+  margin-top: 0.75rem;
+  overflow: auto;
+  max-height: 220px;
+}
+
+.dashboard-widget-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.dashboard-widget-table th,
+.dashboard-widget-table td {
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--glass-border-subtle);
+}
+
+.dashboard-widget-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dashboard-widget-table-more {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.dashboard-widget-table-more a {
+  color: var(--accent);
 }
 
 .bento-card {

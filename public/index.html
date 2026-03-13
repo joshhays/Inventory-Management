@@ -58,36 +58,63 @@
           div.style.top = (w.posY ?? 0) + "px";
           div.innerHTML = `
             <span class="dashboard-widget-drag" title="Drag to move">⋮⋮</span>
-            <button type="button" class="dashboard-widget-size" data-id="${w.id}" title="Resize">⤢</button>
-            <button type="button" class="dashboard-widget-remove" data-id="${w.id}" title="Remove">✕</button>
+            <div class="dashboard-widget-actions">
+              <a href="/report-view.html?id=${w.id}" target="_blank" rel="noopener" class="dashboard-widget-open" title="Open in new page">Open</a>
+              <button type="button" class="dashboard-widget-size" data-id="${w.id}" title="Resize">⤢</button>
+              <button type="button" class="dashboard-widget-remove" data-id="${w.id}" title="Remove report">Remove</button>
+            </div>
             <h3>${escapeHtml(w.title)}</h3>
             <div class="dashboard-widget-chart" style="height:${chartHeight}px"></div>
+            <div class="dashboard-widget-table-wrap"></div>
           `;
+          const chartEl = div.querySelector(".dashboard-widget-chart");
+          const tableWrap = div.querySelector(".dashboard-widget-table-wrap");
           if (w.error) {
-            div.querySelector(".dashboard-widget-chart").innerHTML = "<p style='color:var(--text-muted);font-size:0.9rem'>" + escapeHtml(w.error) + "</p>";
-          } else if (w.chartData && window.Chart) {
-            const chartEl = div.querySelector(".dashboard-widget-chart");
-            const canvas = document.createElement("canvas");
-            chartEl.appendChild(canvas);
-            const ctx = canvas.getContext("2d");
-            const config = {
-              type: w.chartData.type || "bar",
-              data: {
-                labels: w.chartData.labels || [],
-                datasets: (w.chartData.datasets || []).map((ds) => ({
-                  ...ds,
-                  borderColor: ds.backgroundColor,
-                  borderWidth: 1,
-                })),
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: w.chartData.type === "pie" } },
-                scales: w.chartData.type === "pie" ? {} : { y: { beginAtZero: true } },
-              },
-            };
-            new Chart(ctx, config);
+            chartEl.innerHTML = "<p style='color:var(--text-muted);font-size:0.9rem'>" + escapeHtml(w.error) + "</p>";
+          } else {
+            if (w.chartData && window.Chart) {
+              const canvas = document.createElement("canvas");
+              chartEl.appendChild(canvas);
+              const ctx = canvas.getContext("2d");
+              const config = {
+                type: w.chartData.type || "bar",
+                data: {
+                  labels: w.chartData.labels || [],
+                  datasets: (w.chartData.datasets || []).map((ds) => ({
+                    ...ds,
+                    borderColor: ds.backgroundColor,
+                    borderWidth: 1,
+                  })),
+                },
+                options: {
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: { legend: { display: w.chartData.type === "pie" } },
+                  scales: w.chartData.type === "pie" ? {} : { y: { beginAtZero: true } },
+                },
+              };
+              new Chart(ctx, config);
+            }
+            if (w.tableData && w.tableData.headers && w.tableData.headers.length) {
+              let tableHtml = "<table class=\"dashboard-widget-table\"><thead><tr>";
+              w.tableData.headers.forEach((h) => { tableHtml += "<th>" + escapeHtml(String(h)) + "</th>"; });
+              tableHtml += "</tr></thead><tbody>";
+              (w.tableData.rows || []).slice(0, 15).forEach((row) => {
+                tableHtml += "<tr>";
+                row.forEach((cell) => { tableHtml += "<td>" + escapeHtml(String(cell)) + "</td>"; });
+                tableHtml += "</tr>";
+              });
+              tableHtml += "</tbody></table>";
+              if ((w.tableData.rows || []).length > 15) {
+                tableHtml += "<p class=\"dashboard-widget-table-more\">" + (w.tableData.rows.length - 15) + " more rows — <a href=\"/report-view.html?id=" + w.id + "\" target=\"_blank\" rel=\"noopener\">Open full report</a></p>";
+              }
+              tableWrap.innerHTML = tableHtml;
+              tableWrap.style.display = "block";
+            }
+            if (!w.chartData && tableWrap.innerHTML) {
+              chartEl.style.display = "none";
+              chartEl.style.height = "0";
+            }
           }
           el.appendChild(div);
           div.querySelector(".dashboard-widget-remove").addEventListener("click", async () => {
@@ -160,47 +187,52 @@
       setupBoardDragDrop();
     }
 
+    function handleBoardDrop(e) {
+      e.preventDefault();
+      const json = e.dataTransfer.getData("application/json");
+      if (!json) return;
+      let payload;
+      try { payload = JSON.parse(json); } catch (_) { return; }
+      const rect = BOARD.getBoundingClientRect();
+      const boardX = e.clientX - rect.left + BOARD.scrollLeft;
+      const boardY = e.clientY - rect.top + BOARD.scrollTop;
+      const left = Math.max(0, boardX - (payload.offsetX ?? 0));
+      const top = Math.max(0, boardY - (payload.offsetY ?? 0));
+      if (payload.type === "widget") {
+        const el = document.querySelector(".dashboard-widget[data-id=\"" + payload.id + "\"]");
+        if (el) {
+          el.style.left = left + "px";
+          el.style.top = top + "px";
+          fetch("/api/dashboard-widgets/" + payload.id, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ posX: Math.round(left), posY: Math.round(top) }),
+          }).catch(() => {});
+        }
+      } else if (payload.type === "bento") {
+        const el = document.querySelector(".bento-card[data-bento-id=\"" + payload.id + "\"]");
+        if (el) {
+          el.style.left = left + "px";
+          el.style.top = top + "px";
+          setBentoPosition(payload.id, Math.round(left), Math.round(top));
+        }
+      }
+    }
+
     function setupBoardDragDrop() {
       if (!BOARD) return;
-      BOARD.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "move";
-      });
-      BOARD.addEventListener("drop", (e) => {
-        e.preventDefault();
-        const json = e.dataTransfer.getData("application/json");
-        if (!json) return;
-        let payload;
-        try { payload = JSON.parse(json); } catch (_) { return; }
-        const rect = BOARD.getBoundingClientRect();
-        const boardX = e.clientX - rect.left + BOARD.scrollLeft;
-        const boardY = e.clientY - rect.top + BOARD.scrollTop;
-        const left = Math.max(0, boardX - (payload.offsetX ?? 0));
-        const top = Math.max(0, boardY - (payload.offsetY ?? 0));
-        if (payload.type === "widget") {
-          const el = document.querySelector(".dashboard-widget[data-id=\"" + payload.id + "\"]");
-          if (el) {
-            el.style.left = left + "px";
-            el.style.top = top + "px";
-            fetch("/api/dashboard-widgets/" + payload.id, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              credentials: "include",
-              body: JSON.stringify({ posX: Math.round(left), posY: Math.round(top) }),
-            }).catch(() => {});
-          }
-        } else if (payload.type === "bento") {
-          const el = document.querySelector(".bento-card[data-bento-id=\"" + payload.id + "\"]");
-          if (el) {
-            el.style.left = left + "px";
-            el.style.top = top + "px";
-            setBentoPosition(payload.id, Math.round(left), Math.round(top));
-          }
-        }
+      [BOARD, document.getElementById("dashboardWidgets"), document.getElementById("bentoCardsLayer")].forEach((el) => {
+        if (!el) return;
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        });
+        el.addEventListener("drop", handleBoardDrop);
       });
       document.querySelectorAll(".dashboard-widget").forEach((widget) => {
         widget.addEventListener("dragstart", (e) => {
-          if (e.target.closest("button")) { e.preventDefault(); return; }
+          if (e.target.closest("button") || e.target.closest("a")) { e.preventDefault(); return; }
           e.dataTransfer.effectAllowed = "move";
           e.dataTransfer.setData("application/json", JSON.stringify({
             type: "widget",
@@ -211,6 +243,8 @@
           widget.classList.add("dashboard-widget-dragging");
         });
         widget.addEventListener("dragend", () => widget.classList.remove("dashboard-widget-dragging"));
+        widget.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+        widget.addEventListener("drop", handleBoardDrop);
       });
       let bentoJustDragged = false;
       document.querySelectorAll(".bento-card").forEach((card) => {
@@ -236,6 +270,8 @@
             bentoJustDragged = false;
           }
         });
+        card.addEventListener("dragover", (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+        card.addEventListener("drop", handleBoardDrop);
       });
     }
 

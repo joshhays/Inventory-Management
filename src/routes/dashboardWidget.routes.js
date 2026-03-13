@@ -4,6 +4,7 @@ const dashboardWidgetController = require("../controllers/dashboardWidget.contro
 const router = express.Router();
 
 router.get("/", dashboardWidgetController.getWidgets);
+router.get("/:id/data", dashboardWidgetController.getWidgetData);
 router.post("/", dashboardWidgetController.createWidget);
 router.put("/reorder", dashboardWidgetController.reorderWidgets);
 router.patch("/:id", dashboardWidgetController.updateWidget);

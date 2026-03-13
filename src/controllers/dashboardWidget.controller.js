@@ -11,11 +11,13 @@ async function getWidgets(req, res, next) {
     const withData = await Promise.all(
       widgets.map(async (w) => {
         let chartData = null;
+        let tableData = null;
         let error = null;
         try {
           const result = await reportService.runReport(w.reportName, JSON.parse(w.reportParams || "{}"));
           chartData = reportService.toChartConfig(w.reportName, result, w.chartType);
           if (chartData) chartData.title = w.title;
+          tableData = reportService.toTableData(w.reportName, result);
         } catch (e) {
           error = e.message;
         }
@@ -30,6 +32,7 @@ async function getWidgets(req, res, next) {
           posX: w.posX ?? 0,
           posY: w.posY ?? 0,
           chartData,
+          tableData,
           error,
         };
       })
@@ -113,6 +116,38 @@ async function reorderWidgets(req, res, next) {
   }
 }
 
+async function getWidgetData(req, res, next) {
+  try {
+    const userId = req.user.id;
+    const id = Number(req.params.id);
+    const w = await prisma.dashboardWidget.findFirst({
+      where: { id, userId },
+    });
+    if (!w) return res.status(404).json({ message: "Widget not found" });
+    let chartData = null;
+    let tableData = null;
+    let error = null;
+    try {
+      const result = await reportService.runReport(w.reportName, JSON.parse(w.reportParams || "{}"));
+      chartData = reportService.toChartConfig(w.reportName, result, w.chartType);
+      if (chartData) chartData.title = w.title;
+      tableData = reportService.toTableData(w.reportName, result);
+    } catch (e) {
+      error = e.message;
+    }
+    return res.json({
+      id: w.id,
+      title: w.title,
+      reportName: w.reportName,
+      chartData,
+      tableData,
+      error,
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function updateWidget(req, res, next) {
   try {
     const userId = req.user.id;
@@ -138,6 +173,7 @@ async function updateWidget(req, res, next) {
 
 module.exports = {
   getWidgets,
+  getWidgetData,
   createWidget,
   deleteWidget,
   reorderWidgets,

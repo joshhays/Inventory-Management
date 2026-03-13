@@ -266,9 +266,27 @@ function toChartConfig(reportName, result, chartType = "bar") {
   return null;
 }
 
+/** Convert report result to table data { headers, rows } for list views */
+function toTableData(reportName, result) {
+  if (!result) return null;
+  if (Array.isArray(result)) {
+    if (result.length === 0) return { headers: [], rows: [] };
+    const headers = Object.keys(result[0]);
+    const rows = result.map((row) => headers.map((h) => row[h] ?? ""));
+    return { headers, rows };
+  }
+  if (typeof result === "object" && result !== null) {
+    const headers = Object.keys(result);
+    const rows = [headers.map((h) => result[h] ?? "")];
+    return { headers, rows };
+  }
+  return null;
+}
+
 module.exports = {
   runReport,
   toChartConfig,
+  toTableData,
   getOrders,
   getOrdersSummary,
   getSalesByPeriod,

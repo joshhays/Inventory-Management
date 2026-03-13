@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Inventory" class="nav-logo"></a>
+    </header>
+    <main class="main-content report-view-main">
+      <div id="reportViewLoading">Loading report…</div>
+      <div id="reportViewError" style="display:none"></div>
+      <div id="reportViewContent" style="display:none">
+        <h1 id="reportViewTitle"></h1>
+        <div id="reportViewChart" class="report-view-chart"></div>
+        <div id="reportViewTableWrap" class="report-view-table-wrap" style="display:none"></div>
+      </div>
+    </main>
+  </div>
+  <script>
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s ?? "";
+      return d.innerHTML;
+    }
+
+    async function loadReport() {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get("id");
+      const loadingEl = document.getElementById("reportViewLoading");
+      const errorEl = document.getElementById("reportViewError");
+      const contentEl = document.getElementById("reportViewContent");
+
+      if (!id) {
+        loadingEl.style.display = "none";
+        errorEl.style.display = "block";
+        errorEl.textContent = "No report ID in URL. Use the dashboard and click \"Open\" on a report.";
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/dashboard-widgets/" + id + "/data", { credentials: "include" });
+        if (res.status === 404) {
+          loadingEl.style.display = "none";
+          errorEl.style.display = "block";
+          errorEl.textContent = "Report not found. It may have been removed from the dashboard.";
+          return;
+        }
+        if (!res.ok) {
+          throw new Error(res.statusText || "Failed to load report");
+        }
+        const data = await res.json();
+        loadingEl.style.display = "none";
+        errorEl.style.display = "none";
+        contentEl.style.display = "block";
+
+        document.getElementById("reportViewTitle").textContent = data.title || "Report";
+
+        const chartEl = document.getElementById("reportViewChart");
+        chartEl.innerHTML = "";
+        if (data.chartData && window.Chart) {
+          const canvas = document.createElement("canvas");
+          canvas.height = 320;
+          chartEl.appendChild(canvas);
+          const ctx = canvas.getContext("2d");
+          const config = {
+            type: data.chartData.type || "bar",
+            data: {
+              labels: data.chartData.labels || [],
+              datasets: (data.chartData.datasets || []).map((ds) => ({
+                ...ds,
+                borderColor: ds.backgroundColor,
+                borderWidth: 1,
+              })),
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: data.chartData.type === "pie" } },
+              scales: data.chartData.type === "pie" ? {} : { y: { beginAtZero: true } },
+            },
+          };
+          new Chart(ctx, config);
+        } else if (data.error) {
+          chartEl.innerHTML = "<p class=\"report-view-error-msg\">" + escapeHtml(data.error) + "</p>";
+        }
+
+        const tableWrap = document.getElementById("reportViewTableWrap");
+        tableWrap.style.display = "none";
+        tableWrap.innerHTML = "";
+        if (data.tableData && data.tableData.headers && data.tableData.headers.length) {
+          let tableHtml = "<table class=\"report-view-table\"><thead><tr>";
+          data.tableData.headers.forEach((h) => { tableHtml += "<th>" + escapeHtml(String(h)) + "</th>"; });
+          tableHtml += "</tr></thead><tbody>";
+          (data.tableData.rows || []).forEach((row) => {
+            tableHtml += "<tr>";
+            row.forEach((cell) => { tableHtml += "<td>" + escapeHtml(String(cell)) + "</td>"; });
+            tableHtml += "</tr>";
+          });
+          tableHtml += "</tbody></table>";
+          tableWrap.innerHTML = tableHtml;
+          tableWrap.style.display = "block";
+        }
+      } catch (e) {
+        loadingEl.style.display = "none";
+        errorEl.style.display = "block";
+        errorEl.textContent = "Error: " + (e.message || "Could not load report");
+      }
+    }
+
+    loadReport();
+  </script>
+</body>
+</html>
