@@ -401,6 +401,10 @@
       }
     }
 
+    function slashToNewline(s) {
+      return (s || "").replace(/ \/ /g, "\n").replace(/\//g, "\n");
+    }
+
     function getPODFormValues(config) {
       const values = {};
       (config.fields || []).forEach((f) => {
@@ -408,11 +412,13 @@
         const el = document.getElementById("pod-" + key);
         if (!el) { values[key] = ""; return; }
         if (el.tagName === "SELECT") {
+          let raw;
           if (el.multiple) {
-            values[key] = Array.from(el.selectedOptions).map((o) => o.value).join("\n");
+            raw = Array.from(el.selectedOptions).map((o) => o.value).join("\n");
           } else {
-            values[key] = el.value;
+            raw = el.value;
           }
+          values[key] = slashToNewline(raw);
         } else {
           values[key] = el.value.trim();
         }
