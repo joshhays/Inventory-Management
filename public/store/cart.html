@@ -70,6 +70,13 @@
             <label for="customerPhone">Phone (optional)</label>
             <input type="tel" id="customerPhone" placeholder="For delivery updates">
           </div>
+          <div class="store-form-row store-proof-approved-row" id="proofApprovedRow" style="display:none">
+            <label class="store-proof-approved-label">
+              <input type="checkbox" id="proofApproved" required>
+              <span>Proof approved</span>
+            </label>
+            <p class="store-proof-approved-hint">You must review and approve the print proof above before checkout.</p>
+          </div>
           <button type="button" class="btn-apply store-place-order" id="placeOrderBtn">
             Place your order
           </button>
@@ -143,7 +150,7 @@
           ${cart
             .map(
               (i, idx) => `
-            <div class="store-cart-card" data-id="${i.productId}">
+            <div class="store-cart-card ${i.printData && Object.keys(i.printData).length ? "store-cart-card-has-pod" : ""}" data-id="${i.productId}">
               <div class="store-cart-card-img">
                 ${i.imageUrl
                   ? '<img src="' + (i.imageUrl || '').replace(/"/g, '&quot;') + '" alt="" loading="lazy">'
@@ -162,11 +169,11 @@
                   </div>
                   <button type="button" class="store-cart-delete" data-id="${i.productId}">Delete</button>
                 </div>
-                ${i.printData && Object.keys(i.printData).length ? `<div class="store-cart-pod-preview" data-cart-index="${idx}" aria-live="polite"><div class="store-cart-pod-preview-loading">Loading final preview…</div></div>` : ""}
               </div>
               <div class="store-cart-card-total">
                 $${formatPrice((i.price || 0) * (i.quantity || 1))}
               </div>
+              ${i.printData && Object.keys(i.printData).length ? `<div class="store-cart-pod-preview" data-cart-index="${idx}" aria-live="polite"><div class="store-cart-pod-preview-loading">Loading final preview…</div></div>` : ""}
             </div>
           `
             )
@@ -184,6 +191,15 @@
           <span>$${formatPrice(total)}</span>
         </div>
       `;
+
+      const hasPOD = cart.some((i) => i.printData && Object.keys(i.printData).length);
+      const proofRow = document.getElementById("proofApprovedRow");
+      const proofCheck = document.getElementById("proofApproved");
+      if (proofRow) proofRow.style.display = hasPOD ? "block" : "none";
+      if (proofCheck) {
+        proofCheck.checked = false;
+        proofCheck.required = hasPOD;
+      }
 
       sidebar.style.display = "block";
       loadSavedAddresses();
@@ -283,6 +299,12 @@
       const cart = getCart();
       if (cart.length === 0) {
         alert("Your cart is empty.");
+        return;
+      }
+      const hasPOD = cart.some((i) => i.printData && Object.keys(i.printData).length);
+      const proofCheck = document.getElementById("proofApproved");
+      if (hasPOD && proofCheck && !proofCheck.checked) {
+        alert("Please review the print proof above and check \"Proof approved\" before placing your order.");
         return;
       }
       const name = document.getElementById("shipName").value.trim();
