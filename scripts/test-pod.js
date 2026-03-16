@@ -16,8 +16,9 @@ const sampleData = {
   title: "Senior Manager",
   role: "Operations",
   email: "jane.smith@example.com",
-  phone: "(555) 123-4567",
-  address: "123 Main St, Suite 100, Anytown ST 12345",
+  phoneP: "(555) 123-4567",
+  phoneM: "(555) 987-6543",
+  address: "123 Main St, Anytown, ST 12345",
   website: "example.com",
   disclosure: "This card is for professional use only. Terms apply.",
 };

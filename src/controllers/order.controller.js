@@ -1,4 +1,8 @@
+const path = require("path");
+const fs = require("fs");
 const orderService = require("../services/order.service");
+const { generateBusinessCardPdf } = require("../services/podPdf.service");
+const { businessCardTemplate } = require("../podTemplates");
 
 const createOrder = async (req, res, next) => {
   try {
@@ -93,10 +97,50 @@ const updateOrderItemPicked = async (req, res, next) => {
   }
 };
 
+const getOrderItemPrintPdf = async (req, res, next) => {
+  try {
+    const { id: orderId, itemId } = req.params;
+    const order = await orderService.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+    const item = order.items.find((i) => String(i.id) === String(itemId));
+    if (!item) {
+      return res.status(404).json({ message: "Order item not found." });
+    }
+    let userData = {};
+    if (item.printData && typeof item.printData === "string" && item.printData.trim()) {
+      try {
+        userData = JSON.parse(item.printData);
+      } catch (_) {
+        return res.status(400).json({ message: "Invalid print data for this item." });
+      }
+    }
+    if (Object.keys(userData).length === 0) {
+      return res.status(400).json({ message: "No print data for this item." });
+    }
+
+    const basePdfPath = path.join(__dirname, "../../product-files/business-card-base.pdf");
+    if (!fs.existsSync(basePdfPath)) {
+      return res.status(503).json({ message: "Print template not available." });
+    }
+    const basePdfBytes = fs.readFileSync(basePdfPath);
+    const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, userData, businessCardTemplate);
+
+    const filename = `order-${orderId}-item-${item.id}-print.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
   getOrder,
   updateOrderStatus,
   updateOrderItemPicked,
+  getOrderItemPrintPdf,
 };

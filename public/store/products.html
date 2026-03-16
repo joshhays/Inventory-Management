@@ -246,6 +246,14 @@
       });
     }
 
+    function formatPhoneInput(value) {
+      const digits = (value || "").replace(/\D/g, "").slice(0, 10);
+      if (!digits.length) return "";
+      if (digits.length <= 3) return "(" + digits;
+      if (digits.length <= 6) return "(" + digits.slice(0, 3) + ") " + digits.slice(3);
+      return "(" + digits.slice(0, 3) + ") " + digits.slice(3, 6) + "-" + digits.slice(6);
+    }
+
     function getPODConfig(product) {
       let config = { layout: "business_card", fields: [] };
       try {
@@ -260,8 +268,14 @@
           { key: "role", label: "Role" },
           { key: "company", label: "Company" },
           { key: "email", label: "Email" },
-          { key: "phone", label: "Phone" },
-          { key: "address", label: "Address" },
+          { key: "phoneP", label: "P" },
+          { key: "phoneM", label: "M" },
+          {
+            key: "address",
+            label: "Address",
+            type: "select",
+            options: ["123 Main St, Anytown, ST 12345", "456 Oak Ave, City, ST 67890", "Other"],
+          },
           {
             key: "website",
             label: "Website",
@@ -271,7 +285,6 @@
           },
         ];
       } else {
-        // Ensure website is a required dropdown even when product has custom config
         const websiteField = config.fields.find((f) => (f.key || "").toLowerCase() === "website");
         if (websiteField && websiteField.type !== "select" && !Array.isArray(websiteField.options)) {
           websiteField.type = "select";
@@ -279,6 +292,16 @@
           websiteField.options = websiteField.options || ["example.com", "mycompany.com", "acme.com", "other"];
         } else if (websiteField) {
           websiteField.required = true;
+        }
+        const addressField = config.fields.find((f) => (f.key || "").toLowerCase() === "address");
+        if (addressField && addressField.type !== "select" && !Array.isArray(addressField.options)) {
+          addressField.type = "select";
+          addressField.options = addressField.options || ["123 Main St, Anytown, ST 12345", "456 Oak Ave, City, ST 67890", "Other"];
+        }
+        const phoneIdx = config.fields.findIndex((f) => (f.key || "").toLowerCase() === "phone");
+        if (phoneIdx >= 0 && !config.fields.some((f) => (f.key || "").toLowerCase() === "phonep")) {
+          config.fields[phoneIdx] = { key: "phoneP", label: "P" };
+          config.fields.splice(phoneIdx + 1, 0, { key: "phoneM", label: "M" });
         }
       }
       return config;
@@ -295,8 +318,45 @@
       const formWrap = document.getElementById("podFormWrap");
       formWrap.innerHTML = "";
       const values = {};
-      config.fields.forEach((f) => {
+      const fields = config.fields || [];
+      for (let idx = 0; idx < fields.length; idx++) {
+        const f = fields[idx];
         const key = f.key || "field";
+        const nextF = fields[idx + 1];
+        const isPhoneRow = key === "phoneP" && nextF && (nextF.key || "") === "phoneM";
+        if (isPhoneRow) {
+          values.phoneP = "";
+          values.phoneM = "";
+          const row = document.createElement("div");
+          row.className = "pod-form-row-inline";
+          const addPhoneField = (k, lbl) => {
+            const lab = document.createElement("label");
+            lab.textContent = lbl;
+            lab.setAttribute("for", "pod-" + k);
+            const inp = document.createElement("input");
+            inp.type = "tel";
+            inp.id = "pod-" + k;
+            inp.name = k;
+            inp.placeholder = "(" + (k === "phoneP" ? "555" : "555") + ") 123-4567";
+            inp.className = "pod-input pod-input-phone";
+            inp.maxLength = 14;
+            inp.addEventListener("input", () => {
+              const pos = inp.selectionStart;
+              const oldLen = inp.value.length;
+              inp.value = formatPhoneInput(inp.value);
+              inp.setSelectionRange(Math.min(pos, inp.value.length), Math.min(pos, inp.value.length));
+              updatePODProof(config, getPODFormValues(config));
+            });
+            inp.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
+            row.appendChild(lab);
+            row.appendChild(inp);
+          };
+          addPhoneField("phoneP", "P");
+          addPhoneField("phoneM", "M");
+          formWrap.appendChild(row);
+          idx++;
+          continue;
+        }
         const isSelect = f.type === "select" || (Array.isArray(f.options) && f.options.length > 0);
         values[key] = isSelect ? "" : "";
         const label = document.createElement("label");
@@ -335,7 +395,7 @@
           formWrap.appendChild(label);
           formWrap.appendChild(input);
         }
-      });
+      }
       document.getElementById("podModal").style.display = "flex";
       document.getElementById("podModal").setAttribute("aria-hidden", "false");
       updatePODProof(config, values);

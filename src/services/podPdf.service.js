@@ -158,8 +158,8 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
     });
   }
 
-  // Normalize font size across contact block (email, phone, address, website)
-  const groupKeys = new Set(["email", "phone", "address", "website"]);
+  // Normalize font size across contact block (email, phoneP, phoneM, address, website)
+  const groupKeys = new Set(["email", "phoneP", "phoneM", "address", "website"]);
   let groupMinSize = null;
   for (const cmd of drawCommands) {
     if (groupKeys.has(cmd.key)) {

@@ -215,6 +215,7 @@
           <li class="pick-item ${i.picked ? 'picked' : ''}" data-item-id="${i.id}">
             <span class="pick-status">${i.picked ? '✓ Picked' : '○ Not picked'}</span>
             <span class="pick-details">${escapeHtml(i.productName)} · ${i.quantity} × ${formatPrice(i.unitPrice)}</span>
+            ${i.printData && i.printData.trim() ? `<a href="/api/orders/${order.id}/items/${i.id}/print-pdf" class="pick-download-pdf" target="_blank" rel="noopener">Download print PDF</a>` : ""}
           </li>
         `).join("");
         itemsList.querySelectorAll(".pick-item").forEach(li => {

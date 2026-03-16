@@ -1595,6 +1595,16 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   color: var(--text);
 }
 
+.pick-download-pdf {
+  font-size: 0.8rem;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.pick-download-pdf:hover {
+  text-decoration: underline;
+}
+
 /* Low stock indicator */
 .qty-low {
   color: var(--danger);
@@ -3115,6 +3125,26 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   font-size: 0.95rem;
   margin-bottom: 0.25rem;
   box-sizing: border-box;
+}
+
+.pod-form-row-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.pod-form-row-inline label {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 500;
+  min-width: 1.25rem;
+}
+
+.pod-form-row-inline .pod-input-phone {
+  width: 10rem;
+  max-width: 100%;
 }
 
 .pod-proof-wrap {
