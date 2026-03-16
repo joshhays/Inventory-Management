@@ -184,22 +184,24 @@
         .map((p) => {
           const imageFile = getFirstImageFile(p.files);
           const pdfFile = getFirstFile(p.files);
+          const isPOD = !!(p.isPrintOnDemand && p.printTemplateConfig);
           const imgUrl = imageFile
             ? getImageUrl(imageFile)
             : pdfFile
               ? "/api/products/" + p.id + "/preview"
-              : null;
+              : isPOD
+                ? "/api/products/" + p.id + "/preview"
+                : null;
           const isPdfOnly = pdfFile && !imageFile;
           const thumb = imgUrl
             ? isPdfOnly
               ? '<a href="' +
                 getImageUrl(pdfFile) +
-                '" target="_blank" class="store-list-thumb-link" title="PDF"><img src="' +
+                '" target="_blank" class="store-list-thumb-link" title="PDF"><span class="store-list-thumb-wrap"><img src="' +
                 imgUrl +
-                '" alt="" class="store-list-thumb-img store-list-thumb-contain"></a>'
-              : '<img src="' + imgUrl + '" alt="" class="store-list-thumb-img store-list-thumb-contain" loading="lazy">'
+                '" alt="" class="store-list-thumb-img store-list-thumb-contain" loading="lazy" onerror="this.nextElementSibling.style.display=\'block\';this.style.display=\'none\'"><span class="store-list-thumb-placeholder" style="display:none">—</span></span></a>'
+              : '<span class="store-list-thumb-wrap"><img src="' + imgUrl + '" alt="" class="store-list-thumb-img store-list-thumb-contain" loading="lazy" onerror="this.nextElementSibling.style.display=\'block\';this.style.display=\'none\'"><span class="store-list-thumb-placeholder" style="display:none">—</span></span>'
             : '<div class="store-list-thumb-placeholder">—</div>';
-          const isPOD = !!(p.isPrintOnDemand && p.printTemplateConfig);
           const actionsCell = isPOD
             ? '<button type="button" class="btn-apply store-pod-customize-btn" data-id="' + p.id + '">Customize & Add</button>'
             : '<input type="number" min="1" value="1" class="store-qty-input store-list-qty" data-id="' + p.id + '">' +

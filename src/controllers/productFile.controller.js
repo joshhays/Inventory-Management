@@ -7,6 +7,7 @@ const { canAccessProduct } = require("../lib/auth-helpers");
 
 const UPLOAD_DIR = path.join(__dirname, "../../uploads");
 const PRODUCT_FILES_DIR = path.join(__dirname, "../../product-files");
+const POD_BASE_PDF = path.join(__dirname, "../../product-files/business-card-base.pdf");
 
 async function checkProductAccess(req, res, productId) {
   const product = await productService.getProductWithFiles(productId);
@@ -55,13 +56,38 @@ const getPreview = async (req, res, next) => {
       }
     }
 
-    if (!pdfFile) {
-      return res.status(404).json({ message: "No image or PDF file found." });
+    let fullPath = null;
+    if (pdfFile) {
+      fullPath = path.join(getBaseDir(pdfFile), pdfFile.path);
+      if (fs.existsSync(fullPath)) {
+        // Use product's PDF
+      } else {
+        fullPath = null;
+      }
     }
 
-    const fullPath = path.join(getBaseDir(pdfFile), pdfFile.path);
-    if (!fs.existsSync(fullPath)) {
-      return res.status(404).json({ message: "File not found." });
+    // Fallback for POD products with no files: use base business card PDF
+    if (!fullPath && product.isPrintOnDemand && fs.existsSync(POD_BASE_PDF)) {
+      const { generateBusinessCardPdf } = require("../services/podPdf.service");
+      const { businessCardTemplate } = require("../podTemplates");
+      const basePdfBytes = fs.readFileSync(POD_BASE_PDF);
+      const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, {}, businessCardTemplate);
+      const { pdf } = require("pdf-to-img");
+      const document = await pdf(pdfBuffer, { scale: 2 });
+      let firstPage = null;
+      for await (const image of document) {
+        firstPage = image;
+        break;
+      }
+      if (firstPage) {
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        return res.send(firstPage);
+      }
+    }
+
+    if (!fullPath) {
+      return res.status(404).json({ message: "No image or PDF file found. For POD products, add business-card-base.pdf to product-files." });
     }
 
     const { pdf } = require("pdf-to-img");
