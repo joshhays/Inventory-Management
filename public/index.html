@@ -25,7 +25,7 @@
     </header>
     <main class="main-content bento-main">
       <h1 class="bento-title">Dashboard</h1>
-      <p class="board-hint">Drag items anywhere on the board. Positions are saved automatically.</p>
+      <p class="board-hint">Drag items to reposition. Click ⤢ on a card to resize (small → medium → large). Positions are saved automatically.</p>
       <div class="dashboard-board" id="dashboardBoard">
         <div id="dashboardWidgets"></div>
         <div class="bento-cards-layer" id="bentoCardsLayer"></div>
@@ -150,6 +150,8 @@
     }
 
     const BENTO_POS_KEY = "dashboardBentoPositions";
+    const BENTO_SIZE_KEY = "dashboardBentoSizes";
+    const BENTO_DIMENSIONS = { small: [260, 160], medium: [320, 200], large: [660, 220] };
     const BENTO_ITEMS = [
       { id: "products", href: "/products.html", icon: "📦", title: "Products", desc: "View inventory, adjust quantities, scan barcodes", large: true },
       { id: "products-manage", href: "/products-manage.html", icon: "✏️", title: "Manage Products", desc: "Create, edit, and organize products", large: false },
@@ -171,7 +173,7 @@
       BENTO_ITEMS.forEach((item, i) => {
         const col = i % 3;
         const row = Math.floor(i / 3);
-        out[item.id] = { x: col * 320, y: row * 260 };
+        out[item.id] = { x: col * 340, y: row * 220 };
       });
       return out;
     }
@@ -182,22 +184,64 @@
       localStorage.setItem(BENTO_POS_KEY, JSON.stringify(pos));
     }
 
+    function getBentoSizes() {
+      try {
+        const s = localStorage.getItem(BENTO_SIZE_KEY);
+        if (s) return JSON.parse(s);
+      } catch (_) {}
+      const out = {};
+      BENTO_ITEMS.forEach((item) => {
+        out[item.id] = item.large ? "large" : "medium";
+      });
+      return out;
+    }
+
+    function setBentoSize(id, size) {
+      const sizes = getBentoSizes();
+      sizes[id] = size;
+      localStorage.setItem(BENTO_SIZE_KEY, JSON.stringify(sizes));
+    }
+
+    function cycleBentoSize(id) {
+      const sizes = getBentoSizes();
+      const next = { small: "medium", medium: "large", large: "small" };
+      sizes[id] = next[sizes[id] || "medium"] || "medium";
+      localStorage.setItem(BENTO_SIZE_KEY, JSON.stringify(sizes));
+      return sizes[id];
+    }
+
     function renderBentoCards() {
       const layer = document.getElementById("bentoCardsLayer");
       if (!layer) return;
       layer.innerHTML = "";
       const positions = getBentoPositions();
+      const sizes = getBentoSizes();
       BENTO_ITEMS.forEach((item) => {
         const pos = positions[item.id] || { x: 0, y: 0 };
-        const a = document.createElement("a");
-        a.href = item.href;
-        a.className = "bento-card board-item" + (item.large ? " bento-card-large" : "");
+        const size = sizes[item.id] || (item.large ? "large" : "medium");
+        const [w, h] = BENTO_DIMENSIONS[size] || BENTO_DIMENSIONS.medium;
+        const a = document.createElement("div");
+        a.className = "bento-card board-item bento-card-" + size;
         a.dataset.bentoId = item.id;
         a.draggable = true;
         a.style.left = pos.x + "px";
         a.style.top = pos.y + "px";
-        a.innerHTML = "<span class=\"bento-icon\">" + item.icon + "</span><h2>" + escapeHtml(item.title) + "</h2><p>" + escapeHtml(item.desc) + "</p>";
+        a.style.width = w + "px";
+        a.style.height = h + "px";
+        a.innerHTML =
+          "<a href=\"" + (item.href || "#") + "\" class=\"bento-card-link\">" +
+          "<span class=\"bento-icon\">" + item.icon + "</span>" +
+          "<h2>" + escapeHtml(item.title) + "</h2>" +
+          "<p>" + escapeHtml(item.desc) + "</p>" +
+          "</a>" +
+          "<button type=\"button\" class=\"bento-card-resize\" data-id=\"" + (item.id || "") + "\" title=\"Resize (small → medium → large)\">⤢</button>";
         layer.appendChild(a);
+        a.querySelector(".bento-card-resize").addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          cycleBentoSize(item.id);
+          renderBentoCards();
+        });
       });
       setupBoardDragDrop();
     }
@@ -264,6 +308,7 @@
       let bentoJustDragged = false;
       document.querySelectorAll(".bento-card").forEach((card) => {
         card.addEventListener("dragstart", (e) => {
+          if (e.target.closest("button") || e.target.closest(".bento-card-resize")) { e.preventDefault(); return; }
           bentoJustDragged = true;
           const r = card.getBoundingClientRect();
           e.dataTransfer.effectAllowed = "move";

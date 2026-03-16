@@ -169,8 +169,15 @@
             chartType: config.type || "bar",
           }),
         });
-        if (!res.ok) throw new Error((await res.json()).message || "Failed");
-        alert("Added to dashboard!");
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          if (err.message?.toLowerCase().includes("deployment")) {
+            alert("Select a deployment first (use Switch menu), then add the report to the dashboard.");
+            return;
+          }
+          throw new Error(err.message || "Failed");
+        }
+        alert("Added to dashboard! Report is scoped to the current deployment.");
       } catch (e) {
         alert("Error: " + (e.message || "Could not add to dashboard"));
       }

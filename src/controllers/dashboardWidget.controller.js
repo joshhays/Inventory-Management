@@ -4,8 +4,15 @@ const reportService = require("../services/report.service");
 async function getWidgets(req, res, next) {
   try {
     const userId = req.user.id;
+    const deploymentId = req.deploymentId;
+    const where = { userId };
+    if (deploymentId != null && deploymentId !== undefined) {
+      where.OR = [{ deploymentId: null }, { deploymentId: Number(deploymentId) }];
+    } else {
+      where.deploymentId = null;
+    }
     const widgets = await prisma.dashboardWidget.findMany({
-      where: { userId },
+      where,
       orderBy: { sortOrder: "asc" },
     });
     const withData = await Promise.all(
@@ -49,12 +56,16 @@ async function getWidgets(req, res, next) {
 async function createWidget(req, res, next) {
   try {
     const userId = req.user.id;
+    const deploymentId = req.deploymentId ?? null;
     const { title, reportName, reportParams, chartType, size, posX, posY } = req.body;
     if (!title || !reportName) {
       return res.status(400).json({ message: "title and reportName are required" });
     }
     const paramsStr = typeof reportParams === "string" ? reportParams : JSON.stringify(reportParams || {});
-    const count = await prisma.dashboardWidget.count({ where: { userId } });
+    const countWhere = deploymentId != null
+      ? { userId, OR: [{ deploymentId: null }, { deploymentId }] }
+      : { userId, deploymentId: null };
+    const count = await prisma.dashboardWidget.count({ where: countWhere });
     const sortOrder = count;
     const validSize = ["small", "medium", "large"].includes(size) ? size : "medium";
     const defaultX = (count % 3) * 340;
@@ -62,6 +73,7 @@ async function createWidget(req, res, next) {
     const widget = await prisma.dashboardWidget.create({
       data: {
         userId,
+        deploymentId,
         title,
         reportName,
         reportParams: paramsStr,

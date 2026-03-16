@@ -29,19 +29,20 @@ model User {
 }
 
 model DashboardWidget {
-  id           Int      @id @default(autoincrement())
-  userId       Int
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title        String
-  reportName   String   // e.g. getSalesByPeriod, getOrdersSummary
-  reportParams String   @default("{}") // JSON
-  chartType    String   @default("bar") // bar, line, pie
-  size         String   @default("medium") // small, medium, large
-  sortOrder    Int      @default(0)
-  posX         Int      @default(0) // free-form board position
-  posY         Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             Int        @id @default(autoincrement())
+  userId         Int
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deploymentId   Int?       // null = legacy (show for all); set = deployment-specific
+  title          String
+  reportName     String     // e.g. getSalesByPeriod, getOrdersSummary
+  reportParams   String     @default("{}") // JSON
+  chartType      String     @default("bar") // bar, line, pie
+  size           String     @default("medium") // small, medium, large
+  sortOrder      Int        @default(0)
+  posX           Int        @default(0) // free-form board position
+  posY           Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 }
 
 model SavedAddress {
