@@ -72,7 +72,7 @@ const getPreview = async (req, res, next) => {
       const { businessCardTemplate } = require("../podTemplates");
       const basePdfBytes = fs.readFileSync(POD_BASE_PDF);
       const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, {}, businessCardTemplate);
-      const { pdf } = require("pdf-to-img");
+      const { pdf } = await import("pdf-to-img");
       const document = await pdf(pdfBuffer, { scale: 2 });
       let firstPage = null;
       for await (const image of document) {
@@ -90,7 +90,7 @@ const getPreview = async (req, res, next) => {
       return res.status(404).json({ message: "No image or PDF file found. For POD products, add business-card-base.pdf to product-files." });
     }
 
-    const { pdf } = require("pdf-to-img");
+    const { pdf } = await import("pdf-to-img");
     const document = await pdf(fullPath, { scale: 2 });
     let firstPage = null;
     for await (const image of document) {
