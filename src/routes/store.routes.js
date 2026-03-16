@@ -21,8 +21,9 @@ function serveStorePage(slug, page, res, next) {
   });
 }
 
-router.get("/store", (_req, res) => res.redirect(302, "/store/"));
-router.get("/store/", async (req, res, next) => {
+// /store and /store/ - combined so /store/ is handled before /store/:slug can match
+router.get(["/store", "/store/"], async (req, res, next) => {
+  if (req.path !== "/store/") return res.redirect(302, "/store/");
   try {
     const deployments = await deploymentService.findAll();
     function escapeHtml(s) {
@@ -77,12 +78,14 @@ router.get("/store/", async (req, res, next) => {
 </html>`;
     res.type("text/html").send(html);
   } catch (e) {
+    console.error("[store] Error loading store selector:", e);
     next(e);
   }
 });
 
 router.get("/store/:slug", async (req, res, next) => {
   const { slug } = req.params;
+  if (!slug || slug.trim() === "") return next(); // let /store/ handle
   try {
     const dep = await deploymentService.findBySlug(slug);
     if (!dep) return res.status(404).send("Store not found");
