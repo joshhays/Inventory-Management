@@ -99,6 +99,12 @@ body::before {
   display: block;
 }
 
+/* Knocked-out white logo in header (dark nav bar) */
+.top-nav .nav-logo-wrap .nav-logo,
+.top-nav .nav-logo-wrap img {
+  filter: brightness(0) invert(1);
+}
+
 .top-nav-tabs {
   display: flex;
   gap: 0.25rem;
