@@ -1,11 +1,11 @@
 /** Updates the nav logo and brand colors from the selected deployment. */
 (function () {
-  const logo = document.querySelector(".nav-logo-wrap .nav-logo, .nav-logo-wrap img");
   fetch("/api/deployments/selected", { credentials: "include" })
     .then((r) => r.json())
     .then((data) => {
       const d = data.deployment;
       if (d) {
+        const logo = document.querySelector(".nav-logo-wrap .nav-logo, .nav-logo-wrap img");
         if (d.logoUrl && logo) {
           logo.src = d.logoUrl;
           logo.alt = d.name || "Logo";
