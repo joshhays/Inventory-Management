@@ -307,10 +307,8 @@
             inp.className = "pod-input pod-input-phone";
             inp.maxLength = 14;
             inp.addEventListener("input", () => {
-              const pos = inp.selectionStart;
-              const oldLen = inp.value.length;
               inp.value = formatPhoneInput(inp.value);
-              inp.setSelectionRange(Math.min(pos, inp.value.length), Math.min(pos, inp.value.length));
+              inp.setSelectionRange(inp.value.length, inp.value.length);
               updatePODProof(config, getPODFormValues(config));
             });
             inp.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
