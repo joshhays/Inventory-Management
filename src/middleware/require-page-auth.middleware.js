@@ -5,22 +5,23 @@
 const ADMIN_PATHS = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html", "/deployments.html"];
 const ADMIN_PATHS_REQUIRE_DEPLOYMENT = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html"];
 const DEPLOYMENT_SELECT_PATH = "/dashboard.html";
-const STORE_PATHS = ["/store/", "/store/index.html", "/store/products.html", "/store/cart.html", "/store/orders.html"];
+
+// Store paths that require auth (orders, settings). Index, products, cart, login, register are public.
+const STORE_AUTH_REQUIRED = /^\/store\/[^/]+\/(orders|settings)(\/)?$/;
 
 function requirePageAuth(req, res, next) {
   if (req.method !== "GET") return next();
 
   const path = req.path === "" ? "/" : req.path;
+  const pathNoQuery = path.replace(/\?.*$/, "");
   const isAdminPath = ADMIN_PATHS.includes(path) || path === DEPLOYMENT_SELECT_PATH;
-  const isStorePath =
+  const isStoreAuthRequired =
     (path === "/store" || path.startsWith("/store/")) &&
-    path !== "/store/login.html" &&
-    path !== "/store/register.html" &&
     path !== "/store" &&
     path !== "/store/" &&
-    !/\/store\/[^/]+\/(login|register)(\/)?$/.test(path.replace(/\?.*$/, ""));
+    STORE_AUTH_REQUIRED.test(pathNoQuery);
 
-  if (!isAdminPath && !isStorePath) return next();
+  if (!isAdminPath && !isStoreAuthRequired) return next();
   if (req.session?.user) {
     if (path !== DEPLOYMENT_SELECT_PATH && ADMIN_PATHS_REQUIRE_DEPLOYMENT.includes(path)) {
       if (!req.session?.selectedDeploymentId) {
@@ -30,7 +31,7 @@ function requirePageAuth(req, res, next) {
     return next();
   }
 
-  if (isStorePath) {
+  if (isStoreAuthRequired) {
     const slugMatch = path.match(/^\/store\/([^/]+)/);
     const loginPath = slugMatch ? `/store/${slugMatch[1]}/login` : "/store/login.html";
     return res.redirect(302, loginPath);

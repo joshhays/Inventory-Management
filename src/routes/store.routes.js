@@ -4,14 +4,14 @@ const fs = require("fs");
 const deploymentService = require("../services/deployment.service");
 
 const router = express.Router();
-const storeDir = path.join(__dirname, "../../public/store");
+const storeDir = path.resolve(__dirname, "../../public/store");
 const STORE_PAGES = ["", "index", "products", "cart", "orders", "settings", "login", "register"];
 
 function serveStorePage(slug, page, res, next) {
   const file = page === "" || page === "index" ? "index.html" : `${page}.html`;
   const filePath = path.join(storeDir, file);
   if (!fs.existsSync(filePath)) return next();
-  const base = `/store/${slug}`;
+  const base = `/store/${encodeURIComponent(slug)}`;
   fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next(err);
     const out = html
@@ -83,18 +83,22 @@ router.get(["/store", "/store/"], async (req, res, next) => {
   }
 });
 
+// /store/:slug (no trailing slash) - redirect to /store/:slug/
+// Must skip when path already has trailing slash to avoid redirect loop (Express matches both)
 router.get("/store/:slug", async (req, res, next) => {
+  if (req.path.endsWith("/")) return next();
   const { slug } = req.params;
-  if (!slug || slug.trim() === "") return next(); // let /store/ handle
+  if (!slug || slug.trim() === "") return next();
   try {
     const dep = await deploymentService.findBySlug(slug);
     if (!dep) return res.status(404).send("Store not found");
-    res.redirect(302, `/store/${encodeURIComponent(slug)}/`);
+    return res.redirect(302, `/store/${encodeURIComponent(slug)}/`);
   } catch (e) {
     next(e);
   }
 });
 
+// /store/:slug/ - serve store index (must come before /store/:slug/:page)
 router.get("/store/:slug/", async (req, res, next) => {
   const { slug } = req.params;
   try {
@@ -106,6 +110,7 @@ router.get("/store/:slug/", async (req, res, next) => {
   }
 });
 
+// /store/:slug/:page - serve store pages (login, products, cart, etc.)
 router.get("/store/:slug/:page", async (req, res, next) => {
   const { slug, page } = req.params;
   const pageBase = page.replace(/\.html$/, "");
