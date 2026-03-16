@@ -19,8 +19,12 @@ const calculateKitQuantity = async (kitId) => {
 };
 
 const getAllProducts = async (options = {}) => {
-  const { groupId, allowedGroupIds, category } = options;
+  const { deploymentId, groupId, allowedGroupIds, category } = options;
   const conditions = [];
+
+  if (deploymentId != null) {
+    conditions.push({ deploymentId: Number(deploymentId) });
+  }
 
   if (category != null && category !== "") {
     conditions.push({ category: String(category).trim() });
@@ -57,8 +61,11 @@ const getAllProducts = async (options = {}) => {
 
 const createProduct = (productData) => {
   const isKit = productData.productType === "kit";
+  const deploymentId = Number(productData.deploymentId);
+  if (!deploymentId) throw new Error("Deployment is required.");
   return prisma.product.create({
     data: {
+      deploymentId,
       name: productData.name,
       sku: productData.sku,
       quantity: isKit ? 0 : (Number(productData.quantity) || 0),
@@ -256,24 +263,30 @@ const updateKitQuantity = async (kit, { quantity, adjust }, source = "manual") =
   });
 };
 
-const getProductWithFiles = async (id) => {
-  const product = await prisma.product.findUnique({
-    where: { id: Number(id) },
-    include: { files: true, group: true, kitItems: { include: { product: true } } },
+const getProductWithFiles = async (id, deploymentId) => {
+  const where = { id: Number(id) };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
+  const product = await prisma.product.findFirst({
+    where,
+    include: { files: true, group: true, deployment: true, kitItems: { include: { product: true } } },
   });
   return product;
 };
 
-const importFromCsv = async (rows) => {
+const importFromCsv = async (rows, deploymentId) => {
+  if (!deploymentId) throw new Error("Deployment is required for import.");
+  const depId = Number(deploymentId);
   let updated = 0;
   let created = 0;
 
   for (const row of rows) {
-    const existing = await prisma.product.findUnique({ where: { sku: row.sku } });
+    const existing = await prisma.product.findFirst({
+      where: { deploymentId: depId, sku: row.sku },
+    });
     if (existing) {
       const qtyBefore = existing.quantity;
       await prisma.product.update({
-        where: { sku: row.sku },
+        where: { id: existing.id },
         data: {
           name: row.name,
           quantity: row.quantity,
@@ -295,6 +308,7 @@ const importFromCsv = async (rows) => {
     } else {
       const createdProduct = await prisma.product.create({
         data: {
+          deploymentId: depId,
           name: row.name,
           sku: row.sku,
           quantity: row.quantity,
@@ -320,7 +334,7 @@ const importFromCsv = async (rows) => {
 };
 
 const getCategories = async (options = {}) => {
-  const products = await getAllProducts(options);
+  const products = await getAllProducts({ ...options, deploymentId: options.deploymentId });
   const set = new Set();
   for (const p of products) {
     if (p.category && p.category.trim()) set.add(p.category.trim());

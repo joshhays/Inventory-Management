@@ -213,7 +213,7 @@ async function chat(req, res, next) {
         } catch (_) {}
         let result;
         try {
-          result = await reportService.runReport(name, args);
+          result = await reportService.runReport(name, { ...args, deploymentId: req.deploymentId });
         } catch (err) {
           result = { error: err.message };
         }
@@ -294,7 +294,10 @@ async function runReport(req, res, next) {
         return res.status(400).json({ message: "params must be valid JSON" });
       }
     }
-    const result = await reportService.runReport(name, parsedParams);
+    const result = await reportService.runReport(name, {
+      ...parsedParams,
+      deploymentId: req.deploymentId,
+    });
     const chartConfig = reportService.toChartConfig(name, result);
     return res.json({
       data: result,

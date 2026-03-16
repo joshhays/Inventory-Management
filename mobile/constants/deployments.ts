@@ -1,12 +1,12 @@
 /**
- * Available deployments. Each deployment is a separate backend instance.
- * Add new customers/sites here as they onboard.
+ * Available deployments (companies). All use the same backend; each has its own products/orders.
+ * Add new customers here as they onboard.
  */
 export type Deployment = {
-  id: string;
+  id: string;       // slug used for API (e.g. atproperties)
   name: string;
   apiBase: string;
-  logoUrl?: string; // URL to logo (e.g. {apiBase}/logo.png)
+  logoUrl?: string;
 };
 
 export const DEPLOYMENTS: Deployment[] = [
@@ -16,8 +16,11 @@ export const DEPLOYMENTS: Deployment[] = [
     apiBase: 'https://inventory-management-production-2079.up.railway.app',
     logoUrl: 'https://inventory-management-production-2079.up.railway.app/logo.png',
   },
-  // Add more deployments here as other customers onboard:
-  // { id: 'acme', name: 'Acme Corp', apiBase: 'https://acme-inventory.railway.app', logoUrl: '...' },
+  {
+    id: 'other',
+    name: 'Other Company',
+    apiBase: 'https://inventory-management-production-2079.up.railway.app',
+  },
 ];
 
 export function getDeploymentById(id: string): Deployment | undefined {

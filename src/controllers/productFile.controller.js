@@ -11,7 +11,7 @@ const PRODUCT_FILES_DIR = path.join(__dirname, "../../product-files");
 const POD_BASE_PDF = path.join(__dirname, "../../product-files/business-card-base.pdf");
 
 async function checkProductAccess(req, res, productId) {
-  const product = await productService.getProductWithFiles(productId);
+  const product = await productService.getProductWithFiles(productId, req.deploymentId);
   if (!product) return { status: 404, message: "Product not found." };
   if (!canAccessProduct(req.user, product)) return { status: 403, message: "You do not have access to this product." };
   return { product };
@@ -37,7 +37,7 @@ const getFiles = async (req, res, next) => {
 const getPreview = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await productService.getProductWithFiles(id);
+    const product = await productService.getProductWithFiles(id, req.deploymentId);
     if (!product) return res.status(404).json({ message: "Product not found." });
     if (req.user) {
       const access = await checkProductAccess(req, res, id);

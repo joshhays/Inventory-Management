@@ -1,6 +1,8 @@
 const prisma = require("../lib/prisma");
 
-function create({ customerName, customerEmail, customerPhone, shippingAddress, items }) {
+function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, items }) {
+  if (!deploymentId) throw new Error("Deployment is required.");
+  const depId = Number(deploymentId);
   return prisma.$transaction(async (tx) => {
     let total = 0;
     const orderItems = [];
@@ -8,12 +10,12 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
 
     for (const item of items) {
       const product = item.productId
-        ? await tx.product.findUnique({
-            where: { id: Number(item.productId) },
+        ? await tx.product.findFirst({
+            where: { id: Number(item.productId), deploymentId: depId },
             include: { kitItems: { include: { product: true } } },
           })
-        : await tx.product.findUnique({
-            where: { sku: String(item.sku) },
+        : await tx.product.findFirst({
+            where: { deploymentId: depId, sku: String(item.sku) },
             include: { kitItems: { include: { product: true } } },
           });
 
@@ -71,6 +73,7 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
 
     const order = await tx.order.create({
       data: {
+        deploymentId: depId,
         customerName: String(customerName),
         customerEmail: String(customerEmail),
         customerPhone: customerPhone ? String(customerPhone) : null,
@@ -88,12 +91,13 @@ function create({ customerName, customerEmail, customerPhone, shippingAddress, i
   });
 }
 
-function findMany({ page = 1, limit = 50, status } = {}) {
+function findMany({ deploymentId, page = 1, limit = 50, status } = {}) {
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
   const skip = (pageNum - 1) * limitNum;
 
   const where = {};
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   if (status && status.trim()) {
     where.status = status.trim();
   }
@@ -128,14 +132,18 @@ function findManyByEmail(email, { page = 1, limit = 20 } = {}) {
   ]);
 }
 
-function findById(id) {
-  return prisma.order.findUnique({
-    where: { id: Number(id) },
+function findById(id, deploymentId) {
+  const where = { id: Number(id) };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
+  return prisma.order.findFirst({
+    where,
     include: { items: true },
   });
 }
 
-async function updateStatus(id, status) {
+async function updateStatus(id, status, deploymentId) {
+  const where = { id: Number(id) };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   const statusNorm = String(status).trim().toLowerCase();
   const data = { status: statusNorm };
 
@@ -146,13 +154,15 @@ async function updateStatus(id, status) {
   }
 
   return prisma.order.update({
-    where: { id: Number(id) },
+    where,
     data,
     include: { items: true },
   });
 }
 
-async function updateItemPicked(orderId, itemId, picked) {
+async function updateItemPicked(orderId, itemId, picked, deploymentId) {
+  const order = await findById(orderId, deploymentId);
+  if (!order) return null;
   const item = await prisma.orderItem.findFirst({
     where: { id: Number(itemId), orderId: Number(orderId) },
   });
@@ -161,7 +171,7 @@ async function updateItemPicked(orderId, itemId, picked) {
     where: { id: Number(itemId) },
     data: { picked: !!picked },
   });
-  return findById(orderId);
+  return findById(orderId, deploymentId);
 }
 
 module.exports = {

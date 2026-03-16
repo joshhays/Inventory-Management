@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deployments - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="prefetch" href="/">
+  <link rel="prefetch" href="/deployment-select.html">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Inventory" class="nav-logo"></a>
+      <a href="/deployment-select.html" class="top-nav-back" title="Switch deployment">Switch</a>
+    </header>
+    <main class="main-content">
+      <div class="toolbar">
+        <h1>Deployments</h1>
+        <button type="button" class="btn-create" id="btnCreate">Add Deployment</button>
+      </div>
+      <p class="deployments-hint">Each deployment (company) has its own products and orders. Select one from the Switch menu to work with it.</p>
+      <div class="table-wrap">
+        <div class="loading" id="status">Loading…</div>
+        <div id="accessDenied" class="error" style="display:none">Admin access required to manage deployments.</div>
+        <table id="table" style="display:none">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Slug</th>
+              <th>Logo</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="body"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-overlay" id="deploymentModal">
+    <div class="modal" style="min-width: 400px;">
+      <h3 id="deploymentModalTitle">Add Deployment</h3>
+      <form id="deploymentForm">
+        <div class="modal-row">
+          <label>Name</label>
+          <input type="text" id="deploymentName" required placeholder="e.g. Acme Corp">
+        </div>
+        <div class="modal-row">
+          <label>Slug</label>
+          <input type="text" id="deploymentSlug" required placeholder="e.g. acme" pattern="[a-z0-9-]+" title="Lowercase letters, numbers, hyphens only">
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Used in URLs and API. Lowercase, no spaces.</p>
+        </div>
+        <div class="modal-row">
+          <label>Logo URL <span style="color: var(--text-muted);">(optional)</span></label>
+          <input type="url" id="deploymentLogoUrl" placeholder="https://... or /logo.png">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
+          <button type="submit" class="btn-apply" id="btnSubmit">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+    const statusEl = document.getElementById("status");
+    const tableEl = document.getElementById("table");
+    const bodyEl = document.getElementById("body");
+    const accessDeniedEl = document.getElementById("accessDenied");
+    const modal = document.getElementById("deploymentModal");
+    const form = document.getElementById("deploymentForm");
+    const nameInput = document.getElementById("deploymentName");
+    const slugInput = document.getElementById("deploymentSlug");
+    const logoInput = document.getElementById("deploymentLogoUrl");
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s ?? "";
+      return d.innerHTML;
+    }
+
+    async function loadDeployments() {
+      try {
+        const res = await fetch("/api/deployments", { credentials: "include" });
+        if (!res.ok) {
+          if (res.status === 403) {
+            accessDeniedEl.style.display = "block";
+            statusEl.style.display = "none";
+            return;
+          }
+          throw new Error("Failed to load");
+        }
+        const deployments = await res.json();
+        statusEl.style.display = "none";
+        tableEl.style.display = "table";
+        bodyEl.innerHTML = deployments.map((d) => `
+          <tr>
+            <td>${escapeHtml(d.name)}</td>
+            <td><code>${escapeHtml(d.slug)}</code></td>
+            <td>${d.logoUrl ? `<img src="${escapeHtml(d.logoUrl)}" alt="" style="height:24px;max-width:60px;object-fit:contain;">` : "—"}</td>
+            <td>
+              <button type="button" class="btn-small btn-apply" data-id="${d.id}" data-name="${escapeHtml(d.name)}" data-slug="${escapeHtml(d.slug)}" title="Switch to this deployment">Select</button>
+            </td>
+          </tr>
+        `).join("");
+        bodyEl.querySelectorAll("button[data-id]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            try {
+              const res = await fetch("/api/deployments/select", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ id: Number(btn.dataset.id) }),
+              });
+              if (!res.ok) throw new Error("Failed");
+              window.location.href = "/";
+            } catch (e) {
+              alert(e.message || "Failed to select deployment.");
+            }
+          });
+        });
+      } catch (err) {
+        statusEl.textContent = err.message || "Error loading deployments.";
+      }
+    }
+
+    document.getElementById("btnCreate").addEventListener("click", () => {
+      form.reset();
+      document.getElementById("deploymentModalTitle").textContent = "Add Deployment";
+      document.getElementById("btnSubmit").textContent = "Create";
+      modal.classList.add("active");
+      nameInput.focus();
+    });
+
+    document.getElementById("btnCancel").addEventListener("click", () => {
+      modal.classList.remove("active");
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.classList.remove("active");
+    });
+
+    nameInput.addEventListener("input", () => {
+      if (!slugInput.dataset.touched) {
+        slugInput.value = nameInput.value.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      }
+    });
+    slugInput.addEventListener("blur", () => { slugInput.dataset.touched = "1"; });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("btnSubmit");
+      btn.disabled = true;
+      btn.textContent = "Creating…";
+      try {
+        const res = await fetch("/api/deployments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: nameInput.value.trim(),
+            slug: slugInput.value.trim().toLowerCase().replace(/\s+/g, "-"),
+            logoUrl: logoInput.value.trim() || undefined,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to create deployment.");
+        }
+        modal.classList.remove("active");
+        loadDeployments();
+      } catch (err) {
+        alert(err.message || "Failed to create deployment.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Create";
+      }
+    });
+
+    loadDeployments();
+  </script>
+  <style>
+    .deployments-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
+    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+  </style>
+</body>
+</html>

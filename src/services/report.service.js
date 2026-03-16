@@ -10,8 +10,9 @@ function parseDate(d) {
   return isNaN(t) ? null : new Date(t);
 }
 
-async function getOrders({ status, dateFrom, dateTo, limit = 50 } = {}) {
+async function getOrders({ deploymentId, status, dateFrom, dateTo, limit = 50 } = {}) {
   const where = {};
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   if (status && status.trim()) where.status = status.trim();
   if (dateFrom || dateTo) {
     where.createdAt = {};
@@ -37,8 +38,9 @@ async function getOrders({ status, dateFrom, dateTo, limit = 50 } = {}) {
   }));
 }
 
-async function getOrdersSummary({ dateFrom, dateTo } = {}) {
+async function getOrdersSummary({ deploymentId, dateFrom, dateTo } = {}) {
   const where = {};
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   if (dateFrom || dateTo) {
     where.createdAt = {};
     if (dateFrom) where.createdAt.gte = parseDate(dateFrom) || new Date(0);
@@ -62,9 +64,11 @@ async function getOrdersSummary({ dateFrom, dateTo } = {}) {
   };
 }
 
-async function getSalesByPeriod({ period = "day", dateFrom, dateTo } = {}) {
+async function getSalesByPeriod({ deploymentId, period = "day", dateFrom, dateTo } = {}) {
+  const where = { status: { not: "cancelled" } };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   const orders = await prisma.order.findMany({
-    where: { status: { not: "cancelled" } },
+    where,
     select: { total: true, createdAt: true },
   });
   const buckets = {};
@@ -88,8 +92,9 @@ async function getSalesByPeriod({ period = "day", dateFrom, dateTo } = {}) {
   return entries;
 }
 
-async function getProducts({ category, lowStockOnly = false, limit = 100 } = {}) {
+async function getProducts({ deploymentId, category, lowStockOnly = false, limit = 100 } = {}) {
   const where = {};
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   if (category && category.trim()) where.category = category.trim();
   if (lowStockOnly) where.quantity = { lte: 10 };
   const products = await prisma.product.findMany({
@@ -101,20 +106,23 @@ async function getProducts({ category, lowStockOnly = false, limit = 100 } = {})
   return products;
 }
 
-async function getLowStockProducts(threshold = 10) {
+async function getLowStockProducts({ deploymentId, threshold = 10 } = {}) {
+  const where = { quantity: { lte: Number(threshold) || 10 } };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   const products = await prisma.product.findMany({
-    where: { quantity: { lte: Number(threshold) || 10 } },
+    where,
     select: { id: true, name: true, sku: true, quantity: true, price: true },
     orderBy: { quantity: "asc" },
   });
   return products;
 }
 
-async function getPickTimeStats({ dateFrom, dateTo } = {}) {
+async function getPickTimeStats({ deploymentId, dateFrom, dateTo } = {}) {
   const where = {
     pickingStartedAt: { not: null },
     pickingCompletedAt: { not: null },
   };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
   if (dateFrom || dateTo) {
     where.pickingCompletedAt = {};
     if (dateFrom) where.pickingCompletedAt.gte = parseDate(dateFrom) || new Date(0);
@@ -161,8 +169,9 @@ async function getInventoryLogs({ limit = 50, action } = {}) {
   }));
 }
 
-async function getTopProductsByQuantity({ limit = 10, dateFrom, dateTo } = {}) {
+async function getTopProductsByQuantity({ deploymentId, limit = 10, dateFrom, dateTo } = {}) {
   const orderWhere = { status: { not: "cancelled" } };
+  if (deploymentId != null) orderWhere.deploymentId = Number(deploymentId);
   if (dateFrom || dateTo) {
     orderWhere.createdAt = {};
     if (dateFrom) orderWhere.createdAt.gte = parseDate(dateFrom) || new Date(0);

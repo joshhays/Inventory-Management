@@ -29,7 +29,12 @@ const getProducts = async (req, res, next) => {
       return res.status(403).json({ message: "You do not have access to this group." });
     }
 
-    const products = await productService.getAllProducts({ groupId, allowedGroupIds, category });
+    const products = await productService.getAllProducts({
+      deploymentId: req.deploymentId,
+      groupId,
+      allowedGroupIds,
+      category,
+    });
     res.status(200).json(withFileUrlsList(products));
   } catch (error) {
     next(error);
@@ -40,7 +45,10 @@ const getCategories = async (req, res, next) => {
   try {
     const user = req.user;
     const allowedGroupIds = user?.isAdmin ? null : (user?.groupIds?.length ? user.groupIds : null);
-    const categories = await productService.getCategories({ allowedGroupIds });
+    const categories = await productService.getCategories({
+      deploymentId: req.deploymentId,
+      allowedGroupIds,
+    });
     res.status(200).json(categories);
   } catch (error) {
     next(error);
@@ -50,7 +58,7 @@ const getCategories = async (req, res, next) => {
 const getProduct = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const product = await productService.getProductWithFiles(id);
+    const product = await productService.getProductWithFiles(id, req.deploymentId);
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
     }
@@ -92,6 +100,7 @@ const createProduct = async (req, res, next) => {
     }
 
     const product = await productService.createProduct({
+      deploymentId: req.deploymentId,
       name,
       sku,
       quantity,
@@ -193,7 +202,11 @@ const exportCsv = async (req, res, next) => {
     if (groupId && !user?.isAdmin && allowedGroupIds?.length && !allowedGroupIds.includes(Number(groupId))) {
       return res.status(403).json({ message: "You do not have access to this group." });
     }
-    const products = await productService.getAllProducts({ groupId, allowedGroupIds });
+    const products = await productService.getAllProducts({
+      deploymentId: req.deploymentId,
+      groupId,
+      allowedGroupIds,
+    });
     const header = "name,sku,quantity,price,description\n";
     const rows = products.map((p) => {
       const desc = (p.description || "").replace(/"/g, '""');
@@ -232,7 +245,7 @@ const importCsv = async (req, res, next) => {
       return res.status(400).json({ message: "No valid rows found. Ensure CSV has name and sku columns." });
     }
 
-    const { updated, created } = await productService.importFromCsv(products);
+    const { updated, created } = await productService.importFromCsv(products, req.deploymentId);
 
     try { fs.unlinkSync(file.path); } catch (_) {}
 
@@ -251,7 +264,7 @@ const getLabel = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
-    const product = await productService.getProductWithFiles(id);
+    const product = await productService.getProductWithFiles(id, req.deploymentId);
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
     }

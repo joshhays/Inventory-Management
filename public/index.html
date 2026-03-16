@@ -12,12 +12,14 @@
   <link rel="prefetch" href="/logs.html">
   <link rel="prefetch" href="/users.html">
   <link rel="prefetch" href="/groups.html">
+  <link rel="prefetch" href="/deployments.html">
   <link rel="prefetch" href="/reports.html">
 </head>
 <body>
   <div class="app-layout">
     <header class="top-nav top-nav-simple">
       <a href="/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Inventory" class="nav-logo"></a>
+      <a href="/deployment-select.html" class="top-nav-back" id="switchDeploymentLink" title="Switch deployment">Switch</a>
       <a href="#" id="logoutLink" class="top-nav-back">Log out</a>
     </header>
     <main class="main-content bento-main">
@@ -154,6 +156,7 @@
       { id: "logs", href: "/logs.html", icon: "📋", title: "Transaction Log", desc: "Audit trail of inventory changes", large: false },
       { id: "users", href: "/users.html", icon: "👥", title: "Users", desc: "Manage accounts, permissions, and groups", large: false },
       { id: "groups", href: "/groups.html", icon: "🏷️", title: "Product Groups", desc: "Create groups and tag products", large: false },
+      { id: "deployments", href: "/deployments.html", icon: "🏢", title: "Deployments", desc: "Manage companies – add and switch between deployments", large: false },
       { id: "reports", href: "/reports.html", icon: "📊", title: "Reports", desc: "AI-powered reports – ask anything", large: false },
     ];
 

@@ -1,4 +1,4 @@
-import { getApiBase } from '@/contexts/DeploymentContext';
+import { getApiBase, getDeploymentSlug } from '@/contexts/DeploymentContext';
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -16,11 +16,16 @@ function api() {
   };
 }
 
-const fetchOpts = (init?: RequestInit): RequestInit => ({
-  ...init,
-  credentials: 'include' as RequestCredentials,
-  headers: { 'Content-Type': 'application/json', ...init?.headers },
-});
+const fetchOpts = (init?: RequestInit): RequestInit => {
+  const slug = getDeploymentSlug();
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(init?.headers as Record<string, string>) };
+  if (slug) headers['X-Deployment-Slug'] = slug;
+  return {
+    ...init,
+    credentials: 'include' as RequestCredentials,
+    headers,
+  };
+};
 
 export type ProductFile = {
   id: number;

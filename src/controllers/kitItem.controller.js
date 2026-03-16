@@ -3,7 +3,7 @@ const productService = require("../services/product.service");
 const { canAccessProduct } = require("../lib/auth-helpers");
 
 async function checkKitAccess(req, res, kitId) {
-  const product = await productService.getProductWithFiles(kitId);
+  const product = await productService.getProductWithFiles(kitId, req.deploymentId);
   if (!product) return { status: 404, message: "Kit not found." };
   if (!canAccessProduct(req.user, product)) return { status: 403, message: "You do not have access to this product." };
   return {};

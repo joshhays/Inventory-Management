@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Deployment - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card deployment-select-card">
+      <div class="login-logo"><img src="/logo.png" alt="Inventory" class="nav-logo"></div>
+      <h1 class="login-title">Select deployment</h1>
+      <p class="login-subtitle">Choose which company to manage. All products and orders are scoped to the selected deployment.</p>
+      <p class="login-store-link">
+        <a href="/store/">← Customer store</a>
+        <span style="margin: 0 0.5rem;">|</span>
+        <a href="/deployments.html">Manage deployments</a>
+      </p>
+      <div id="deploymentList" class="deployment-list">
+        <div class="loading">Loading…</div>
+      </div>
+      <p class="deployment-select-logout"><a href="#" id="logoutLink">Log out</a></p>
+    </div>
+  </div>
+  <script>
+    const listEl = document.getElementById("deploymentList");
+    document.getElementById("logoutLink").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/login.html";
+    });
+
+    async function loadDeployments() {
+      try {
+        const res = await fetch("/api/deployments", { credentials: "include" });
+        if (!res.ok) {
+          if (res.status === 401) {
+            window.location.href = "/login.html";
+            return;
+          }
+          throw new Error("Failed to load deployments");
+        }
+        const deployments = await res.json();
+        listEl.innerHTML = "";
+        if (deployments.length === 0) {
+          listEl.innerHTML = "<p class=\"deployment-empty\">No deployments configured. Contact your administrator.</p>";
+          return;
+        }
+        deployments.forEach((d) => {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "deployment-card";
+          card.innerHTML = `
+            ${d.logoUrl ? `<img src="${escapeAttr(d.logoUrl)}" alt="" class="deployment-card-logo">` : `<div class="deployment-card-placeholder">${escapeHtml((d.name || "?")[0]}</div>`}
+            <span class="deployment-card-name">${escapeHtml(d.name || d.slug)}</span>
+            <span class="deployment-card-slug">${escapeHtml(d.slug || "")}</span>
+          `;
+          card.addEventListener("click", async () => {
+            card.disabled = true;
+            try {
+              const selRes = await fetch("/api/deployments/select", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ id: d.id }),
+              });
+              if (!selRes.ok) throw new Error("Failed to select");
+              window.location.href = "/";
+            } catch (err) {
+              card.disabled = false;
+              alert(err.message || "Failed to select deployment.");
+            }
+          });
+          listEl.appendChild(card);
+        });
+      } catch (err) {
+        listEl.innerHTML = "<p class=\"deployment-error\">" + escapeHtml(err.message || "Failed to load deployments.") + "</p>";
+      }
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s ?? "";
+      return d.innerHTML;
+    }
+    function escapeAttr(s) {
+      return String(s ?? "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    }
+
+    loadDeployments();
+  </script>
+  <style>
+    .deployment-select-card { max-width: 420px; }
+    .deployment-list { display: flex; flex-direction: column; gap: 12px; margin: 1.5rem 0; }
+    .deployment-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 24px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 1rem;
+      text-align: center;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .deployment-card:hover:not(:disabled) {
+      border-color: var(--accent);
+      box-shadow: var(--card-shadow-hover);
+    }
+    .deployment-card:disabled { opacity: 0.7; cursor: wait; }
+    .deployment-card-logo { width: 80px; height: 48px; object-fit: contain; }
+    .deployment-card-placeholder {
+      width: 80px; height: 48px;
+      background: rgba(227, 24, 55, 0.12);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 700; color: var(--accent);
+    }
+    .deployment-card-name { font-weight: 600; color: var(--text); }
+    .deployment-card-slug { font-size: 0.85rem; color: var(--text-muted); }
+    .deployment-empty, .deployment-error { color: var(--text-muted); text-align: center; }
+    .deployment-select-logout { margin-top: 1rem; }
+    .deployment-select-logout a { color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</body>
+</html>

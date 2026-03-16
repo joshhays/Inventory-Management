@@ -9,7 +9,7 @@ const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const podRoutes = require("./routes/pod.routes");
 const { notFoundHandler, errorHandler } = require("./middleware/error.middleware");
-const { requireAuth, requireAdmin, optionalAuth } = require("./middleware/auth.middleware");
+const { requireAuth, requireAdmin, optionalAuth, requireDeployment } = require("./middleware/auth.middleware");
 const { requirePageAuth } = require("./middleware/require-page-auth.middleware");
 
 const app = express();
@@ -57,14 +57,15 @@ app.use("/api/auth", authRoutes);
 
 app.use("/api/users", requireAuth, requireAdmin, userRoutes);
 
-app.use("/api/products", optionalAuth, productRoutes);
+app.use("/api/products", optionalAuth, require("./middleware/deployment.middleware").setDeploymentContext, productRoutes);
 app.use("/api/pod", podRoutes);
-app.use("/api/product-files", requireAuth, require("./routes/productFile.routes"));
-app.use("/api/user-groups", requireAuth, require("./routes/userGroup.routes"));
-app.use("/api/logs", requireAuth, requireAdmin, require("./routes/inventoryLog.routes"));
-app.use("/api/orders", requireAuth, requireAdmin, require("./routes/order.routes"));
-app.use("/api/reports", requireAuth, requireAdmin, require("./routes/report.routes"));
-app.use("/api/dashboard-widgets", requireAuth, requireAdmin, require("./routes/dashboardWidget.routes"));
+app.use("/api/product-files", requireAuth, requireDeployment, require("./routes/productFile.routes"));
+app.use("/api/user-groups", requireAuth, requireDeployment, require("./routes/userGroup.routes"));
+app.use("/api/logs", requireAuth, requireAdmin, requireDeployment, require("./routes/inventoryLog.routes"));
+app.use("/api/orders", requireAuth, requireAdmin, requireDeployment, require("./routes/order.routes"));
+app.use("/api/reports", requireAuth, requireAdmin, requireDeployment, require("./routes/report.routes"));
+app.use("/api/dashboard-widgets", requireAuth, requireAdmin, requireDeployment, require("./routes/dashboardWidget.routes"));
+app.use("/api/deployments", requireAuth, require("./routes/deployment.routes"));
 app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
 
 app.use(notFoundHandler);

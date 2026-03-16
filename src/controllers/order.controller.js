@@ -15,6 +15,7 @@ const createOrder = async (req, res, next) => {
     }
 
     const order = await orderService.create({
+      deploymentId: req.deploymentId,
       customerName,
       customerEmail,
       customerPhone,
@@ -35,6 +36,7 @@ const getOrders = async (req, res, next) => {
   try {
     const { page, limit, status } = req.query;
     const [orders, total] = await orderService.findMany({
+      deploymentId: req.deploymentId,
       page,
       limit,
       status,
@@ -58,7 +60,7 @@ const getOrders = async (req, res, next) => {
 const getOrder = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const order = await orderService.findById(id);
+    const order = await orderService.findById(id, req.deploymentId);
     if (!order) {
       return res.status(404).json({ message: "Order not found." });
     }
@@ -75,7 +77,7 @@ const updateOrderStatus = async (req, res, next) => {
     if (!status || typeof status !== "string") {
       return res.status(400).json({ message: "status is required." });
     }
-    const order = await orderService.updateStatus(id, status.trim());
+    const order = await orderService.updateStatus(id, status.trim(), req.deploymentId);
 
     return res.status(200).json(order);
   } catch (error) {
@@ -87,7 +89,7 @@ const updateOrderItemPicked = async (req, res, next) => {
   try {
     const { id, itemId } = req.params;
     const { picked } = req.body;
-    const order = await orderService.updateItemPicked(id, itemId, picked);
+    const order = await orderService.updateItemPicked(id, itemId, picked, req.deploymentId);
     if (!order) {
       return res.status(404).json({ message: "Order or item not found." });
     }

@@ -27,6 +27,7 @@ export function DeploymentProvider({ children }: { children: React.ReactNode }) 
           if (d) {
             setDeploymentState(d);
             setApiBase(d.apiBase);
+            setDeploymentSlug(d.id);
           }
         }
       } catch {
@@ -41,12 +42,14 @@ export function DeploymentProvider({ children }: { children: React.ReactNode }) 
     await AsyncStorage.setItem(STORAGE_KEY, d.id);
     setDeploymentState(d);
     setApiBase(d.apiBase);
+    setDeploymentSlug(d.id);
   }, []);
 
   const clearDeployment = useCallback(async () => {
     await AsyncStorage.removeItem(STORAGE_KEY);
     setDeploymentState(null);
     setApiBase(null);
+    setDeploymentSlug(null);
   }, []);
 
   return (
@@ -68,14 +71,23 @@ export function useDeployment() {
   return ctx;
 }
 
-// Module-level API base for lib/api.ts (set when deployment is selected)
+// Module-level API base and slug for lib/api.ts (set when deployment is selected)
 let _apiBase: string | null = null;
+let _deploymentSlug: string | null = null;
 
 export function setApiBase(base: string | null) {
   _apiBase = base;
 }
 
+export function setDeploymentSlug(slug: string | null) {
+  _deploymentSlug = slug;
+}
+
 export function getApiBase(): string {
   if (!_apiBase) throw new Error('No deployment selected');
   return _apiBase;
+}
+
+export function getDeploymentSlug(): string | null {
+  return _deploymentSlug;
 }

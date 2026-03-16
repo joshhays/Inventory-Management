@@ -2,7 +2,7 @@ const userGroupService = require("../services/userGroup.service");
 
 const getUserGroups = async (_req, res, next) => {
   try {
-    const groups = await userGroupService.findAll();
+    const groups = await userGroupService.findAll(req.deploymentId);
     return res.status(200).json(groups);
   } catch (error) {
     return next(error);
@@ -15,7 +15,10 @@ const createUserGroup = async (req, res, next) => {
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ message: "name is required." });
     }
-    const group = await userGroupService.create({ name: name.trim() });
+    const group = await userGroupService.create({
+      deploymentId: req.deploymentId,
+      name: name.trim(),
+    });
     return res.status(201).json(group);
   } catch (error) {
     if (error.code === "P2002") {
@@ -32,7 +35,7 @@ const updateUserGroup = async (req, res, next) => {
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ message: "name is required." });
     }
-    const group = await userGroupService.update(id, { name: name.trim() });
+    const group = await userGroupService.update(id, { name: name.trim() }, req.deploymentId);
     if (!group) return res.status(404).json({ message: "Group not found." });
     return res.status(200).json(group);
   } catch (error) {
@@ -46,7 +49,7 @@ const updateUserGroup = async (req, res, next) => {
 const deleteUserGroup = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await userGroupService.remove(id);
+    const result = await userGroupService.remove(id, req.deploymentId);
     if (!result) return res.status(404).json({ message: "Group not found." });
     return res.status(200).json({ message: "Group deleted.", id: result.id });
   } catch (error) {
@@ -56,7 +59,7 @@ const deleteUserGroup = async (req, res, next) => {
 
 const getUserGroup = async (req, res, next) => {
   try {
-    const group = await userGroupService.findById(req.params.id);
+    const group = await userGroupService.findById(req.params.id, req.deploymentId);
     if (!group) return res.status(404).json({ message: "Group not found." });
     return res.status(200).json(group);
   } catch (error) {

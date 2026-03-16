@@ -68,18 +68,38 @@ model UserGroupMember {
   @@id([userId, groupId])
 }
 
+model Deployment {
+  id        Int         @id @default(autoincrement())
+  name      String      // e.g. "@properties"
+  slug      String      @unique // e.g. "atproperties"
+  logoUrl   String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  products  Product[]
+  orders    Order[]
+  groups    UserGroup[]
+}
+
 model UserGroup {
-  id       Int              @id @default(autoincrement())
-  name     String           @unique
-  products Product[]
-  members  UserGroupMember[]
+  id           Int              @id @default(autoincrement())
+  name         String
+  deploymentId Int
+  deployment   Deployment      @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  products     Product[]
+  members      UserGroupMember[]
+
+  @@unique([name, deploymentId])
 }
 
 model Product {
   id                  Int          @id @default(autoincrement())
+  deploymentId        Int
+  deployment          Deployment   @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
   name                String
-  sku                 String       @unique
+  sku                 String
   quantity            Int          @default(0)
+
+  @@unique([deploymentId, sku])
   price               Float
   description         String?
   category            String?      // Store category tag (e.g. stationery)
@@ -129,6 +149,8 @@ model InventoryLog {
 
 model Order {
   id                  Int         @id @default(autoincrement())
+  deploymentId        Int
+  deployment          Deployment  @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
   customerName        String
   customerEmail       String
   customerPhone       String?

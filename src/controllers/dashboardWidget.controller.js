@@ -14,7 +14,10 @@ async function getWidgets(req, res, next) {
         let tableData = null;
         let error = null;
         try {
-          const result = await reportService.runReport(w.reportName, JSON.parse(w.reportParams || "{}"));
+          const result = await reportService.runReport(w.reportName, {
+            ...JSON.parse(w.reportParams || "{}"),
+            deploymentId: req.deploymentId,
+          });
           chartData = reportService.toChartConfig(w.reportName, result, w.chartType);
           if (chartData) chartData.title = w.title;
           tableData = reportService.toTableData(w.reportName, result);
@@ -128,7 +131,10 @@ async function getWidgetData(req, res, next) {
     let tableData = null;
     let error = null;
     try {
-      const result = await reportService.runReport(w.reportName, JSON.parse(w.reportParams || "{}"));
+      const result = await reportService.runReport(w.reportName, {
+        ...JSON.parse(w.reportParams || "{}"),
+        deploymentId: req.deploymentId,
+      });
       chartData = reportService.toChartConfig(w.reportName, result, w.chartType);
       if (chartData) chartData.title = w.title;
       tableData = reportService.toTableData(w.reportName, result);

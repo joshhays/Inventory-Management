@@ -43,7 +43,9 @@ router.post("/orders", requireAuth, async (req, res, next) => {
       shippingStr = shippingAddress.trim() || null;
     }
 
+    const deploymentId = req.body.deploymentId ?? req.session?.selectedDeploymentId ?? 1;
     const order = await orderService.create({
+      deploymentId,
       customerName,
       customerEmail,
       customerPhone: customerPhone || null,
