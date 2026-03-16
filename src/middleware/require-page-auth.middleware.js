@@ -15,7 +15,10 @@ function requirePageAuth(req, res, next) {
   const isStorePath =
     (path === "/store" || path.startsWith("/store/")) &&
     path !== "/store/login.html" &&
-    path !== "/store/register.html";
+    path !== "/store/register.html" &&
+    path !== "/store" &&
+    path !== "/store/" &&
+    !/\/store\/[^/]+\/(login|register)(\/)?$/.test(path.replace(/\?.*$/, ""));
 
   if (!isAdminPath && !isStorePath) return next();
   if (req.session?.user) {
@@ -27,7 +30,11 @@ function requirePageAuth(req, res, next) {
     return next();
   }
 
-  if (isStorePath) return res.redirect(302, "/store/login.html");
+  if (isStorePath) {
+    const slugMatch = path.match(/^\/store\/([^/]+)/);
+    const loginPath = slugMatch ? `/store/${slugMatch[1]}/login` : "/store/login.html";
+    return res.redirect(302, loginPath);
+  }
   return res.redirect(302, "/login.html");
 }
 

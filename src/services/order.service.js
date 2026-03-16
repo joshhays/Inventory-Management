@@ -114,11 +114,12 @@ function findMany({ deploymentId, page = 1, limit = 50, status } = {}) {
   ]);
 }
 
-function findManyByEmail(email, { page = 1, limit = 20 } = {}) {
+function findManyByEmail(email, { page = 1, limit = 20, deploymentId } = {}) {
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = Math.min(100, Math.max(1, Number(limit) || 20));
   const skip = (pageNum - 1) * limitNum;
   const where = { customerEmail: String(email).trim() };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
 
   return prisma.$transaction([
     prisma.order.findMany({

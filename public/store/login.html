@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sign in - Store</title>
   <link rel="stylesheet" href="/styles.css">
+  <script>var _b="__STORE_BASE__",_s="__STORE_SLUG__";if(!_b||_b.indexOf("__")===0){var m=location.pathname.match(/^\/store\/([^/]+)/);window.STORE_BASE=m?"/store/"+m[1]:"/store";window.STORE_SLUG=m?m[1]:null;}else{window.STORE_BASE=_b;window.STORE_SLUG=_s;}</script>
 </head>
 <body>
   <div class="login-page">
@@ -25,7 +26,7 @@
         <div id="loginError" class="login-error" style="display:none"></div>
         <button type="submit" class="login-btn" id="loginBtn">Sign in</button>
       </form>
-      <p class="login-register">Don't have an account? <a href="/store/register.html">Create one</a></p>
+      <p class="login-register">Don't have an account? <a href="__STORE_BASE__/register">Create one</a></p>
     </div>
   </div>
   <script>
@@ -58,7 +59,7 @@
           throw new Error(data.message || "Login failed.");
         }
 
-        window.location.href = "/store/";
+        window.location.href = (window.STORE_BASE || "/store") + "/";
       } catch (err) {
         errorEl.textContent = err.message || "Login failed. Please try again.";
         errorEl.style.display = "block";

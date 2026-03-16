@@ -11,6 +11,7 @@ const podRoutes = require("./routes/pod.routes");
 const { notFoundHandler, errorHandler } = require("./middleware/error.middleware");
 const { requireAuth, requireAdmin, optionalAuth, requireDeployment } = require("./middleware/auth.middleware");
 const { requirePageAuth } = require("./middleware/require-page-auth.middleware");
+const storeRoutes = require("./routes/store.routes");
 
 const app = express();
 
@@ -45,6 +46,7 @@ app.use(
   })
 );
 app.use(requirePageAuth);
+app.use(storeRoutes);
 app.use(express.static(path.join(__dirname, "../public")));
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/product-files", express.static(path.join(__dirname, "../product-files")));

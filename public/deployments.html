@@ -186,6 +186,7 @@
             <td><code>${escapeHtml(d.slug)}</code></td>
             <td class="customer-info-cell">${escapeHtml(formatCustomerInfo(d.customerInfo))}</td>
             <td>
+              <a href="/store/${escapeHtml(d.slug)}/" class="btn-small btn-secondary" title="Open storefront" target="_blank">Store</a>
               <button type="button" class="btn-small btn-secondary btn-edit" data-id="${d.id}" title="Edit">Edit</button>
               <button type="button" class="btn-small btn-apply" data-id="${d.id}" title="Switch to this deployment">Select</button>
             </td>

@@ -1,9 +1,26 @@
 const express = require("express");
 const orderService = require("../services/order.service");
+const deploymentService = require("../services/deployment.service");
 const customerController = require("../controllers/customer.controller");
 const { requireAuth } = require("../middleware/auth.middleware");
 
 const router = express.Router();
+
+async function resolveDeploymentId(req, res, next) {
+  const fromBody = req.body?.deploymentId ?? req.body?.deploymentSlug;
+  const fromQuery = req.query?.deploymentId ?? req.query?.deployment;
+  const val = fromBody ?? fromQuery;
+  if (val == null) return next();
+  if (Number(val)) {
+    req.resolvedDeploymentId = Number(val);
+    return next();
+  }
+  try {
+    const dep = await deploymentService.findBySlug(String(val).trim());
+    if (dep) req.resolvedDeploymentId = dep.id;
+  } catch (_) {}
+  next();
+}
 
 router.get("/profile", customerController.getProfile);
 router.patch("/profile", customerController.updateProfile);
@@ -11,7 +28,7 @@ router.get("/addresses", customerController.getAddresses);
 router.post("/addresses", customerController.createAddress);
 router.delete("/addresses/:id", customerController.deleteAddress);
 
-router.post("/orders", requireAuth, async (req, res, next) => {
+router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) => {
   try {
     const user = req.user;
     const { customerPhone, shippingAddress, shipping, items } = req.body;
@@ -43,7 +60,7 @@ router.post("/orders", requireAuth, async (req, res, next) => {
       shippingStr = shippingAddress.trim() || null;
     }
 
-    const deploymentId = req.body.deploymentId ?? req.session?.selectedDeploymentId ?? 1;
+    const deploymentId = req.resolvedDeploymentId ?? req.body.deploymentId ?? req.session?.selectedDeploymentId ?? 1;
     const order = await orderService.create({
       deploymentId,
       customerName,
@@ -65,11 +82,12 @@ router.post("/orders", requireAuth, async (req, res, next) => {
   }
 });
 
-router.get("/orders", requireAuth, async (req, res, next) => {
+router.get("/orders", requireAuth, resolveDeploymentId, async (req, res, next) => {
   try {
     const user = req.user;
     const { page, limit } = req.query;
-    const [orders, total] = await orderService.findManyByEmail(user.email, { page, limit });
+    const deploymentId = req.resolvedDeploymentId ?? (req.query.deploymentId ? Number(req.query.deploymentId) : null);
+    const [orders, total] = await orderService.findManyByEmail(user.email, { page, limit, deploymentId });
     const limitNum = limit ? Math.min(100, Math.max(1, Number(limit) || 20)) : 20;
     const pageNum = page ? Math.max(1, Number(page) || 1) : 1;
 

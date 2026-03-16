@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Settings - Store</title>
   <link rel="stylesheet" href="/styles.css">
+  <script>var _b="__STORE_BASE__",_s="__STORE_SLUG__";if(!_b||_b.indexOf("__")===0){var m=location.pathname.match(/^\/store\/([^/]+)/);window.STORE_BASE=m?"/store/"+m[1]:"/store";window.STORE_SLUG=m?m[1]:null;}else{window.STORE_BASE=_b;window.STORE_SLUG=_s;}window.STORE_CART_KEY=window.STORE_SLUG?"storeCart_"+window.STORE_SLUG:"storeCart";</script>
 </head>
 <body>
   <div class="app-layout">
     <header class="top-nav top-nav-simple store-nav">
-      <a href="/store/" class="top-nav-back">← Store</a>
-      <a href="/store/" class="top-nav-brand nav-logo-wrap"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPlN0b3JlPC90ZXh0Pjwvc3ZnPg==" alt="Store" class="nav-logo"></a>
+      <a href="__STORE_BASE__/" class="top-nav-back">← Store</a>
+      <a href="__STORE_BASE__/" class="top-nav-brand nav-logo-wrap"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPlN0b3JlPC90ZXh0Pjwvc3ZnPg==" alt="Store" class="nav-logo"></a>
       <div class="store-nav-right">
-        <a href="/store/cart.html" class="store-cart-link">Cart (<span id="cartCount">0</span>)</a>
-        <a href="/store/orders.html" class="store-orders-link">My Orders</a>
+        <a href="__STORE_BASE__/cart" class="store-cart-link">Cart (<span id="cartCount">0</span>)</a>
+        <a href="__STORE_BASE__/orders" class="store-orders-link">My Orders</a>
         <a href="#" id="logoutLink" class="top-nav-back">Log out</a>
       </div>
     </header>
@@ -94,7 +95,7 @@
 
     function getCart() {
       try {
-        return JSON.parse(localStorage.getItem("storeCart") || "[]");
+        return JSON.parse(localStorage.getItem(window.STORE_CART_KEY || "storeCart") || "[]");
       } catch {
         return [];
       }
@@ -117,7 +118,7 @@
         const res = await fetch("/api/customer/profile", { credentials: "include" });
         if (!res.ok) {
           if (res.status === 401) {
-            window.location.href = "/store/login.html";
+            window.location.href = (window.STORE_BASE || "/store") + "/login";
             return;
           }
           throw new Error("Failed to load profile");
@@ -137,7 +138,7 @@
         const res = await fetch("/api/customer/addresses", { credentials: "include" });
         if (!res.ok) {
           if (res.status === 401) {
-            window.location.href = "/store/login.html";
+            window.location.href = (window.STORE_BASE || "/store") + "/login";
             return;
           }
           throw new Error("Failed to load addresses");
@@ -270,7 +271,7 @@
     document.getElementById("logoutLink").addEventListener("click", async (e) => {
       e.preventDefault();
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
-      window.location.href = "/store/login.html";
+      window.location.href = (window.STORE_BASE || "/store") + "/login";
     });
 
     loadProfile();
