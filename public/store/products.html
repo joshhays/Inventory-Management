@@ -486,13 +486,23 @@
           credentials: "include",
           body: JSON.stringify(values),
         });
-        if (!res.ok) throw new Error("Preview failed");
+        if (!res.ok) {
+          let msg = "Preview unavailable. Check your details and try again.";
+          const ct = res.headers.get("Content-Type") || "";
+          if (ct.includes("application/json")) {
+            try {
+              const data = await res.json();
+              if (data.message) msg = data.message;
+            } catch (_) {}
+          }
+          throw new Error(msg);
+        }
         const blob = await res.blob();
         revokePodProofUrl();
         podProofBlobUrl = URL.createObjectURL(blob);
         container.innerHTML = "<iframe class=\"pod-proof-iframe\" src=\"" + podProofBlobUrl.replace(/"/g, "&quot;") + "\" title=\"Print preview\"></iframe>";
       } catch (e) {
-        container.innerHTML = "<div class=\"pod-proof-error\">Preview unavailable. Check your details and try again.</div>";
+        container.innerHTML = "<div class=\"pod-proof-error\">" + escape(e.message || "Preview unavailable.") + "</div>";
       }
     }
 

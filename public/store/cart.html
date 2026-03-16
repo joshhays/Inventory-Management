@@ -217,13 +217,27 @@
             credentials: "include",
             body: JSON.stringify(item.printData),
           });
-          if (!res.ok) throw new Error("Preview failed");
+          if (!res.ok) {
+            let msg = "Preview unavailable";
+            const ct = res.headers.get("Content-Type") || "";
+            if (ct.includes("application/json")) {
+              try {
+                const data = await res.json();
+                if (data.message) msg = data.message;
+              } catch (_) {}
+            }
+            throw new Error(msg);
+          }
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           cartPODBlobUrls.push(url);
           container.innerHTML = "<p class=\"store-cart-pod-preview-label\">Final product for review</p><iframe class=\"store-cart-pod-iframe\" src=\"" + url.replace(/"/g, "&quot;") + "\" title=\"Print preview\"></iframe>";
         } catch (e) {
-          container.innerHTML = "<p class=\"store-cart-pod-preview-error\">Preview unavailable</p>";
+          const p = document.createElement("p");
+          p.className = "store-cart-pod-preview-error";
+          p.textContent = e.message || "Preview unavailable";
+          container.innerHTML = "";
+          container.appendChild(p);
         }
       }
     }

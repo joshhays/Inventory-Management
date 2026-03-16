@@ -2,6 +2,12 @@
 
 Store PDFs and images here. They are served by the app and can be attached to products from **Manage Products** via a dropdown.
 
+## Print-on-demand (POD) business cards
+
+For **live preview** and **order print PDFs** to work, place your base business card PDF here:
+
+- **`business-card-base.pdf`** – Blank card layout (front/back). The app fills in name, title, contact info, etc. from the template in `src/podTemplates.js`. Without this file, the storefront will show “Preview not configured” and order print PDFs will fail.
+
 ## Folder structure
 
 Files can be at any depth. Examples:
