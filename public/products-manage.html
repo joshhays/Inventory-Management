@@ -970,7 +970,11 @@ filesList.innerHTML = files.length === 0
       });
     });
 
-    loadGroups().then(load);
+    load();
+    loadGroups().catch(() => {
+      const groupFilter = document.getElementById("groupFilter");
+      if (groupFilter) groupFilter.innerHTML = '<option value="">All products</option>';
+    });
   </script>
 </body>
 </html>
