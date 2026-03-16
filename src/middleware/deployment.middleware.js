@@ -10,15 +10,21 @@ async function setDeploymentContext(req, res, next) {
     const fromHeader = req.get("X-Deployment-Slug");
     const slug = fromQuery || fromHeader;
     if (slug) {
-      const dep = await deploymentService.findBySlug(slug);
-      if (dep) req.deploymentId = dep.id;
+      try {
+        const dep = await deploymentService.findBySlug(slug);
+        if (dep) req.deploymentId = dep.id;
+      } catch (_) {}
     }
     if (req.deploymentId == null && req.session?.selectedDeploymentId) {
       req.deploymentId = req.session.selectedDeploymentId;
     }
     if (req.deploymentId == null) {
-      const first = await deploymentService.findById(1);
-      req.deploymentId = first?.id ?? 1;
+      try {
+        const first = await deploymentService.findById(1);
+        req.deploymentId = first?.id ?? 1;
+      } catch (_) {
+        req.deploymentId = 1;
+      }
     }
     next();
   } catch (err) {

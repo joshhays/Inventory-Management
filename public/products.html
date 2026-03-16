@@ -126,7 +126,7 @@
       try {
         const groupId = document.getElementById("groupFilter")?.value || "";
         const url = groupId ? `/api/products?groupId=${encodeURIComponent(groupId)}` : "/api/products";
-        const res = await fetch(url);
+        const res = await fetch(url, { credentials: "include" });
         if (!res.ok) throw new Error(res.statusText);
         data = await res.json();
         render(data);
@@ -140,7 +140,7 @@
     }
 
     async function loadGroups() {
-      const res = await fetch("/api/user-groups");
+      const res = await fetch("/api/user-groups", { credentials: "include" });
       const groups = await res.json();
       const groupFilter = document.getElementById("groupFilter");
       const productGroup = document.getElementById("productGroup");
