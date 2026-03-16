@@ -1,33 +1,32 @@
 /**
- * Matches the web app's @properties brand theme (PMS 1795 red + black)
+ * Matches the web app theme
  */
 export const WebTheme = {
-  // Colors - @properties brand
-  accent: '#E31837',
-  accentHover: '#C41E3A',
+  accent: '#475569',
+  accentHover: '#334155',
   success: '#10b981',
   successHover: '#059669',
-  danger: '#E31837',
-  dangerHover: '#C41E3A',
+  danger: '#dc2626',
+  dangerHover: '#b91c1c',
   warning: '#f59e0b',
-  purple: '#E31837',
-  purpleHover: '#C41E3A',
+  purple: '#6366f1',
+  purpleHover: '#4f46e5',
 
   // Text
-  text: '#000000',
-  textMuted: '#4a4a4a',
+  text: '#0f172a',
+  textMuted: '#64748b',
 
   // Backgrounds
-  pageBg: '#fafafa',
-  pageBgAlt: '#f5f5f5',
+  pageBg: '#f8fafc',
+  pageBgAlt: '#f1f5f9',
 
   // Glass / cards
   glassBg: 'rgba(255, 255, 255, 0.9)',
   glassBgStrong: 'rgba(255, 255, 255, 0.95)',
   glassBorder: 'rgba(0, 0, 0, 0.08)',
 
-  // Top nav (black)
-  navBg: 'rgba(0, 0, 0, 0.92)',
+  // Top nav
+  navBg: 'rgba(15, 23, 42, 0.95)',
   navText: 'rgba(255, 255, 255, 0.9)',
   navTextMuted: 'rgba(255, 255, 255, 0.7)',
 
@@ -40,8 +39,8 @@ export const WebTheme = {
   qtyZeroBg: '#fee2e2',
 
   // Kit badge
-  kitColor: '#E31837',
-  kitBg: '#fef2f2',
+  kitColor: '#475569',
+  kitBg: '#f1f5f9',
 
   // Radius
   radius: 16,
@@ -53,5 +52,5 @@ export const WebTheme = {
   successText: '#166534',
   warningBg: '#fef3c7',
   dangerBg: '#fee2e2',
-  kit: '#E31837',
+  kit: '#475569',
 };

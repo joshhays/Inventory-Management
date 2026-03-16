@@ -1,3 +1,5 @@
+const path = require("path");
+const fs = require("fs");
 const deploymentService = require("../services/deployment.service");
 
 const list = async (req, res, next) => {
@@ -76,10 +78,34 @@ const update = async (req, res, next) => {
   }
 };
 
+const uploadLogo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) {
+      return res.status(400).json({ message: "No logo file uploaded." });
+    }
+    const deployment = await deploymentService.findById(id);
+    if (!deployment) {
+      try { fs.unlinkSync(req.file.path); } catch (_) {}
+      return res.status(404).json({ message: "Deployment not found." });
+    }
+    if (deployment.logoUrl && deployment.logoUrl.startsWith("/uploads/")) {
+      const oldPath = path.join(__dirname, "../..", deployment.logoUrl);
+      try { if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath); } catch (_) {}
+    }
+    const logoUrl = "/uploads/deployment-logos/" + path.basename(req.file.path);
+    const updated = await deploymentService.update(id, { logoUrl });
+    res.status(200).json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   list,
   select,
   getSelected,
   create,
   update,
+  uploadLogo,
 };

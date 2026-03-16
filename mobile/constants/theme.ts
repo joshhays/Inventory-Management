@@ -5,9 +5,8 @@
 
 import { Platform } from 'react-native';
 
-// Match web app's @properties brand (PMS 1795 red + black)
-const tintColorLight = '#E31837';
-const tintColorDark = '#E31837';
+const tintColorLight = '#475569';
+const tintColorDark = '#94a3b8';
 
 export const Colors = {
   light: {

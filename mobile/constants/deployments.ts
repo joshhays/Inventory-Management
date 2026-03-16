@@ -11,14 +11,8 @@ export type Deployment = {
 
 export const DEPLOYMENTS: Deployment[] = [
   {
-    id: 'atproperties',
-    name: '@properties',
-    apiBase: 'https://inventory-management-production-2079.up.railway.app',
-    logoUrl: 'https://inventory-management-production-2079.up.railway.app/logo.png',
-  },
-  {
-    id: 'other',
-    name: 'Other Company',
+    id: 'default',
+    name: 'Default',
     apiBase: 'https://inventory-management-production-2079.up.railway.app',
   },
 ];

@@ -13,7 +13,7 @@
   <div class="app-layout">
     <header class="top-nav top-nav-simple">
       <a href="/" class="top-nav-back">← Dashboard</a>
-      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="/logo.png" alt="Inventory" class="nav-logo"></a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPkludmVudG9yeTwvdGV4dD48L3N2Zz4=" alt="Inventory" class="nav-logo"></a>
       <a href="/deployment-select.html" class="top-nav-back" title="Switch deployment">Switch</a>
     </header>
     <main class="main-content">
@@ -55,8 +55,16 @@
           <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Used in URLs and API. Lowercase, no spaces.</p>
         </div>
         <div class="modal-row">
-          <label>Logo URL <span style="color: var(--text-muted);">(optional)</span></label>
-          <input type="text" id="deploymentLogoUrl" placeholder="/logo.png or https://...">
+          <label>Logo <span style="color: var(--text-muted);">(optional)</span></label>
+          <div class="logo-upload-wrap">
+            <div id="logoPreview" class="logo-preview"></div>
+            <div>
+              <input type="file" id="deploymentLogoFile" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none">
+              <button type="button" class="btn-secondary btn-small" id="btnChooseLogo">Choose image</button>
+              <span id="logoFileName" class="logo-filename"></span>
+            </div>
+          </div>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">PNG, JPG, GIF, or WebP. Max 2MB.</p>
         </div>
         <div class="modal-row">
           <label>Customer Info <span style="color: var(--text-muted);">(optional)</span></label>
@@ -80,9 +88,24 @@
     const form = document.getElementById("deploymentForm");
     const nameInput = document.getElementById("deploymentName");
     const slugInput = document.getElementById("deploymentSlug");
-    const logoInput = document.getElementById("deploymentLogoUrl");
+    const logoFileInput = document.getElementById("deploymentLogoFile");
+    const logoPreview = document.getElementById("logoPreview");
+    const logoFileName = document.getElementById("logoFileName");
+    const btnChooseLogo = document.getElementById("btnChooseLogo");
     const customerInfoInput = document.getElementById("deploymentCustomerInfo");
     const editIdInput = document.getElementById("deploymentEditId");
+
+    btnChooseLogo.addEventListener("click", () => logoFileInput.click());
+    logoFileInput.addEventListener("change", () => {
+      const f = logoFileInput.files[0];
+      logoFileName.textContent = f ? f.name : "";
+      if (f) {
+        const url = URL.createObjectURL(f);
+        logoPreview.innerHTML = `<img src="${url}" alt="Preview">`;
+      } else {
+        logoPreview.innerHTML = "";
+      }
+    });
 
     function escapeHtml(s) {
       const d = document.createElement("div");
@@ -138,8 +161,9 @@
               editIdInput.value = id;
               nameInput.value = d.name || "";
               slugInput.value = d.slug || "";
-              logoInput.value = d.logoUrl || "";
-              customerInfoInput.value = d.customerInfo || "";
+              logoFileInput.value = "";
+              logoFileName.textContent = "";
+              logoPreview.innerHTML = d.logoUrl ? `<img src="${escapeHtml(d.logoUrl)}" alt="Logo">` : "";
               document.getElementById("deploymentModalTitle").textContent = "Edit Deployment";
               document.getElementById("btnSubmit").textContent = "Save";
               modal.classList.add("open");
@@ -170,6 +194,9 @@
     document.getElementById("btnCreate").addEventListener("click", () => {
       form.reset();
       editIdInput.value = "";
+      logoFileInput.value = "";
+      logoPreview.innerHTML = "";
+      logoFileName.textContent = "";
       document.getElementById("deploymentModalTitle").textContent = "Add Deployment";
       document.getElementById("btnSubmit").textContent = "Create";
       modal.classList.add("open");
@@ -200,11 +227,11 @@
       const payload = {
         name: nameInput.value.trim(),
         slug: slugInput.value.trim().toLowerCase().replace(/\s+/g, "-"),
-        logoUrl: logoInput.value.trim() || undefined,
         customerInfo: customerInfoInput.value.trim() || undefined,
       };
       try {
-        const url = isEdit ? `/api/deployments/${editIdInput.value}` : "/api/deployments";
+        const deployId = editIdInput.value;
+        const url = isEdit ? `/api/deployments/${deployId}` : "/api/deployments";
         const res = await fetch(url, {
           method: isEdit ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
@@ -215,8 +242,24 @@
         if (!res.ok) {
           throw new Error(data.message || (isEdit ? "Failed to update." : "Failed to create deployment."));
         }
+        const savedId = data.id || deployId;
+        const logoFile = logoFileInput.files[0];
+        if (logoFile && savedId) {
+          const fd = new FormData();
+          fd.append("logo", logoFile);
+          const logoRes = await fetch(`/api/deployments/${savedId}/logo`, {
+            method: "POST",
+            credentials: "include",
+            body: fd,
+          });
+          if (!logoRes.ok) {
+            const err = await logoRes.json().catch(() => ({}));
+            throw new Error(err.message || "Failed to upload logo.");
+          }
+        }
         modal.classList.remove("open");
         editIdInput.value = "";
+        logoFileInput.value = "";
         loadDeployments();
       } catch (err) {
         alert(err.message || "Failed to save.");
@@ -233,6 +276,10 @@
     .btn-small { padding: 0.25rem 0.5rem; font-size: 0.85rem; margin-right: 0.25rem; }
     .deployment-table-logo { height: 28px; max-width: 80px; object-fit: contain; }
     .customer-info-cell { max-width: 200px; font-size: 0.9rem; color: var(--text-muted); }
+    .logo-upload-wrap { display: flex; align-items: flex-start; gap: 1rem; }
+    .logo-preview { width: 80px; height: 48px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; background: var(--glass-bg); flex-shrink: 0; }
+    .logo-preview img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-filename { font-size: 0.85rem; color: var(--text-muted); margin-left: 0.5rem; }
   </style>
 </body>
 </html>
