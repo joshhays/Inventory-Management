@@ -86,7 +86,10 @@
       </div>
       <div class="form-row">
         <label>Store Category</label>
-        <input type="text" id="productCategory" placeholder="e.g. stationery, office">
+        <select id="productCategory">
+          <option value="">No category</option>
+        </select>
+        <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Add categories in Deployments → Edit deployment.</p>
       </div>
       <div class="form-row">
         <label>User Group</label>
@@ -269,6 +272,22 @@
         updateExportLink();
       }
       if (productGroup) productGroup.innerHTML = opts;
+    }
+
+    async function loadCategories(currentProductCategory) {
+      const sel = document.getElementById("productCategory");
+      if (!sel) return;
+      try {
+        const res = await fetch("/api/products/categories", { credentials: "include" });
+        const cats = res.ok ? await res.json() : [];
+        const currentVal = currentProductCategory ?? sel.value;
+        const catSet = new Set(cats);
+        if (currentVal && !catSet.has(currentVal)) cats.push(currentVal);
+        sel.innerHTML = '<option value="">No category</option>' + cats.map(c => `<option value="${escape(c)}">${escape(c)}</option>`).join("");
+        if (currentVal) sel.value = currentVal;
+      } catch (_) {
+        sel.innerHTML = '<option value="">No category</option>';
+      }
     }
 
     function updateExportLink() {
@@ -537,6 +556,7 @@
       loadPODConfigFromJson(p.printTemplateConfig || "");
       toggleQuantityRow();
       togglePrintTemplateRow();
+      loadCategories(p.category || "");
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
     }
@@ -553,6 +573,7 @@
       loadPODConfigFromJson("");
       toggleQuantityRow();
       togglePrintTemplateRow();
+      loadCategories("");
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
     }
@@ -972,10 +993,8 @@ filesList.innerHTML = files.length === 0
     });
 
     load();
-    loadGroups().catch(() => {
-      const groupFilter = document.getElementById("groupFilter");
-      if (groupFilter) groupFilter.innerHTML = '<option value="">All products</option>';
-    });
+    loadGroups().catch(() => {});
+    loadCategories().catch(() => {});
   </script>
 </body>
 </html>

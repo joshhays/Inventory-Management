@@ -81,6 +81,19 @@ model Deployment {
   products     Product[]
   orders       Order[]
   groups       UserGroup[]
+  categories   DeploymentCategory[]
+}
+
+model DeploymentCategory {
+  id           Int        @id @default(autoincrement())
+  deploymentId Int
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  name         String     // e.g. "Stationery", "Office Supplies"
+  sortOrder    Int        @default(0) // Lower = first on storefront
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([deploymentId, name])
 }
 
 model UserGroup {

@@ -7,16 +7,43 @@ const router = express.Router();
 const storeDir = path.resolve(__dirname, "../../public/store");
 const STORE_PAGES = ["", "index", "products", "cart", "orders", "settings", "login", "register"];
 
-function serveStorePage(slug, page, res, next) {
+const DEFAULT_LOGO_SVG = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPlN0b3JlPC90ZXh0Pjwvc3ZnPg==";
+
+function applyBrandColors(hex, factor) {
+  const m = (hex || "").slice(1).match(/.{2}/g);
+  if (!m) return hex || "#0f172a";
+  return "#" + m.map((x) => Math.min(255, Math.round(parseInt(x, 16) * factor)).toString(16).padStart(2, "0")).join("");
+}
+function lighten(hex, amount) {
+  const m = (hex || "").slice(1).match(/.{2}/g);
+  if (!m) return hex || "#f8fafc";
+  return "#" + m.map((x) => Math.min(255, Math.round(parseInt(x, 16) + (255 - parseInt(x, 16)) * amount)).toString(16).padStart(2, "0")).join("");
+}
+
+function serveStorePage(slug, page, dep, res, next) {
   const file = page === "" || page === "index" ? "index.html" : `${page}.html`;
   const filePath = path.join(storeDir, file);
   if (!fs.existsSync(filePath)) return next();
   const base = `/store/${encodeURIComponent(slug)}`;
+  const logoUrl = dep?.logoUrl || DEFAULT_LOGO_SVG;
+  const c1 = dep?.brandColor1 || null;
+  const c2 = dep?.brandColor2 || null;
+  const brandCss = [];
+  if (c1) brandCss.push(`--sidebar-bg:${c1};--nav-brand-bg:${c1};`);
+  if (c2) {
+    const c2Light = lighten(c2, 0.15);
+    const c2Dark = applyBrandColors(c2, 0.92);
+    brandCss.push(`--page-bg:linear-gradient(135deg,${c2Light} 0%,${c2} 50%,${c2Dark} 100%);`);
+  }
   fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next(err);
-    const out = html
+    let out = html
       .replace(/__STORE_BASE__/g, base)
-      .replace(/__STORE_SLUG__/g, slug);
+      .replace(/__STORE_SLUG__/g, slug)
+      .replace(/__STORE_LOGO__/g, logoUrl);
+    if (brandCss.length) {
+      out = out.replace("</head>", `<style id="store-brand">:root{${brandCss.join(" ")}}</style>\n</head>`);
+    }
     res.type("text/html").send(out);
   });
 }
@@ -104,7 +131,7 @@ router.get("/store/:slug/", async (req, res, next) => {
   try {
     const dep = await deploymentService.findBySlug(slug);
     if (!dep) return res.status(404).send("Store not found");
-    serveStorePage(slug, "index", res, next);
+    serveStorePage(slug, "index", dep, res, next);
   } catch (e) {
     next(e);
   }
@@ -118,7 +145,7 @@ router.get("/store/:slug/:page", async (req, res, next) => {
   try {
     const dep = await deploymentService.findBySlug(slug);
     if (!dep) return res.status(404).send("Store not found");
-    serveStorePage(slug, pageBase, res, next);
+    serveStorePage(slug, pageBase, dep, res, next);
   } catch (e) {
     next(e);
   }

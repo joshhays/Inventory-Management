@@ -87,6 +87,15 @@
           <textarea id="deploymentCustomerInfo" rows="4" placeholder='{"address":"123 Main St","phone":"555-1234","email":"contact@company.com"}'></textarea>
           <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">JSON: address, phone, email. Or plain text.</p>
         </div>
+        <div class="modal-row" id="categoriesRow" style="display:none;">
+          <label>Store Categories</label>
+          <p class="kit-modal-hint" style="margin: 0 0 0.5rem;">Categories for the storefront. Tag products with these to sort them on the front end.</p>
+          <div class="categories-add-row">
+            <input type="text" id="newCategoryName" placeholder="e.g. Stationery, Office Supplies">
+            <button type="button" class="btn-secondary btn-small" id="btnAddCategory">Add</button>
+          </div>
+          <ul id="categoriesList" class="categories-list"></ul>
+        </div>
         <input type="hidden" id="deploymentEditId" value="">
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
@@ -217,6 +226,8 @@
               brandColor2Hex.value = d.brandColor2 || "#e2e8f0";
               document.getElementById("deploymentModalTitle").textContent = "Edit Deployment";
               document.getElementById("btnSubmit").textContent = "Save";
+              document.getElementById("categoriesRow").style.display = "block";
+              loadCategories(id);
               modal.classList.add("open");
             }
           });
@@ -242,6 +253,61 @@
       }
     }
 
+    const categoriesRow = document.getElementById("categoriesRow");
+    const categoriesList = document.getElementById("categoriesList");
+    const newCategoryName = document.getElementById("newCategoryName");
+    const btnAddCategory = document.getElementById("btnAddCategory");
+
+    async function loadCategories(deploymentId) {
+      categoriesList.innerHTML = "<li class=\"loading-inline\">Loading…</li>";
+      try {
+        const res = await fetch(`/api/deployments/${deploymentId}/categories`, { credentials: "include" });
+        const cats = res.ok ? await res.json() : [];
+        renderCategories(cats);
+      } catch (_) {
+        categoriesList.innerHTML = "<li class=\"error-inline\">Failed to load</li>";
+      }
+    }
+
+    function renderCategories(cats) {
+      categoriesList.innerHTML = cats.length ? cats.map((c) => `
+        <li data-id="${c.id}">
+          <span>${escapeHtml(c.name)}</span>
+          <button type="button" class="btn-small btn-remove" data-id="${c.id}" title="Remove">×</button>
+        </li>
+      `).join("") : "<li class=\"empty-inline\">No categories yet. Add one above.</li>";
+      categoriesList.querySelectorAll("button.btn-remove").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          try {
+            const r = await fetch(`/api/deployments/${editIdInput.value}/categories/${btn.dataset.id}`, {
+              method: "DELETE",
+              credentials: "include",
+            });
+            if (r.ok) loadCategories(editIdInput.value);
+          } catch (_) {}
+        });
+      });
+    }
+
+    btnAddCategory.addEventListener("click", async () => {
+      const name = newCategoryName.value.trim();
+      if (!name || !editIdInput.value) return;
+      try {
+        const res = await fetch(`/api/deployments/${editIdInput.value}/categories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Failed to add");
+        newCategoryName.value = "";
+        loadCategories(editIdInput.value);
+      } catch (e) {
+        alert(e.message || "Failed to add category.");
+      }
+    });
+
     document.getElementById("btnCreate").addEventListener("click", () => {
       form.reset();
       editIdInput.value = "";
@@ -254,6 +320,8 @@
       brandColor1Hex.value = "#0f172a";
       brandColor2Input.value = "#e2e8f0";
       brandColor2Hex.value = "#e2e8f0";
+      categoriesRow.style.display = "none";
+      categoriesList.innerHTML = "";
       document.getElementById("deploymentModalTitle").textContent = "Add Deployment";
       document.getElementById("btnSubmit").textContent = "Create";
       modal.classList.add("open");
@@ -342,6 +410,14 @@
     .brand-color-row { display: flex; align-items: center; gap: 0.5rem; }
     .brand-color-row input[type="color"] { width: 48px; height: 36px; padding: 2px; cursor: pointer; border-radius: var(--radius-sm); }
     .brand-color-row input[type="text"] { flex: 1; max-width: 120px; }
+    .categories-add-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .categories-add-row input { flex: 1; }
+    .categories-list { list-style: none; margin: 0; padding: 0; }
+    .categories-list li { display: flex; align-items: center; justify-content: space-between; padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+    .categories-list li:last-child { border-bottom: none; }
+    .categories-list .btn-remove { padding: 0 0.4rem; font-size: 1.2rem; line-height: 1; color: var(--text-muted); }
+    .categories-list .btn-remove:hover { color: var(--danger, #dc2626); }
+    .loading-inline, .error-inline, .empty-inline { color: var(--text-muted); font-size: 0.9rem; }
   </style>
 </body>
 </html>

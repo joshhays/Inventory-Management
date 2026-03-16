@@ -333,8 +333,15 @@ const importFromCsv = async (rows, deploymentId) => {
   return { updated, created };
 };
 
+const deploymentCategoryService = require("./deploymentCategory.service");
+
 const getCategories = async (options = {}) => {
-  const products = await getAllProducts({ ...options, deploymentId: options.deploymentId });
+  const deploymentId = options.deploymentId;
+  if (deploymentId) {
+    const deploymentCats = await deploymentCategoryService.getCategoryNamesForDeployment(deploymentId);
+    if (deploymentCats.length > 0) return deploymentCats;
+  }
+  const products = await getAllProducts({ ...options, deploymentId });
   const set = new Set();
   for (const p of products) {
     if (p.category && p.category.trim()) set.add(p.category.trim());

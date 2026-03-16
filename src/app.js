@@ -67,6 +67,7 @@ app.use("/api/logs", requireAuth, requireAdmin, requireDeployment, require("./ro
 app.use("/api/orders", requireAuth, requireAdmin, requireDeployment, require("./routes/order.routes"));
 app.use("/api/reports", requireAuth, requireAdmin, requireDeployment, require("./routes/report.routes"));
 app.use("/api/dashboard-widgets", requireAuth, requireAdmin, requireDeployment, require("./routes/dashboardWidget.routes"));
+app.use("/api/deployments/:id/categories", requireAuth, require("./routes/deploymentCategory.routes"));
 app.use("/api/deployments", requireAuth, require("./routes/deployment.routes"));
 app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
 
