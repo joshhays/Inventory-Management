@@ -3115,37 +3115,6 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 
 .bento-card {
   cursor: grab;
-  position: relative;
-}
-
-.bento-card .bento-card-link {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.5rem;
-  text-decoration: none;
-  color: inherit;
-  flex: 1;
-  min-height: 0;
-}
-
-.bento-card .bento-card-resize {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.25rem 0.4rem;
-  font-size: 0.85rem;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  opacity: 0.6;
-  border-radius: var(--radius-sm);
-}
-
-.bento-card .bento-card-resize:hover {
-  opacity: 1;
-  color: var(--accent);
 }
 
 .bento-card:active {
