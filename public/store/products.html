@@ -323,23 +323,23 @@
           idx++;
           continue;
         }
-        const isSelect = f.type === "select" || (Array.isArray(f.options) && f.options.length > 0);
-        values[key] = isSelect ? "" : "";
+        const isTextarea = (f.type || "text") === "textarea";
+        const isMultiselect = (f.type || "") === "multiselect";
+        const isSelect = (f.type || "") === "select" || (isMultiselect && Array.isArray(f.options) && f.options.length > 0);
+        const hasOptions = Array.isArray(f.options) && f.options.length > 0;
+        values[key] = isSelect || isMultiselect ? (isMultiselect ? "" : "") : "";
+        if (isTextarea) values[key] = "";
         const label = document.createElement("label");
         label.textContent = (f.label || key) + (f.required ? " *" : "");
         label.setAttribute("for", "pod-" + key);
-        if (isSelect) {
+        if (isMultiselect && hasOptions) {
           const select = document.createElement("select");
           select.id = "pod-" + key;
           select.name = key;
-          select.className = "pod-input pod-select";
+          select.className = "pod-input pod-select pod-select-multiple";
+          select.multiple = true;
           if (f.required) select.required = true;
-          const choices = Array.isArray(f.options) ? f.options : [];
-          const opt0 = document.createElement("option");
-          opt0.value = "";
-          opt0.textContent = "Choose one...";
-          select.appendChild(opt0);
-          choices.forEach((opt) => {
+          (f.options || []).forEach((opt) => {
             const o = document.createElement("option");
             o.value = typeof opt === "object" && opt != null && "value" in opt ? opt.value : opt;
             o.textContent = typeof opt === "object" && opt != null && "label" in opt ? opt.label : opt;
@@ -348,6 +348,37 @@
           select.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
           formWrap.appendChild(label);
           formWrap.appendChild(select);
+        } else if (isSelect && hasOptions) {
+          const select = document.createElement("select");
+          select.id = "pod-" + key;
+          select.name = key;
+          select.className = "pod-input pod-select";
+          if (f.required) select.required = true;
+          const opt0 = document.createElement("option");
+          opt0.value = "";
+          opt0.textContent = "Choose one...";
+          select.appendChild(opt0);
+          (f.options || []).forEach((opt) => {
+            const o = document.createElement("option");
+            o.value = typeof opt === "object" && opt != null && "value" in opt ? opt.value : opt;
+            o.textContent = typeof opt === "object" && opt != null && "label" in opt ? opt.label : opt;
+            select.appendChild(o);
+          });
+          select.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
+          formWrap.appendChild(label);
+          formWrap.appendChild(select);
+        } else if (isTextarea) {
+          const ta = document.createElement("textarea");
+          ta.id = "pod-" + key;
+          ta.name = key;
+          ta.placeholder = f.label || key;
+          ta.className = "pod-input pod-textarea";
+          ta.rows = 3;
+          if (f.required) ta.required = true;
+          ta.addEventListener("input", () => updatePODProof(config, getPODFormValues(config)));
+          ta.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
+          formWrap.appendChild(label);
+          formWrap.appendChild(ta);
         } else {
           const input = document.createElement("input");
           input.type = "text";
@@ -375,7 +406,16 @@
       (config.fields || []).forEach((f) => {
         const key = f.key || "field";
         const el = document.getElementById("pod-" + key);
-        values[key] = el ? (el.tagName === "SELECT" ? el.value : el.value.trim()) : "";
+        if (!el) { values[key] = ""; return; }
+        if (el.tagName === "SELECT") {
+          if (el.multiple) {
+            values[key] = Array.from(el.selectedOptions).map((o) => o.value).join("\n");
+          } else {
+            values[key] = el.value;
+          }
+        } else {
+          values[key] = el.value.trim();
+        }
       });
       return values;
     }
@@ -385,7 +425,7 @@
         if (!f.required) continue;
         const v = values[f.key];
         if (v == null || String(v).trim() === "") {
-          return { ok: false, message: "Please choose " + (f.label || f.key) + "." };
+          return { ok: false, message: "Please fill or choose " + (f.label || f.key) + "." };
         }
       }
       return { ok: true };

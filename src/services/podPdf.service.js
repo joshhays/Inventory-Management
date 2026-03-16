@@ -133,9 +133,8 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
     const maxWidthInches = typeof field.maxWidthInches === "number" ? field.maxWidthInches : null;
     let wrapWidthPts = null;
     if (key === "disclosure" && maxWidthInches && maxWidthInches > 0) {
-      // For disclosure, we use maxWidth as a wrapping width (multi-line), not to shrink font.
       wrapWidthPts = maxWidthInches * 72;
-    } else if (maxWidthInches && maxWidthInches > 0) {
+    } else if (maxWidthInches && maxWidthInches > 0 && !text.includes("\n")) {
       const maxWidthPts = maxWidthInches * 72;
       const widthAtSize = font.widthOfTextAtSize(text, fontSize);
       if (widthAtSize > maxWidthPts) {
@@ -145,17 +144,28 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
       }
     }
 
-    drawCommands.push({
-      key,
-      pageIndex,
-      text,
-      x,
-      y,
-      fontSize,
-      color,
-      wrapWidthPts,
-      font,
-    });
+    const lineHeight = fontSize * 1.2;
+    const lines = text.split(/\r?\n/).filter((s) => s.length > 0);
+    if (lines.length === 0) continue;
+    if (lines.length === 1 && !wrapWidthPts) {
+      drawCommands.push({ key, pageIndex, text: lines[0], x, y, fontSize, color, wrapWidthPts, font });
+    } else if (lines.length > 1) {
+      lines.forEach((line, i) => {
+        drawCommands.push({
+          key,
+          pageIndex,
+          text: line,
+          x,
+          y: y - i * lineHeight,
+          fontSize,
+          color,
+          wrapWidthPts: null,
+          font,
+        });
+      });
+    } else {
+      drawCommands.push({ key, pageIndex, text: lines[0], x, y, fontSize, color, wrapWidthPts, font });
+    }
   }
 
   // Normalize font size across contact block (email, phoneP, phoneM, address, website)

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Product - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/products-manage.html" class="top-nav-back">← Back to products</a>
+      <span class="top-nav-brand" id="pageTitle">Edit Product</span>
+    </header>
+    <main class="main-content product-edit-main">
+      <div id="loading" class="loading">Loading…</div>
+      <div id="formWrap" style="display:none" class="product-edit-form-wrap">
+        <form id="productForm">
+          <section class="product-edit-section">
+            <h2>Basic info</h2>
+            <div class="form-row">
+              <label>Name</label>
+              <input type="text" id="productName" required placeholder="Product name">
+            </div>
+            <div class="form-row">
+              <label>SKU</label>
+              <input type="text" id="productSku" required placeholder="SKU">
+            </div>
+            <div class="form-row" id="quantityRow">
+              <label>Quantity</label>
+              <input type="number" id="productQuantity" min="0" value="0" placeholder="0">
+            </div>
+            <div class="form-row">
+              <label>Product Type</label>
+              <select id="productType">
+                <option value="regular">Regular Product</option>
+                <option value="kit">Kit (bundle of products)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Price</label>
+              <input type="number" id="productPrice" step="0.01" min="0" required placeholder="0.00">
+            </div>
+            <div class="form-row">
+              <label>Description</label>
+              <textarea id="productDescription" placeholder="Optional description" rows="3"></textarea>
+            </div>
+            <div class="form-row">
+              <label>Store Category</label>
+              <input type="text" id="productCategory" placeholder="e.g. stationery, office">
+            </div>
+            <div class="form-row">
+              <label>User Group</label>
+              <select id="productGroup">
+                <option value="">All groups (global)</option>
+              </select>
+            </div>
+          </section>
+
+          <section class="product-edit-section">
+            <h2>Print on demand</h2>
+            <div class="form-row">
+              <label class="form-check-label">
+                <input type="checkbox" id="productPrintOnDemand"> Print on demand (customer customizes)
+              </label>
+            </div>
+            <div class="form-row" id="printTemplateRow" style="display: none;">
+              <label>Print template</label>
+              <div class="pod-admin-layout-row">
+                <div>
+                  <label for="podLayoutSelect">Layout</label>
+                  <select id="podLayoutSelect">
+                    <option value="business_card">Business card</option>
+                    <option value="generic_list">Generic list</option>
+                  </select>
+                </div>
+              </div>
+              <div class="pod-admin-fields">
+                <div class="pod-admin-fields-header pod-admin-fields-header-grid">
+                  <span>Label</span>
+                  <span>Key</span>
+                  <span>Type</span>
+                  <span>Required</span>
+                  <span></span>
+                </div>
+                <div id="podFieldsBody"></div>
+                <button type="button" class="btn-apply pod-admin-add-field" id="podAddFieldBtn">Add field</button>
+              </div>
+              <textarea id="productPrintTemplateConfig" style="display:none"></textarea>
+              <p class="form-hint">Key must match PDF field name. Use Multi-line for paragraphs, Dropdown (multi) for multiple selections.</p>
+            </div>
+          </section>
+
+          <section class="product-edit-section" id="kitSection" style="display: none;">
+            <h2>Kit components</h2>
+            <p class="form-hint">Products that make up this kit. Quantity = per kit.</p>
+            <div class="kit-items-list" id="formKitItemsList"></div>
+            <div class="kit-add-row">
+              <select id="formKitAddProduct">
+                <option value="">Select product...</option>
+              </select>
+              <input type="number" id="formKitAddQty" min="1" value="1" placeholder="Qty" style="width: 70px;">
+              <button type="button" class="btn-apply" id="formKitAddBtn">Add</button>
+            </div>
+          </section>
+
+          <div class="form-actions product-edit-actions">
+            <button type="submit" class="btn-apply">Save changes</button>
+            <a href="/products-manage.html" class="btn-cancel">Cancel</a>
+          </div>
+        </form>
+      </div>
+      <div id="errorWrap" style="display:none" class="product-edit-error">
+        <p id="errorMessage"></p>
+        <a href="/products-manage.html" class="btn-apply">Back to products</a>
+      </div>
+    </main>
+  </div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const productId = params.get("id");
+    let product = null;
+    let allProducts = [];
+
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    function getDefaultPODConfig() {
+      return {
+        layout: "business_card",
+        fields: [
+          { key: "name", label: "Full Name", type: "text" },
+          { key: "title", label: "Title", type: "text" },
+          { key: "email", label: "Email", type: "text" },
+          { key: "phoneP", label: "P", type: "text" },
+          { key: "phoneM", label: "M", type: "text" },
+          { key: "address", label: "Address", type: "select", options: ["123 Main St", "Other"] },
+          { key: "website", label: "Website", type: "select", required: true, options: ["example.com", "other"] },
+        ],
+      };
+    }
+
+    function renderPODFields(config) {
+      const body = document.getElementById("podFieldsBody");
+      if (!body) return;
+      body.innerHTML = "";
+      (config.fields || []).forEach((field) => {
+        const type = field.type || "text";
+        const isSelectLike = type === "select" || type === "multiselect";
+        const optionsStr = Array.isArray(field.options) ? (field.options || []).join("\n") : "";
+        const row = document.createElement("div");
+        row.className = "pod-admin-field-row";
+        row.innerHTML =
+          '<div class="pod-admin-field-main">' +
+          '<input type="text" class="pod-field-label" placeholder="Label" value="' + escape(field.label || "") + '">' +
+          '<input type="text" class="pod-field-key" placeholder="key" value="' + escape(field.key || "") + '">' +
+          '<select class="pod-field-type">' +
+          '<option value="text"' + (type === "text" ? " selected" : "") + '>Text</option>' +
+          '<option value="textarea"' + (type === "textarea" ? " selected" : "") + '>Multi-line</option>' +
+          '<option value="select"' + (type === "select" ? " selected" : "") + '>Dropdown</option>' +
+          '<option value="multiselect"' + (type === "multiselect" ? " selected" : "") + '>Dropdown (multi)</option>' +
+          '</select>' +
+          '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"' + (field.required ? " checked" : "") + '> Required</label>' +
+          '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
+          '</div>' +
+          '<div class="pod-admin-field-options-wrap" style="display:' + (isSelectLike ? "block" : "none") + '">' +
+          '<label>Options (one per line)</label>' +
+          '<textarea class="pod-field-options" rows="2" placeholder="Option 1\nOption 2">' + escape(optionsStr) + '</textarea>' +
+          '</div>';
+        const typeSelect = row.querySelector(".pod-field-type");
+        const optionsWrap = row.querySelector(".pod-admin-field-options-wrap");
+        typeSelect.addEventListener("change", () => {
+          optionsWrap.style.display = (typeSelect.value === "select" || typeSelect.value === "multiselect") ? "block" : "none";
+        });
+        row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
+        body.appendChild(row);
+      });
+    }
+
+    function loadPODConfigFromJson(jsonStr) {
+      let config = getDefaultPODConfig();
+      if (jsonStr && jsonStr.trim()) {
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed && typeof parsed === "object") {
+            config = {
+              layout: parsed.layout || config.layout,
+              fields: Array.isArray(parsed.fields) && parsed.fields.length ? parsed.fields : config.fields,
+            };
+          }
+        } catch (_) {}
+      }
+      const layoutSelect = document.getElementById("podLayoutSelect");
+      if (layoutSelect) layoutSelect.value = config.layout || "business_card";
+      renderPODFields(config);
+    }
+
+    function collectPODConfig() {
+      const layoutSelect = document.getElementById("podLayoutSelect");
+      const layout = layoutSelect ? layoutSelect.value || "business_card" : "business_card";
+      const body = document.getElementById("podFieldsBody");
+      const fields = [];
+      if (body) {
+        body.querySelectorAll(".pod-admin-field-row").forEach((row) => {
+          const labelInput = row.querySelector(".pod-field-label");
+          const keyInput = row.querySelector(".pod-field-key");
+          const typeSelect = row.querySelector(".pod-field-type");
+          const requiredCb = row.querySelector(".pod-field-required");
+          const optionsTa = row.querySelector(".pod-field-options");
+          const label = labelInput ? labelInput.value.trim() : "";
+          const key = keyInput ? keyInput.value.trim() : "";
+          if (!key) return;
+          const type = typeSelect && typeSelect.value ? typeSelect.value : "text";
+          const required = requiredCb ? requiredCb.checked : false;
+          const opt = optionsTa ? optionsTa.value.split(/\n/).map((s) => s.trim()).filter(Boolean) : [];
+          const field = { key, label: label || key, type };
+          if ((type === "select" || type === "multiselect") && opt.length) field.options = opt;
+          if (required) field.required = true;
+          fields.push(field);
+        });
+      }
+      return { layout, fields };
+    }
+
+    function syncPODConfigToHidden() {
+      const enabled = document.getElementById("productPrintOnDemand").checked;
+      const hidden = document.getElementById("productPrintTemplateConfig");
+      if (!hidden) return;
+      if (!enabled) { hidden.value = ""; return; }
+      const cfg = collectPODConfig();
+      hidden.value = cfg.fields.length ? JSON.stringify(cfg) : "";
+    }
+
+    function togglePrintTemplateRow() {
+      const row = document.getElementById("printTemplateRow");
+      row.style.display = document.getElementById("productPrintOnDemand").checked ? "block" : "none";
+    }
+
+    function toggleQuantityAndKit() {
+      const isKit = document.getElementById("productType").value === "kit";
+      document.getElementById("quantityRow").style.display = isKit ? "none" : "block";
+      document.getElementById("kitSection").style.display = isKit ? "block" : "none";
+      if (isKit) refreshFormKitItems();
+    }
+
+    async function loadProduct() {
+      if (!productId) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("errorWrap").style.display = "block";
+        document.getElementById("errorMessage").textContent = "No product ID in URL.";
+        return;
+      }
+      try {
+        const [prodRes, listRes, groupsRes] = await Promise.all([
+          fetch("/api/products/" + productId, { credentials: "include" }),
+          fetch("/api/products", { credentials: "include" }),
+          fetch("/api/user-groups", { credentials: "include" }),
+        ]);
+        if (!prodRes.ok) {
+          if (prodRes.status === 401) { window.location.href = "/login.html"; return; }
+          throw new Error(prodRes.status === 404 ? "Product not found." : prodRes.statusText);
+        }
+        product = await prodRes.json();
+        allProducts = listRes.ok ? await listRes.json() : [];
+        const groups = groupsRes.ok ? (await groupsRes.json()).groups || [] : [];
+
+        const groupSelect = document.getElementById("productGroup");
+        groupSelect.innerHTML = '<option value="">All groups (global)</option>';
+        groups.forEach((g) => {
+          const opt = document.createElement("option");
+          opt.value = g.id;
+          opt.textContent = g.name;
+          if (product.groupId === g.id) opt.selected = true;
+          groupSelect.appendChild(opt);
+        });
+
+        document.getElementById("pageTitle").textContent = "Edit: " + (product.name || "Product");
+        document.getElementById("productName").value = product.name || "";
+        document.getElementById("productSku").value = product.sku || "";
+        document.getElementById("productQuantity").value = product.productType === "kit" ? (product.quantity ?? 0) : (product.quantity ?? 0);
+        document.getElementById("productType").value = product.productType || "regular";
+        document.getElementById("productPrice").value = product.price ?? "";
+        document.getElementById("productDescription").value = product.description || "";
+        document.getElementById("productCategory").value = product.category || "";
+        document.getElementById("productPrintOnDemand").checked = !!product.isPrintOnDemand;
+        loadPODConfigFromJson(product.printTemplateConfig || "");
+        togglePrintTemplateRow();
+        toggleQuantityAndKit();
+
+        document.getElementById("podAddFieldBtn").addEventListener("click", () => {
+          const body = document.getElementById("podFieldsBody");
+          const row = document.createElement("div");
+          row.className = "pod-admin-field-row";
+          row.innerHTML =
+            '<div class="pod-admin-field-main">' +
+            '<input type="text" class="pod-field-label" placeholder="Label">' +
+            '<input type="text" class="pod-field-key" placeholder="key">' +
+            '<select class="pod-field-type"><option value="text">Text</option><option value="textarea">Multi-line</option><option value="select">Dropdown</option><option value="multiselect">Dropdown (multi)</option></select>' +
+            '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"> Required</label>' +
+            '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
+            '</div>' +
+            '<div class="pod-admin-field-options-wrap" style="display:none"><label>Options (one per line)</label><textarea class="pod-field-options" rows="2"></textarea></div>';
+          row.querySelector(".pod-field-type").addEventListener("change", function () {
+            row.querySelector(".pod-admin-field-options-wrap").style.display = (this.value === "select" || this.value === "multiselect") ? "block" : "none";
+          });
+          row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
+          body.appendChild(row);
+        });
+
+        document.getElementById("productPrintOnDemand").addEventListener("change", togglePrintTemplateRow);
+        document.getElementById("productType").addEventListener("change", toggleQuantityAndKit);
+
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("formWrap").style.display = "block";
+      } catch (e) {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("errorWrap").style.display = "block";
+        document.getElementById("errorMessage").textContent = e.message || "Failed to load product.";
+      }
+    }
+
+    async function refreshFormKitItems() {
+      const list = document.getElementById("formKitItemsList");
+      if (!list) return;
+      try {
+        const res = await fetch("/api/products/" + productId + "/kit-items", { credentials: "include" });
+        const items = res.ok ? await res.json() : [];
+        list.innerHTML = items.length
+          ? items.map((i) => `
+              <div class="kit-item-row">
+                <span>${escape(i.product?.name || "?")} × ${i.quantity}</span>
+                <button type="button" class="btn-cancel kit-item-remove" data-item-id="${i.id}">Remove</button>
+              </div>
+            `).join("")
+          : "<p class=\"form-hint\">No components yet. Add below.</p>";
+        list.querySelectorAll(".kit-item-remove").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            try {
+              await fetch("/api/products/" + productId + "/kit-items/" + btn.dataset.itemId, { method: "DELETE", credentials: "include" });
+              refreshFormKitItems();
+            } catch (_) {}
+          });
+        });
+        const addSelect = document.getElementById("formKitAddProduct");
+        const currentIds = (items || []).map((i) => i.productId);
+        const available = allProducts.filter((p) => p.productType !== "kit" && p.id !== Number(productId) && !currentIds.includes(p.id));
+        addSelect.innerHTML = '<option value="">Select product...</option>' + available.map((p) => `<option value="${p.id}">${escape(p.name)} (${escape(p.sku)})</option>`).join("");
+      } catch (_) {}
+    }
+
+    document.getElementById("formKitAddBtn").addEventListener("click", async () => {
+      const productIdNum = Number(productId);
+      const select = document.getElementById("formKitAddProduct");
+      const qty = Math.max(1, parseInt(document.getElementById("formKitAddQty").value, 10) || 1);
+      const pid = select.value;
+      if (!pid) return;
+      try {
+        await fetch("/api/products/" + productId + "/kit-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ productId: Number(pid), quantity: qty }),
+        });
+        refreshFormKitItems();
+      } catch (e) {
+        alert("Error: " + (e.message || "Could not add"));
+      }
+    });
+
+    document.getElementById("productForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      syncPODConfigToHidden();
+      const isKit = document.getElementById("productType").value === "kit";
+      const payload = {
+        name: document.getElementById("productName").value.trim(),
+        sku: document.getElementById("productSku").value.trim(),
+        quantity: isKit ? 0 : (Math.max(0, parseInt(document.getElementById("productQuantity").value, 10) || 0)),
+        price: parseFloat(document.getElementById("productPrice").value) || 0,
+        description: document.getElementById("productDescription").value.trim() || null,
+        category: document.getElementById("productCategory").value.trim() || null,
+        groupId: document.getElementById("productGroup").value || null,
+        productType: isKit ? "kit" : "regular",
+        isPrintOnDemand: document.getElementById("productPrintOnDemand").checked,
+        printTemplateConfig: document.getElementById("productPrintTemplateConfig").value.trim() || null,
+      };
+      try {
+        const res = await fetch("/api/products/" + productId, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.message || res.statusText);
+        }
+        window.location.href = "/products-manage.html";
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    });
+
+    loadProduct();
+  </script>
+</body>
+</html>

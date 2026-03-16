@@ -304,15 +304,13 @@
           <td>${p.group ? escape(p.group.name) : "—"}</td>
           <td class="actions-col">
             ${p.productType === "kit" ? `<button class="btn-kit" data-id="${p.id}">Kit</button>` : ""}
-            <button class="btn-edit" data-id="${p.id}">Edit</button>
+            <a href="/product-edit.html?id=${p.id}" class="btn-edit">Edit</a>
             <button class="btn-files${filesClass}" data-id="${p.id}">Files${fileCount > 0 ? ` (${fileCount})` : ""}</button>
             <a href="/api/products/${p.id}/label" class="btn-label" target="_blank" download>Print Label</a>
           </td>
         </tr>
       `}).join("");
-      body.querySelectorAll(".btn-edit").forEach(btn => {
-        btn.addEventListener("click", () => openForm(Number(btn.dataset.id)));
-      });
+      body.querySelectorAll(".btn-edit").forEach(() => {});
       body.querySelectorAll(".btn-kit").forEach(btn => {
         btn.addEventListener("click", () => openKitModal(Number(btn.dataset.id)));
       });
@@ -381,7 +379,8 @@
       (config.fields || []).forEach((field) => {
         const row = document.createElement("div");
         row.className = "pod-admin-field-row";
-        const type = (field.type || "text") === "select" ? "select" : "text";
+        const type = field.type || "text";
+        const isSelectLike = type === "select" || type === "multiselect";
         const optionsStr = Array.isArray(field.options) ? (field.options || []).join("\n") : "";
         row.innerHTML =
           '<div class="pod-admin-field-main">' +
@@ -389,19 +388,21 @@
           '<input type="text" class="pod-field-key" placeholder="key" value="' + escape(field.key || "") + '">' +
           '<select class="pod-field-type">' +
           '<option value="text"' + (type === "text" ? " selected" : "") + '>Text</option>' +
+          '<option value="textarea"' + (type === "textarea" ? " selected" : "") + '>Multi-line</option>' +
           '<option value="select"' + (type === "select" ? " selected" : "") + '>Dropdown</option>' +
+          '<option value="multiselect"' + (type === "multiselect" ? " selected" : "") + '>Dropdown (multi)</option>' +
           '</select>' +
           '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"' + (field.required ? " checked" : "") + '> Required</label>' +
           '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
           '</div>' +
-          '<div class="pod-admin-field-options-wrap" style="display:' + (type === "select" ? "block" : "none") + '">' +
+          '<div class="pod-admin-field-options-wrap" style="display:' + (isSelectLike ? "block" : "none") + '">' +
           '<label>Options (one per line)</label>' +
           '<textarea class="pod-field-options" rows="2" placeholder="Option 1\nOption 2">' + escape(optionsStr) + '</textarea>' +
           '</div>';
         const typeSelect = row.querySelector(".pod-field-type");
         const optionsWrap = row.querySelector(".pod-admin-field-options-wrap");
         typeSelect.addEventListener("change", () => {
-          optionsWrap.style.display = typeSelect.value === "select" ? "block" : "none";
+          optionsWrap.style.display = (typeSelect.value === "select" || typeSelect.value === "multiselect") ? "block" : "none";
         });
         row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
         body.appendChild(row);
@@ -443,11 +444,11 @@
           const label = labelInput ? labelInput.value.trim() : "";
           const key = keyInput ? keyInput.value.trim() : "";
           if (!key) return;
-          const type = typeSelect && typeSelect.value === "select" ? "select" : "text";
+          const type = typeSelect && typeSelect.value ? typeSelect.value : "text";
           const required = requiredCb ? requiredCb.checked : false;
           const opt = optionsTa ? optionsTa.value.split(/\n/).map((s) => s.trim()).filter(Boolean) : [];
           const field = { key, label: label || key, type };
-          if (type === "select" && opt.length) field.options = opt;
+          if ((type === "select" || type === "multiselect") && opt.length) field.options = opt;
           if (required) field.required = true;
           fields.push(field);
         });
@@ -482,7 +483,7 @@
           '<div class="pod-admin-field-main">' +
           '<input type="text" class="pod-field-label" placeholder="Label">' +
           '<input type="text" class="pod-field-key" placeholder="key">' +
-          '<select class="pod-field-type"><option value="text">Text</option><option value="select">Dropdown</option></select>' +
+          '<select class="pod-field-type"><option value="text">Text</option><option value="textarea">Multi-line</option><option value="select">Dropdown</option><option value="multiselect">Dropdown (multi)</option></select>' +
           '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"> Required</label>' +
           '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
           '</div>' +
@@ -490,7 +491,7 @@
         const typeSelect = row.querySelector(".pod-field-type");
         const optionsWrap = row.querySelector(".pod-admin-field-options-wrap");
         typeSelect.addEventListener("change", () => {
-          optionsWrap.style.display = typeSelect.value === "select" ? "block" : "none";
+          optionsWrap.style.display = (typeSelect.value === "select" || typeSelect.value === "multiselect") ? "block" : "none";
         });
         row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
         body.appendChild(row);

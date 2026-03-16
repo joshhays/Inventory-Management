@@ -2316,6 +2316,47 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   box-sizing: border-box;
 }
 
+/* Product edit full page */
+.product-edit-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.product-edit-form-wrap {
+  background: var(--glass-bg, #fff);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.product-edit-section {
+  margin-bottom: 1.5rem;
+}
+
+.product-edit-section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--glass-border-subtle, #e2e8f0);
+}
+
+.product-edit-actions {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--glass-border-subtle, #e2e8f0);
+}
+
+.product-edit-error {
+  text-align: center;
+  padding: 2rem;
+}
+
+.product-edit-error p {
+  margin-bottom: 1rem;
+  color: var(--text-muted);
+}
+
 .pod-field-remove {
   border: none;
   background: transparent;
@@ -3201,6 +3242,15 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 .pod-form-row-inline .pod-input-phone {
   width: 10rem;
   max-width: 100%;
+}
+
+.pod-textarea {
+  min-height: 4rem;
+  resize: vertical;
+}
+
+.pod-select-multiple {
+  min-height: 5rem;
 }
 
 .pod-proof-wrap {
