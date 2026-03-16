@@ -4,7 +4,7 @@
  */
 const ADMIN_PATHS = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html", "/deployments.html"];
 const ADMIN_PATHS_REQUIRE_DEPLOYMENT = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html"];
-const DEPLOYMENT_SELECT_PATH = "/deployment-select.html";
+const DEPLOYMENT_SELECT_PATH = "/dashboard.html";
 const STORE_PATHS = ["/store/", "/store/index.html", "/store/products.html", "/store/cart.html", "/store/orders.html"];
 
 function requirePageAuth(req, res, next) {

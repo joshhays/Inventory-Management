@@ -47,11 +47,11 @@ const getSelected = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { name, slug, logoUrl, customerInfo } = req.body;
+    const { name, slug, logoUrl, brandColor1, brandColor2, customerInfo } = req.body;
     if (!name || !slug) {
       return res.status(400).json({ message: "name and slug are required." });
     }
-    const deployment = await deploymentService.create({ name, slug, logoUrl, customerInfo });
+    const deployment = await deploymentService.create({ name, slug, logoUrl, brandColor1, brandColor2, customerInfo });
     res.status(201).json(deployment);
   } catch (error) {
     if (error.code === "P2002") {
@@ -64,8 +64,8 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, slug, logoUrl, customerInfo } = req.body;
-    const deployment = await deploymentService.update(id, { name, slug, logoUrl, customerInfo });
+    const { name, slug, logoUrl, brandColor1, brandColor2, customerInfo } = req.body;
+    const deployment = await deploymentService.update(id, { name, slug, logoUrl, brandColor1, brandColor2, customerInfo });
     if (!deployment) {
       return res.status(404).json({ message: "Deployment not found." });
     }
@@ -101,6 +101,24 @@ const uploadLogo = async (req, res, next) => {
   }
 };
 
+const removeLogo = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const deployment = await deploymentService.findById(id);
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found." });
+    }
+    if (deployment.logoUrl && deployment.logoUrl.startsWith("/uploads/")) {
+      const oldPath = path.join(__dirname, "../..", deployment.logoUrl);
+      try { if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath); } catch (_) {}
+    }
+    const updated = await deploymentService.update(id, { logoUrl: null });
+    res.status(200).json(updated);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   list,
   select,
@@ -108,4 +126,5 @@ module.exports = {
   create,
   update,
   uploadLogo,
+  removeLogo,
 };

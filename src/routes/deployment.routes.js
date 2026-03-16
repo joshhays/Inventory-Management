@@ -11,5 +11,6 @@ router.post("/select", requireAuth, deploymentController.select);
 router.post("/", requireAuth, requireAdmin, deploymentController.create);
 router.patch("/:id", requireAuth, requireAdmin, deploymentController.update);
 router.post("/:id/logo", requireAuth, requireAdmin, uploadDeploymentLogo, deploymentController.uploadLogo);
+router.delete("/:id/logo", requireAuth, requireAdmin, deploymentController.removeLogo);
 
 module.exports = router;

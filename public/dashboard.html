@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="dashboard-page">
+    <header class="dashboard-header">
+      <h1>Inventory</h1>
+      <p class="dashboard-subtitle">Select a deployment to get started</p>
+      <div class="dashboard-actions">
+        <a href="/deployments.html" class="btn-secondary">Manage deployments</a>
+        <a href="/store/" class="btn-secondary">Customer store</a>
+        <a href="#" id="logoutLink" class="btn-secondary">Log out</a>
+      </div>
+    </header>
+    <main class="dashboard-main">
+      <div id="deploymentBento" class="bento-grid loading">
+        <div class="loading">Loading…</div>
+      </div>
+      <p id="emptyState" class="dashboard-empty" style="display:none">No deployments configured. <a href="/deployments.html">Add one</a> to get started.</p>
+    </main>
+  </div>
+  <script>
+    const bentoEl = document.getElementById("deploymentBento");
+    const emptyEl = document.getElementById("emptyState");
+
+    document.getElementById("logoutLink").addEventListener("click", async (e) => {
+      e.preventDefault();
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/login.html";
+    });
+
+    async function loadDeployments() {
+      try {
+        const res = await fetch("/api/deployments", { credentials: "include" });
+        if (!res.ok) {
+          if (res.status === 401) {
+            window.location.href = "/login.html";
+            return;
+          }
+          throw new Error("Failed to load deployments");
+        }
+        const deployments = await res.json();
+        bentoEl.classList.remove("loading");
+        bentoEl.innerHTML = "";
+        bentoEl.style.display = "";
+        if (deployments.length === 0) {
+          bentoEl.style.display = "none";
+          emptyEl.style.display = "block";
+          return;
+        }
+        deployments.forEach((d, i) => {
+          const card = document.createElement("button");
+          card.type = "button";
+          card.className = "bento-card" + (i === 0 && deployments.length === 1 ? " bento-card-featured" : "");
+          const customerText = formatCustomerInfo(d.customerInfo);
+          card.innerHTML = `
+            <div class="bento-card-visual">
+              ${d.logoUrl ? `<img src="${escapeAttr(d.logoUrl)}" alt="" class="bento-card-logo" onerror="this.outerHTML='<div class=\\'bento-card-placeholder\\'>?</div>'">` : `<div class="bento-card-placeholder">${escapeHtml((d.name || "?")[0])}</div>`}
+            </div>
+            <div class="bento-card-content">
+              <span class="bento-card-name">${escapeHtml(d.name || d.slug)}</span>
+              <span class="bento-card-slug">${escapeHtml(d.slug || "")}</span>
+              ${customerText ? `<span class="bento-card-customer">${escapeHtml(customerText)}</span>` : ""}
+            </div>
+          `;
+          card.addEventListener("click", async () => {
+            card.disabled = true;
+            try {
+              const selRes = await fetch("/api/deployments/select", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ id: d.id }),
+              });
+              if (!selRes.ok) throw new Error("Failed to select");
+              window.location.href = "/";
+            } catch (err) {
+              card.disabled = false;
+              alert(err.message || "Failed to select deployment.");
+            }
+          });
+          bentoEl.appendChild(card);
+        });
+      } catch (err) {
+        bentoEl.innerHTML = "<p class=\"dashboard-error\">" + escapeHtml(err.message || "Failed to load deployments.") + "</p>";
+      }
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement("div");
+      d.textContent = s ?? "";
+      return d.innerHTML;
+    }
+    function escapeAttr(s) {
+      return String(s ?? "").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;");
+    }
+    function formatCustomerInfo(info) {
+      if (!info || !info.trim()) return "";
+      try {
+        const j = JSON.parse(info);
+        const parts = [];
+        if (j.address) parts.push(j.address);
+        if (j.phone) parts.push(j.phone);
+        if (j.email) parts.push(j.email);
+        return parts.length ? parts.join(" · ") : info.slice(0, 80) + (info.length > 80 ? "…" : "");
+      } catch (_) {
+        return info.slice(0, 80) + (info.length > 80 ? "…" : "");
+      }
+    }
+
+    loadDeployments();
+  </script>
+  <style>
+    .dashboard-page { min-height: 100vh; padding: 2rem 1.5rem; }
+    .dashboard-header { text-align: center; margin-bottom: 2.5rem; }
+    .dashboard-header h1 { font-size: 2rem; font-weight: 700; margin: 0 0 0.5rem; }
+    .dashboard-subtitle { color: var(--text-muted); margin: 0 0 1.5rem; }
+    .dashboard-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem; }
+    .dashboard-actions a { text-decoration: none; }
+    .dashboard-main { max-width: 1200px; margin: 0 auto; }
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+    .bento-grid.loading { display: flex; justify-content: center; padding: 3rem; }
+    .bento-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      font-family: inherit;
+      text-align: center;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    }
+    .bento-card:hover:not(:disabled) {
+      border-color: var(--accent);
+      box-shadow: var(--card-shadow-hover);
+      transform: translateY(-2px);
+    }
+    .bento-card:disabled { opacity: 0.7; cursor: wait; }
+    .bento-card-featured { grid-column: 1 / -1; max-width: 400px; margin: 0 auto; }
+    .bento-card-visual {
+      width: 120px; height: 80px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+    }
+    .bento-card-logo { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .bento-card-placeholder {
+      width: 80px; height: 80px;
+      background: rgba(71, 85, 105, 0.12);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 32px; font-weight: 700; color: var(--accent);
+    }
+    .bento-card-content { display: flex; flex-direction: column; gap: 0.25rem; }
+    .bento-card-name { font-weight: 600; font-size: 1.1rem; color: var(--text); }
+    .bento-card-slug { font-size: 0.9rem; color: var(--text-muted); }
+    .bento-card-customer { font-size: 0.85rem; color: var(--text-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dashboard-empty, .dashboard-error { text-align: center; color: var(--text-muted); padding: 2rem; }
+    .dashboard-empty a { color: var(--accent); }
+  </style>
+</body>
+</html>
