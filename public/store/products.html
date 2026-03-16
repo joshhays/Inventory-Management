@@ -261,47 +261,13 @@
         if (raw && typeof raw === "string") config = JSON.parse(raw);
         else if (raw && typeof raw === "object") config = raw;
       } catch (_) {}
-      if (!config.fields || !Array.isArray(config.fields)) {
-        config.fields = [
-          { key: "name", label: "Full Name" },
-          { key: "title", label: "Title" },
-          { key: "role", label: "Role" },
-          { key: "company", label: "Company" },
-          { key: "email", label: "Email" },
-          { key: "phoneP", label: "P" },
-          { key: "phoneM", label: "M" },
-          {
-            key: "address",
-            label: "Address",
-            type: "select",
-            options: ["123 Main St, Anytown, ST 12345", "456 Oak Ave, City, ST 67890", "Other"],
-          },
-          {
-            key: "website",
-            label: "Website",
-            type: "select",
-            required: true,
-            options: ["example.com", "mycompany.com", "acme.com", "other"],
-          },
-        ];
+      if (!config.fields || !Array.isArray(config.fields) || config.fields.length === 0) {
+        config.fields = [{ key: "name", label: "Full Name", type: "text" }];
       } else {
-        const websiteField = config.fields.find((f) => (f.key || "").toLowerCase() === "website");
-        if (websiteField && websiteField.type !== "select" && !Array.isArray(websiteField.options)) {
-          websiteField.type = "select";
-          websiteField.required = true;
-          websiteField.options = websiteField.options || ["example.com", "mycompany.com", "acme.com", "other"];
-        } else if (websiteField) {
-          websiteField.required = true;
-        }
-        const addressField = config.fields.find((f) => (f.key || "").toLowerCase() === "address");
-        if (addressField && addressField.type !== "select" && !Array.isArray(addressField.options)) {
-          addressField.type = "select";
-          addressField.options = addressField.options || ["123 Main St, Anytown, ST 12345", "456 Oak Ave, City, ST 67890", "Other"];
-        }
         const phoneIdx = config.fields.findIndex((f) => (f.key || "").toLowerCase() === "phone");
         if (phoneIdx >= 0 && !config.fields.some((f) => (f.key || "").toLowerCase() === "phonep")) {
-          config.fields[phoneIdx] = { key: "phoneP", label: "P" };
-          config.fields.splice(phoneIdx + 1, 0, { key: "phoneM", label: "M" });
+          config.fields[phoneIdx] = { key: "phoneP", label: "P", type: "text" };
+          config.fields.splice(phoneIdx + 1, 0, { key: "phoneM", label: "M", type: "text" });
         }
       }
       return config;

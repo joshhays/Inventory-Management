@@ -109,18 +109,20 @@
           </div>
         </div>
         <div class="pod-admin-fields">
-          <div class="pod-admin-fields-header">
-            <span>Field label (what you see)</span>
-            <span>Field key (PDF form field name)</span>
+          <div class="pod-admin-fields-header pod-admin-fields-header-grid">
+            <span>Label</span>
+            <span>Key</span>
+            <span>Type</span>
+            <span>Required</span>
+            <span></span>
           </div>
           <div id="podFieldsBody"></div>
           <button type="button" class="btn-apply pod-admin-add-field" id="podAddFieldBtn">Add field</button>
         </div>
         <textarea id="productPrintTemplateConfig" style="display:none"></textarea>
         <p class="form-hint">
-          Define the fields customers will fill in. Each <strong>Field key</strong> should match a PDF form field name
-          in your print-ready PDF. The system builds the JSON for you and uses it for the live proof and PDF merge.
-          See <code>docs/PRINT-ON-DEMAND-PDF.md</code> for details.
+          Define the fields customers will fill in. <strong>Key</strong> must match the PDF/backend field name (e.g. name, email, website).
+          Use <strong>Dropdown</strong> to show a select; enter options one per line. All of this is saved with the product—no code changes needed.
         </p>
       </div>
       <div class="form-row" id="kitComponentsRow" style="display: none;">
@@ -361,11 +363,13 @@
       return {
         layout: "business_card",
         fields: [
-          { key: "name", label: "Full Name" },
-          { key: "title", label: "Title" },
-          { key: "company", label: "Company" },
-          { key: "phone", label: "Phone" },
-          { key: "email", label: "Email" },
+          { key: "name", label: "Full Name", type: "text" },
+          { key: "title", label: "Title", type: "text" },
+          { key: "email", label: "Email", type: "text" },
+          { key: "phoneP", label: "P", type: "text" },
+          { key: "phoneM", label: "M", type: "text" },
+          { key: "address", label: "Address", type: "select", options: ["123 Main St", "Other"] },
+          { key: "website", label: "Website", type: "select", required: true, options: ["example.com", "other"] },
         ],
       };
     }
@@ -374,16 +378,32 @@
       const body = document.getElementById("podFieldsBody");
       if (!body) return;
       body.innerHTML = "";
-      (config.fields || []).forEach((field, index) => {
+      (config.fields || []).forEach((field) => {
         const row = document.createElement("div");
         row.className = "pod-admin-field-row";
+        const type = (field.type || "text") === "select" ? "select" : "text";
+        const optionsStr = Array.isArray(field.options) ? (field.options || []).join("\n") : "";
         row.innerHTML =
-          '<input type="text" class="pod-field-label" placeholder="Label" value="' + (field.label || "") + '">' +
-          '<input type="text" class="pod-field-key" placeholder="key (e.g. name)" value="' + (field.key || "") + '">' +
-          '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>';
-        row.querySelector(".pod-field-remove").addEventListener("click", () => {
-          row.remove();
+          '<div class="pod-admin-field-main">' +
+          '<input type="text" class="pod-field-label" placeholder="Label" value="' + escape(field.label || "") + '">' +
+          '<input type="text" class="pod-field-key" placeholder="key" value="' + escape(field.key || "") + '">' +
+          '<select class="pod-field-type">' +
+          '<option value="text"' + (type === "text" ? " selected" : "") + '>Text</option>' +
+          '<option value="select"' + (type === "select" ? " selected" : "") + '>Dropdown</option>' +
+          '</select>' +
+          '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"' + (field.required ? " checked" : "") + '> Required</label>' +
+          '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
+          '</div>' +
+          '<div class="pod-admin-field-options-wrap" style="display:' + (type === "select" ? "block" : "none") + '">' +
+          '<label>Options (one per line)</label>' +
+          '<textarea class="pod-field-options" rows="2" placeholder="Option 1\nOption 2">' + escape(optionsStr) + '</textarea>' +
+          '</div>';
+        const typeSelect = row.querySelector(".pod-field-type");
+        const optionsWrap = row.querySelector(".pod-admin-field-options-wrap");
+        typeSelect.addEventListener("change", () => {
+          optionsWrap.style.display = typeSelect.value === "select" ? "block" : "none";
         });
+        row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
         body.appendChild(row);
       });
     }
@@ -417,11 +437,19 @@
         body.querySelectorAll(".pod-admin-field-row").forEach((row) => {
           const labelInput = row.querySelector(".pod-field-label");
           const keyInput = row.querySelector(".pod-field-key");
+          const typeSelect = row.querySelector(".pod-field-type");
+          const requiredCb = row.querySelector(".pod-field-required");
+          const optionsTa = row.querySelector(".pod-field-options");
           const label = labelInput ? labelInput.value.trim() : "";
           const key = keyInput ? keyInput.value.trim() : "";
-          if (key) {
-            fields.push({ key, label: label || key });
-          }
+          if (!key) return;
+          const type = typeSelect && typeSelect.value === "select" ? "select" : "text";
+          const required = requiredCb ? requiredCb.checked : false;
+          const opt = optionsTa ? optionsTa.value.split(/\n/).map((s) => s.trim()).filter(Boolean) : [];
+          const field = { key, label: label || key, type };
+          if (type === "select" && opt.length) field.options = opt;
+          if (required) field.required = true;
+          fields.push(field);
         });
       }
       return { layout, fields };
@@ -451,12 +479,20 @@
         const row = document.createElement("div");
         row.className = "pod-admin-field-row";
         row.innerHTML =
+          '<div class="pod-admin-field-main">' +
           '<input type="text" class="pod-field-label" placeholder="Label">' +
-          '<input type="text" class="pod-field-key" placeholder="key (e.g. name)">' +
-          '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>';
-        row.querySelector(".pod-field-remove").addEventListener("click", () => {
-          row.remove();
+          '<input type="text" class="pod-field-key" placeholder="key">' +
+          '<select class="pod-field-type"><option value="text">Text</option><option value="select">Dropdown</option></select>' +
+          '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"> Required</label>' +
+          '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
+          '</div>' +
+          '<div class="pod-admin-field-options-wrap" style="display:none"><label>Options (one per line)</label><textarea class="pod-field-options" rows="2" placeholder="Option 1\nOption 2"></textarea></div>';
+        const typeSelect = row.querySelector(".pod-field-type");
+        const optionsWrap = row.querySelector(".pod-admin-field-options-wrap");
+        typeSelect.addEventListener("change", () => {
+          optionsWrap.style.display = typeSelect.value === "select" ? "block" : "none";
         });
+        row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
         body.appendChild(row);
       });
     }

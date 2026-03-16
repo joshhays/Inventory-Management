@@ -2234,6 +2234,13 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   margin-bottom: 0.5rem;
 }
 
+.pod-admin-fields-header.pod-admin-fields-header-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .pod-admin-fields-header {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2245,10 +2252,59 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 }
 
 .pod-admin-field-row {
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--glass-border-subtle, #e2e8f0);
+}
+
+.pod-admin-field-main {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr auto auto auto;
   gap: 0.5rem;
-  margin-bottom: 0.35rem;
+  align-items: center;
+}
+
+.pod-admin-field-options-wrap {
+  margin-top: 0.35rem;
+  margin-left: 0;
+}
+
+.pod-admin-field-options-wrap label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.2rem;
+}
+
+.pod-admin-field-options-wrap .pod-field-options {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border-subtle);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.pod-admin-field-row input[type="text"],
+.pod-admin-field-row .pod-field-type {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--glass-border-subtle);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+
+.pod-admin-field-row .pod-field-type {
+  min-width: 6rem;
+}
+
+.pod-field-required-wrap {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .pod-admin-field-row input {
