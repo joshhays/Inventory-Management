@@ -2,8 +2,8 @@
  * Redirect unauthenticated users to the login page when they request protected HTML pages.
  * Must run after session middleware, before express.static.
  */
-const ADMIN_PATHS = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html", "/deployments.html"];
-const ADMIN_PATHS_REQUIRE_DEPLOYMENT = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html"];
+const ADMIN_PATHS = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html", "/deployments.html", "/categories.html"];
+const ADMIN_PATHS_REQUIRE_DEPLOYMENT = ["/", "/index.html", "/products.html", "/products-manage.html", "/orders.html", "/logs.html", "/users.html", "/groups.html", "/reports.html", "/report-view.html", "/categories.html"];
 const DEPLOYMENT_SELECT_PATH = "/dashboard.html";
 
 // Store paths that require auth (orders, settings). Index, products, cart, login, register are public.

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Store Categories - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/deployment-header.js"></script>
+  <link rel="prefetch" href="/">
+  <link rel="prefetch" href="/deployments.html">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPkludmVudG9yeTwvdGV4dD48L3N2Zz4=" alt="Inventory" class="nav-logo"></a>
+      <a href="/dashboard.html" class="top-nav-back" title="Switch deployment">Switch</a>
+    </header>
+    <main class="main-content">
+      <div class="toolbar">
+        <h1>Store Categories</h1>
+      </div>
+      <p class="categories-hint">Categories for the selected deployment's storefront. Tag products with these in Manage Products so they sort correctly on the store.</p>
+      <div id="noDeployment" class="error" style="display:none">
+        No deployment selected. <a href="/dashboard.html">Select a deployment</a> first.
+      </div>
+      <div id="contentWrap" style="display:none;">
+        <p class="categories-deployment">Managing categories for: <strong id="deploymentName"></strong></p>
+        <div class="categories-add-row">
+          <input type="text" id="newCategoryName" placeholder="e.g. Stationery, Office Supplies">
+          <button type="button" class="btn-create" id="btnAddCategory">Add Category</button>
+        </div>
+        <div class="table-wrap">
+          <div class="loading" id="status">Loading…</div>
+          <table id="table" style="display:none">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th class="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="body"></tbody>
+          </table>
+          <p id="emptyState" class="categories-empty" style="display:none">No categories yet. Add one above.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const noDeploymentEl = document.getElementById("noDeployment");
+    const contentWrap = document.getElementById("contentWrap");
+    const deploymentNameEl = document.getElementById("deploymentName");
+    const statusEl = document.getElementById("status");
+    const tableEl = document.getElementById("table");
+    const bodyEl = document.getElementById("body");
+    const emptyStateEl = document.getElementById("emptyState");
+    const newCategoryInput = document.getElementById("newCategoryName");
+    const btnAdd = document.getElementById("btnAddCategory");
+
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    async function init() {
+      try {
+        const res = await fetch("/api/deployments/selected", { credentials: "include" });
+        const data = await res.json().catch(() => ({}));
+        const deployment = data.deployment;
+        if (!deployment || !deployment.id) {
+          noDeploymentEl.style.display = "block";
+          contentWrap.style.display = "none";
+          return;
+        }
+        noDeploymentEl.style.display = "none";
+        contentWrap.style.display = "block";
+        deploymentNameEl.textContent = deployment.name || deployment.slug || "Deployment";
+        window.currentDeploymentId = deployment.id;
+        loadCategories();
+      } catch (e) {
+        noDeploymentEl.style.display = "block";
+        contentWrap.style.display = "none";
+      }
+    }
+
+    async function loadCategories() {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      statusEl.style.display = "block";
+      tableEl.style.display = "none";
+      emptyStateEl.style.display = "none";
+      try {
+        const res = await fetch(`/api/deployments/${depId}/categories`, { credentials: "include" });
+        const categories = res.ok ? await res.json() : [];
+        statusEl.style.display = "none";
+        if (categories.length === 0) {
+          emptyStateEl.style.display = "block";
+        } else {
+          tableEl.style.display = "table";
+          bodyEl.innerHTML = categories.map((c) => `
+            <tr>
+              <td>${escape(c.name)}</td>
+              <td>
+                <button type="button" class="btn-small btn-remove" data-id="${c.id}" title="Remove">Remove</button>
+              </td>
+            </tr>
+          `).join("");
+          bodyEl.querySelectorAll("button.btn-remove").forEach((btn) => {
+            btn.addEventListener("click", () => removeCategory(btn.dataset.id));
+          });
+        }
+      } catch (e) {
+        statusEl.textContent = "Error loading categories.";
+      }
+    }
+
+    async function addCategory() {
+      const name = newCategoryInput.value.trim();
+      if (!name) return;
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      btnAdd.disabled = true;
+      try {
+        const res = await fetch(`/api/deployments/${depId}/categories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Failed to add");
+        newCategoryInput.value = "";
+        loadCategories();
+      } catch (e) {
+        alert(e.message || "Failed to add category.");
+      } finally {
+        btnAdd.disabled = false;
+      }
+    }
+
+    async function removeCategory(id) {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      if (!confirm("Remove this category? Products tagged with it will keep the tag but it won't appear in the store until you add it back.")) return;
+      try {
+        const res = await fetch(`/api/deployments/${depId}/categories/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to remove");
+        loadCategories();
+      } catch (e) {
+        alert(e.message || "Failed to remove category.");
+      }
+    }
+
+    btnAdd.addEventListener("click", addCategory);
+    newCategoryInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); addCategory(); }
+    });
+
+    init();
+  </script>
+  <style>
+    .categories-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
+    .categories-deployment { margin-bottom: 1rem; color: var(--text-muted); }
+    .categories-add-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem; }
+    .categories-add-row input { flex: 1; max-width: 320px; }
+    .categories-empty { color: var(--text-muted); font-style: italic; }
+    .btn-remove { color: var(--text-muted); }
+    .btn-remove:hover { color: var(--danger, #dc2626); }
+  </style>
+</body>
+</html>
