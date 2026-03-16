@@ -142,7 +142,7 @@
               customerInfoInput.value = d.customerInfo || "";
               document.getElementById("deploymentModalTitle").textContent = "Edit Deployment";
               document.getElementById("btnSubmit").textContent = "Save";
-              modal.classList.add("active");
+              modal.classList.add("open");
             }
           });
         });
@@ -172,16 +172,16 @@
       editIdInput.value = "";
       document.getElementById("deploymentModalTitle").textContent = "Add Deployment";
       document.getElementById("btnSubmit").textContent = "Create";
-      modal.classList.add("active");
+      modal.classList.add("open");
       nameInput.focus();
     });
 
     document.getElementById("btnCancel").addEventListener("click", () => {
-      modal.classList.remove("active");
+      modal.classList.remove("open");
     });
 
     modal.addEventListener("click", (e) => {
-      if (e.target === modal) modal.classList.remove("active");
+      if (e.target === modal) modal.classList.remove("open");
     });
 
     nameInput.addEventListener("input", () => {
@@ -215,7 +215,7 @@
         if (!res.ok) {
           throw new Error(data.message || (isEdit ? "Failed to update." : "Failed to create deployment."));
         }
-        modal.classList.remove("active");
+        modal.classList.remove("open");
         editIdInput.value = "";
         loadDeployments();
       } catch (err) {
