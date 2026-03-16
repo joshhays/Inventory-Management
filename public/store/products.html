@@ -332,7 +332,19 @@
         const label = document.createElement("label");
         label.textContent = (f.label || key) + (f.required ? " *" : "");
         label.setAttribute("for", "pod-" + key);
+        function normOpt(opt) {
+          const val = typeof opt === "object" && opt != null && "value" in opt ? opt.value : opt;
+          const lbl = typeof opt === "object" && opt != null && "label" in opt ? opt.label : val;
+          const desc = typeof opt === "object" && opt != null && "description" in opt ? opt.description : "";
+          return { value: val, label: lbl, description: desc };
+        }
+        function updateDescForSelect(selectEl, descEl) {
+          const sel = selectEl.multiple ? Array.from(selectEl.selectedOptions)[0] : selectEl.options[selectEl.selectedIndex];
+          descEl.textContent = sel && sel.dataset.description ? sel.dataset.description : "";
+        }
         if (isMultiselect && hasOptions) {
+          const wrap = document.createElement("div");
+          wrap.className = "pod-field-select-wrap";
           const select = document.createElement("select");
           select.id = "pod-" + key;
           select.name = key;
@@ -340,15 +352,24 @@
           select.multiple = true;
           if (f.required) select.required = true;
           (f.options || []).forEach((opt) => {
+            const { value: val, label: lbl, description: desc } = normOpt(opt);
             const o = document.createElement("option");
-            o.value = typeof opt === "object" && opt != null && "value" in opt ? opt.value : opt;
-            o.textContent = typeof opt === "object" && opt != null && "label" in opt ? opt.label : opt;
+            o.value = val;
+            o.textContent = lbl;
+            if (desc) o.dataset.description = desc;
             select.appendChild(o);
           });
-          select.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
-          formWrap.appendChild(label);
-          formWrap.appendChild(select);
+          const descEl = document.createElement("div");
+          descEl.className = "pod-field-option-desc";
+          descEl.setAttribute("aria-live", "polite");
+          select.addEventListener("change", () => { updateDescForSelect(select, descEl); updatePODProof(config, getPODFormValues(config)); });
+          wrap.appendChild(label);
+          wrap.appendChild(select);
+          wrap.appendChild(descEl);
+          formWrap.appendChild(wrap);
         } else if (isSelect && hasOptions) {
+          const wrap = document.createElement("div");
+          wrap.className = "pod-field-select-wrap";
           const select = document.createElement("select");
           select.id = "pod-" + key;
           select.name = key;
@@ -359,14 +380,21 @@
           opt0.textContent = "Choose one...";
           select.appendChild(opt0);
           (f.options || []).forEach((opt) => {
+            const { value: val, label: lbl, description: desc } = normOpt(opt);
             const o = document.createElement("option");
-            o.value = typeof opt === "object" && opt != null && "value" in opt ? opt.value : opt;
-            o.textContent = typeof opt === "object" && opt != null && "label" in opt ? opt.label : opt;
+            o.value = val;
+            o.textContent = lbl;
+            if (desc) o.dataset.description = desc;
             select.appendChild(o);
           });
-          select.addEventListener("change", () => updatePODProof(config, getPODFormValues(config)));
-          formWrap.appendChild(label);
-          formWrap.appendChild(select);
+          const descEl = document.createElement("div");
+          descEl.className = "pod-field-option-desc";
+          descEl.setAttribute("aria-live", "polite");
+          select.addEventListener("change", () => { updateDescForSelect(select, descEl); updatePODProof(config, getPODFormValues(config)); });
+          wrap.appendChild(label);
+          wrap.appendChild(select);
+          wrap.appendChild(descEl);
+          formWrap.appendChild(wrap);
         } else if (isTextarea) {
           const ta = document.createElement("textarea");
           ta.id = "pod-" + key;

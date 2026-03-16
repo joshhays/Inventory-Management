@@ -3253,6 +3253,22 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   min-height: 5rem;
 }
 
+.pod-field-select-wrap {
+  margin-bottom: 0.25rem;
+}
+
+.pod-field-select-wrap .pod-input {
+  margin-bottom: 0.15rem;
+}
+
+.pod-field-option-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+  min-height: 1.25em;
+  line-height: 1.3;
+}
+
 .pod-proof-wrap {
   display: flex;
   flex-direction: column;

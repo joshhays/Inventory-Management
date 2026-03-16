@@ -150,7 +150,16 @@
       (config.fields || []).forEach((field) => {
         const type = field.type || "text";
         const isSelectLike = type === "select" || type === "multiselect";
-        const optionsStr = Array.isArray(field.options) ? (field.options || []).join("\n") : "";
+        const optionsStr = Array.isArray(field.options)
+          ? (field.options || []).map((opt) => {
+              if (typeof opt !== "object" || opt === null) return String(opt);
+              const v = opt.value ?? "";
+              const l = opt.label ?? v;
+              const d = opt.description ?? "";
+              if (d) return l !== v ? v + " | " + l + " | " + d : v + " | " + d;
+              return l !== v ? v + " | " + l : v;
+            }).join("\n")
+          : "";
         const row = document.createElement("div");
         row.className = "pod-admin-field-row";
         row.innerHTML =
@@ -167,8 +176,8 @@
           '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
           '</div>' +
           '<div class="pod-admin-field-options-wrap" style="display:' + (isSelectLike ? "block" : "none") + '">' +
-          '<label>Options (one per line)</label>' +
-          '<textarea class="pod-field-options" rows="2" placeholder="Option 1\nOption 2">' + escape(optionsStr) + '</textarea>' +
+          '<label>Options (one per line; use | for description)</label>' +
+          '<textarea class="pod-field-options" rows="2" placeholder="value\nvalue | Description on store">' + escape(optionsStr) + '</textarea>' +
           '</div>';
         const typeSelect = row.querySelector(".pod-field-type");
         const optionsWrap = row.querySelector(".pod-admin-field-options-wrap");
@@ -215,7 +224,13 @@
           if (!key) return;
           const type = typeSelect && typeSelect.value ? typeSelect.value : "text";
           const required = requiredCb ? requiredCb.checked : false;
-          const opt = optionsTa ? optionsTa.value.split(/\n/).map((s) => s.trim()).filter(Boolean) : [];
+          const optRaw = optionsTa ? optionsTa.value.split(/\n/).map((s) => s.trim()).filter(Boolean) : [];
+          const opt = optRaw.map((line) => {
+            const parts = line.split(/\s*\|\s*/).map((s) => s.trim());
+            if (parts.length >= 3) return { value: parts[0], label: parts[1], description: parts.slice(2).join(" | ") };
+            if (parts.length === 2) return { value: parts[0], label: parts[0], description: parts[1] };
+            return { value: parts[0], label: parts[0], description: "" };
+          });
           const field = { key, label: label || key, type };
           if ((type === "select" || type === "multiselect") && opt.length) field.options = opt;
           if (required) field.required = true;
