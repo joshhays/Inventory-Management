@@ -51,10 +51,12 @@
           const card = document.createElement("button");
           card.type = "button";
           card.className = "deployment-card";
+          const customerText = formatCustomerInfo(d.customerInfo);
           card.innerHTML = `
-            ${d.logoUrl ? `<img src="${escapeAttr(d.logoUrl)}" alt="" class="deployment-card-logo">` : `<div class="deployment-card-placeholder">${escapeHtml((d.name || "?")[0]}</div>`}
+            ${d.logoUrl ? `<img src="${escapeAttr(d.logoUrl)}" alt="" class="deployment-card-logo">` : `<div class="deployment-card-placeholder">${escapeHtml((d.name || "?")[0])}</div>`}
             <span class="deployment-card-name">${escapeHtml(d.name || d.slug)}</span>
             <span class="deployment-card-slug">${escapeHtml(d.slug || "")}</span>
+            ${customerText ? `<span class="deployment-card-customer">${escapeHtml(customerText)}</span>` : ""}
           `;
           card.addEventListener("click", async () => {
             card.disabled = true;
@@ -83,6 +85,19 @@
       const d = document.createElement("div");
       d.textContent = s ?? "";
       return d.innerHTML;
+    }
+    function formatCustomerInfo(info) {
+      if (!info || !info.trim()) return "";
+      try {
+        const j = JSON.parse(info);
+        const parts = [];
+        if (j.address) parts.push(j.address);
+        if (j.phone) parts.push(j.phone);
+        if (j.email) parts.push(j.email);
+        return parts.length ? parts.join(" · ") : info.slice(0, 80) + (info.length > 80 ? "…" : "");
+      } catch (_) {
+        return info.slice(0, 80) + (info.length > 80 ? "…" : "");
+      }
     }
     function escapeAttr(s) {
       return String(s ?? "").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -123,6 +138,7 @@
     }
     .deployment-card-name { font-weight: 600; color: var(--text); }
     .deployment-card-slug { font-size: 0.85rem; color: var(--text-muted); }
+    .deployment-card-customer { font-size: 0.8rem; color: var(--text-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .deployment-empty, .deployment-error { color: var(--text-muted); text-align: center; }
     .deployment-select-logout { margin-top: 1rem; }
     .deployment-select-logout a { color: var(--text-muted); font-size: 0.9rem; }

@@ -8,5 +8,6 @@ router.get("/", requireAuth, deploymentController.list);
 router.get("/selected", requireAuth, deploymentController.getSelected);
 router.post("/select", requireAuth, deploymentController.select);
 router.post("/", requireAuth, requireAdmin, deploymentController.create);
+router.patch("/:id", requireAuth, requireAdmin, deploymentController.update);
 
 module.exports = router;

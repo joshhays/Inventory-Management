@@ -45,12 +45,29 @@ const getSelected = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { name, slug, logoUrl } = req.body;
+    const { name, slug, logoUrl, customerInfo } = req.body;
     if (!name || !slug) {
       return res.status(400).json({ message: "name and slug are required." });
     }
-    const deployment = await deploymentService.create({ name, slug, logoUrl });
+    const deployment = await deploymentService.create({ name, slug, logoUrl, customerInfo });
     res.status(201).json(deployment);
+  } catch (error) {
+    if (error.code === "P2002") {
+      return res.status(400).json({ message: "A deployment with this slug already exists." });
+    }
+    next(error);
+  }
+};
+
+const update = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, slug, logoUrl, customerInfo } = req.body;
+    const deployment = await deploymentService.update(id, { name, slug, logoUrl, customerInfo });
+    if (!deployment) {
+      return res.status(404).json({ message: "Deployment not found." });
+    }
+    res.status(200).json(deployment);
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(400).json({ message: "A deployment with this slug already exists." });
@@ -64,4 +81,5 @@ module.exports = {
   select,
   getSelected,
   create,
+  update,
 };

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deployments - Inventory</title>
   <link rel="stylesheet" href="/styles.css">
+  <script src="/js/deployment-header.js"></script>
   <link rel="prefetch" href="/">
   <link rel="prefetch" href="/deployment-select.html">
 </head>
@@ -27,9 +28,10 @@
         <table id="table" style="display:none">
           <thead>
             <tr>
+              <th>Logo</th>
               <th>Name</th>
               <th>Slug</th>
-              <th>Logo</th>
+              <th>Customer Info</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -54,8 +56,14 @@
         </div>
         <div class="modal-row">
           <label>Logo URL <span style="color: var(--text-muted);">(optional)</span></label>
-          <input type="url" id="deploymentLogoUrl" placeholder="https://... or /logo.png">
+          <input type="text" id="deploymentLogoUrl" placeholder="/logo.png or https://...">
         </div>
+        <div class="modal-row">
+          <label>Customer Info <span style="color: var(--text-muted);">(optional)</span></label>
+          <textarea id="deploymentCustomerInfo" rows="4" placeholder='{"address":"123 Main St","phone":"555-1234","email":"contact@company.com"}'></textarea>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">JSON: address, phone, email. Or plain text.</p>
+        </div>
+        <input type="hidden" id="deploymentEditId" value="">
         <div class="modal-actions">
           <button type="button" class="btn-secondary" id="btnCancel">Cancel</button>
           <button type="submit" class="btn-apply" id="btnSubmit">Create</button>
@@ -73,11 +81,27 @@
     const nameInput = document.getElementById("deploymentName");
     const slugInput = document.getElementById("deploymentSlug");
     const logoInput = document.getElementById("deploymentLogoUrl");
+    const customerInfoInput = document.getElementById("deploymentCustomerInfo");
+    const editIdInput = document.getElementById("deploymentEditId");
 
     function escapeHtml(s) {
       const d = document.createElement("div");
       d.textContent = s ?? "";
       return d.innerHTML;
+    }
+
+    function formatCustomerInfo(info) {
+      if (!info || !info.trim()) return "—";
+      try {
+        const j = JSON.parse(info);
+        const parts = [];
+        if (j.address) parts.push(j.address);
+        if (j.phone) parts.push("📞 " + j.phone);
+        if (j.email) parts.push("✉ " + j.email);
+        return parts.length ? parts.join(" · ") : info.slice(0, 50) + (info.length > 50 ? "…" : "");
+      } catch (_) {
+        return info.slice(0, 50) + (info.length > 50 ? "…" : "");
+      }
     }
 
     async function loadDeployments() {
@@ -96,15 +120,33 @@
         tableEl.style.display = "table";
         bodyEl.innerHTML = deployments.map((d) => `
           <tr>
+            <td>${d.logoUrl ? `<img src="${escapeHtml(d.logoUrl)}" alt="" class="deployment-table-logo" onerror="this.style.display='none'">` : "—"}</td>
             <td>${escapeHtml(d.name)}</td>
             <td><code>${escapeHtml(d.slug)}</code></td>
-            <td>${d.logoUrl ? `<img src="${escapeHtml(d.logoUrl)}" alt="" style="height:24px;max-width:60px;object-fit:contain;">` : "—"}</td>
+            <td class="customer-info-cell">${escapeHtml(formatCustomerInfo(d.customerInfo))}</td>
             <td>
-              <button type="button" class="btn-small btn-apply" data-id="${d.id}" data-name="${escapeHtml(d.name)}" data-slug="${escapeHtml(d.slug)}" title="Switch to this deployment">Select</button>
+              <button type="button" class="btn-small btn-secondary btn-edit" data-id="${d.id}" title="Edit">Edit</button>
+              <button type="button" class="btn-small btn-apply" data-id="${d.id}" title="Switch to this deployment">Select</button>
             </td>
           </tr>
         `).join("");
-        bodyEl.querySelectorAll("button[data-id]").forEach((btn) => {
+        bodyEl.querySelectorAll("button.btn-edit").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const id = btn.dataset.id;
+            const d = deployments.find(x => String(x.id) === String(id));
+            if (d) {
+              editIdInput.value = id;
+              nameInput.value = d.name || "";
+              slugInput.value = d.slug || "";
+              logoInput.value = d.logoUrl || "";
+              customerInfoInput.value = d.customerInfo || "";
+              document.getElementById("deploymentModalTitle").textContent = "Edit Deployment";
+              document.getElementById("btnSubmit").textContent = "Save";
+              modal.classList.add("active");
+            }
+          });
+        });
+        bodyEl.querySelectorAll("button.btn-apply").forEach((btn) => {
           btn.addEventListener("click", async () => {
             try {
               const res = await fetch("/api/deployments/select", {
@@ -127,6 +169,7 @@
 
     document.getElementById("btnCreate").addEventListener("click", () => {
       form.reset();
+      editIdInput.value = "";
       document.getElementById("deploymentModalTitle").textContent = "Add Deployment";
       document.getElementById("btnSubmit").textContent = "Create";
       modal.classList.add("active");
@@ -151,30 +194,35 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = document.getElementById("btnSubmit");
+      const isEdit = !!editIdInput.value;
       btn.disabled = true;
-      btn.textContent = "Creating…";
+      btn.textContent = isEdit ? "Saving…" : "Creating…";
+      const payload = {
+        name: nameInput.value.trim(),
+        slug: slugInput.value.trim().toLowerCase().replace(/\s+/g, "-"),
+        logoUrl: logoInput.value.trim() || undefined,
+        customerInfo: customerInfoInput.value.trim() || undefined,
+      };
       try {
-        const res = await fetch("/api/deployments", {
-          method: "POST",
+        const url = isEdit ? `/api/deployments/${editIdInput.value}` : "/api/deployments";
+        const res = await fetch(url, {
+          method: isEdit ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({
-            name: nameInput.value.trim(),
-            slug: slugInput.value.trim().toLowerCase().replace(/\s+/g, "-"),
-            logoUrl: logoInput.value.trim() || undefined,
-          }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          throw new Error(data.message || "Failed to create deployment.");
+          throw new Error(data.message || (isEdit ? "Failed to update." : "Failed to create deployment."));
         }
         modal.classList.remove("active");
+        editIdInput.value = "";
         loadDeployments();
       } catch (err) {
-        alert(err.message || "Failed to create deployment.");
+        alert(err.message || "Failed to save.");
       } finally {
         btn.disabled = false;
-        btn.textContent = "Create";
+        btn.textContent = isEdit ? "Save" : "Create";
       }
     });
 
@@ -182,7 +230,9 @@
   </script>
   <style>
     .deployments-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
-    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.85rem; }
+    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.85rem; margin-right: 0.25rem; }
+    .deployment-table-logo { height: 28px; max-width: 80px; object-fit: contain; }
+    .customer-info-cell { max-width: 200px; font-size: 0.9rem; color: var(--text-muted); }
   </style>
 </body>
 </html>

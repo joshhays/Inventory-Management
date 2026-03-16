@@ -69,15 +69,16 @@ model UserGroupMember {
 }
 
 model Deployment {
-  id        Int         @id @default(autoincrement())
-  name      String      // e.g. "@properties"
-  slug      String      @unique // e.g. "atproperties"
-  logoUrl   String?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  products  Product[]
-  orders    Order[]
-  groups    UserGroup[]
+  id           Int         @id @default(autoincrement())
+  name         String      // e.g. "@properties"
+  slug         String      @unique // e.g. "atproperties"
+  logoUrl      String?
+  customerInfo String?     // JSON: { address?, phone?, email?, ... }
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  products     Product[]
+  orders       Order[]
+  groups       UserGroup[]
 }
 
 model UserGroup {
