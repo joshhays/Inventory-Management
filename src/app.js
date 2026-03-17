@@ -70,6 +70,7 @@ app.use("/api/dashboard-widgets", requireAuth, requireAdmin, requireDeployment, 
 app.use("/api/deployments/:id/categories", requireAuth, require("./routes/deploymentCategory.routes"));
 app.use("/api/deployments", requireAuth, require("./routes/deployment.routes"));
 app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
+app.use("/api/shipping", require("./routes/shipping.routes"));
 
 app.use(notFoundHandler);
 app.use(errorHandler);

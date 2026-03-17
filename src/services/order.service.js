@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, items }) {
+function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, items }) {
   if (!deploymentId) throw new Error("Deployment is required.");
   const depId = Number(deploymentId);
   return prisma.$transaction(async (tx) => {
@@ -69,7 +69,9 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
       throw new Error(`Out of stock: ${outOfStock.join("; ")}`);
     }
 
-    total = Math.round(total * 100) / 100;
+    const shippingCostNum = Math.max(0, Number(shippingCost) || 0);
+    const shippingMethodStr = shippingMethod ? String(shippingMethod).trim() : null;
+    total = Math.round((total + shippingCostNum) * 100) / 100;
 
     const order = await tx.order.create({
       data: {
@@ -78,6 +80,8 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
         customerEmail: String(customerEmail),
         customerPhone: customerPhone ? String(customerPhone) : null,
         shippingAddress: shippingAddress ? String(shippingAddress) : null,
+        shippingCost: shippingCostNum,
+        shippingMethod: shippingMethodStr,
         status: "pending",
         total,
         items: {

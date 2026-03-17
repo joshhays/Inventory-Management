@@ -172,6 +172,8 @@ model Order {
   customerEmail       String
   customerPhone       String?
   shippingAddress     String?
+  shippingCost        Float        @default(0)
+  shippingMethod      String?
   status              String      @default("pending")
   total               Float
   pickingStartedAt    DateTime?

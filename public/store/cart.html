@@ -70,6 +70,14 @@
             <label for="customerPhone">Phone (optional)</label>
             <input type="tel" id="customerPhone" placeholder="For delivery updates">
           </div>
+          <div class="store-form-row store-shipping-rates-row" id="shippingRatesRow">
+            <label>Shipping</label>
+            <div id="shippingRatesContainer">
+              <button type="button" class="btn-secondary store-get-rates" id="getRatesBtn">Get shipping rates</button>
+              <div id="shippingRatesList" class="store-shipping-rates-list"></div>
+              <p id="shippingRatesError" class="store-shipping-error" style="display:none"></p>
+            </div>
+          </div>
           <div class="store-form-row store-proof-approved-row" id="proofApprovedRow" style="display:none">
             <label class="store-proof-approved-label">
               <input type="checkbox" id="proofApproved" required>
@@ -140,8 +148,10 @@
         return;
       }
 
-      const total = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+      const subtotal = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
+      const shippingCost = window.selectedShipping?.totalCharges ?? 0;
+      const total = subtotal + shippingCost;
 
       content.innerHTML = `
         <h1 class="store-cart-heading">Shopping cart</h1>
@@ -184,8 +194,9 @@
       summaryEl.innerHTML = `
         <div class="store-summary-row">
           <span>Subtotal (${itemCount} ${itemCount === 1 ? "item" : "items"})</span>
-          <span>$${formatPrice(total)}</span>
+          <span>$${formatPrice(subtotal)}</span>
         </div>
+        ${shippingCost > 0 ? `<div class="store-summary-row"><span>Shipping (${escape(window.selectedShipping?.serviceName || "")})</span><span>$${formatPrice(shippingCost)}</span></div>` : ""}
         <div class="store-summary-row store-summary-total">
           <span>Order total</span>
           <span>$${formatPrice(total)}</span>
@@ -256,6 +267,78 @@
           container.innerHTML = "";
           container.appendChild(p);
         }
+      }
+    }
+
+    window.selectedShipping = null;
+
+    async function fetchShippingRates() {
+      const name = document.getElementById("shipName").value.trim();
+      const address1 = document.getElementById("shipAddress1").value.trim();
+      const city = document.getElementById("shipCity").value.trim();
+      const state = document.getElementById("shipState").value.trim();
+      const zip = document.getElementById("shipZip").value.trim();
+      if (!address1 || !city || !state || !zip) {
+        alert("Please enter address, city, state, and ZIP to get shipping rates.");
+        return;
+      }
+      const btn = document.getElementById("getRatesBtn");
+      const listEl = document.getElementById("shippingRatesList");
+      const errEl = document.getElementById("shippingRatesError");
+      btn.disabled = true;
+      btn.textContent = "Loading…";
+      listEl.innerHTML = "";
+      errEl.style.display = "none";
+      try {
+        const cart = getCart();
+        const res = await fetch("/api/shipping/rates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            deploymentSlug: window.STORE_SLUG || undefined,
+            address: { name, address1, address2: document.getElementById("shipAddress2").value.trim() || null, city, state, zip },
+            items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity || 1 })),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          if (res.status === 401) throw new Error("Please log in to get shipping rates.");
+          throw new Error(data.message || "Could not get shipping rates");
+        }
+        const rates = data.rates || [];
+        if (rates.length === 0) {
+          listEl.innerHTML = "<p class=\"store-shipping-no-rates\">No shipping options available.</p>";
+          return;
+        }
+        window.shippingRatesCache = rates;
+        listEl.innerHTML = rates.map((r, idx) => `
+          <label class="store-shipping-option">
+            <input type="radio" name="shippingRate" value="${idx}" ${idx === 0 ? "checked" : ""}>
+            <span class="store-shipping-option-name">${escape(r.serviceName)}</span>
+            <span class="store-shipping-option-price">$${formatPrice(r.totalCharges)}</span>
+            ${r.transitDays != null ? `<span class="store-shipping-option-days">${r.transitDays} business day${r.transitDays !== 1 ? "s" : ""}</span>` : ""}
+          </label>
+        `).join("");
+        listEl.querySelectorAll('input[name="shippingRate"]').forEach((radio) => {
+          radio.addEventListener("change", () => {
+            const idx = parseInt(radio.value, 10);
+            const r = window.shippingRatesCache?.[idx];
+            if (r) {
+              window.selectedShipping = r;
+              render();
+            }
+          });
+        });
+        const first = rates[0];
+        window.selectedShipping = first;
+        render();
+      } catch (e) {
+        errEl.textContent = e.message || "Failed to load rates";
+        errEl.style.display = "block";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Get shipping rates";
       }
     }
 
@@ -332,6 +415,8 @@
               zip,
             },
             customerPhone: document.getElementById("customerPhone").value.trim() || undefined,
+            shippingCost: window.selectedShipping?.totalCharges ?? 0,
+            shippingMethod: window.selectedShipping ? `${window.selectedShipping.serviceName} (${window.selectedShipping.serviceCode})` : null,
             items: cart.map((i) => ({
               productId: i.productId,
               quantity: i.quantity || 1,
@@ -363,6 +448,8 @@
         btn.textContent = "Place your order";
       }
     });
+
+    document.getElementById("getRatesBtn")?.addEventListener("click", fetchShippingRates);
 
     document.getElementById("cartLogout")?.addEventListener("click", async (e) => {
       e.preventDefault();

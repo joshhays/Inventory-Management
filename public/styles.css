@@ -2602,6 +2602,63 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   width: 100%;
 }
 
+.store-shipping-rates-row {
+  margin-top: 1rem;
+}
+
+.store-get-rates {
+  margin-bottom: 0.75rem;
+}
+
+.store-shipping-rates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.store-shipping-option {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: var(--glass-bg);
+}
+
+.store-shipping-option:hover {
+  border-color: var(--accent);
+}
+
+.store-shipping-option input {
+  margin: 0;
+}
+
+.store-shipping-option-name {
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.store-shipping-option-price {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.store-shipping-option-days {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.store-shipping-error,
+.store-shipping-no-rates {
+  font-size: 0.9rem;
+  color: var(--danger);
+  margin: 0.5rem 0 0;
+}
+
 .store-form-actions {
   display: flex;
   gap: 0.75rem;
@@ -3411,6 +3468,65 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 .pod-modal-actions {
   display: flex;
   gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.store-fill-main {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.store-fill-error {
+  color: #b91c1c;
+  padding: 1rem;
+}
+
+.store-fill-title {
+  margin: 0 0 1.5rem;
+  font-size: 1.5rem;
+}
+
+.store-fill-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .store-fill-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.store-fill-form-section {
+  background: var(--glass-bg);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border-subtle);
+}
+
+.store-fill-preview-section {
+  position: sticky;
+  top: 1rem;
+}
+
+.store-fill-preview-section .pod-proof-wrap {
+  background: var(--glass-bg);
+  padding: 1.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--glass-border-subtle);
+}
+
+.store-fill-preview-section .pod-proof-iframe {
+  height: 420px;
+  min-height: 350px;
+}
+
+.store-fill-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
   flex-wrap: wrap;
 }
 

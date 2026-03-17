@@ -31,7 +31,7 @@ router.delete("/addresses/:id", customerController.deleteAddress);
 router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) => {
   try {
     const user = req.user;
-    const { customerPhone, shippingAddress, shipping, items } = req.body;
+    const { customerPhone, shippingAddress, shipping, shippingCost, shippingMethod, items } = req.body;
     const customerName = req.body.customerName || user.name || user.email.split("@")[0];
     const customerEmail = (req.body.customerEmail || user.email).toLowerCase().trim();
 
@@ -67,6 +67,8 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
       customerEmail,
       customerPhone: customerPhone || null,
       shippingAddress: shippingStr,
+      shippingCost: shippingCost ?? 0,
+      shippingMethod: shippingMethod || null,
       items,
     });
 
