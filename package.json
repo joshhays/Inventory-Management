@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "build": "prisma generate",
-    "start": "prisma migrate deploy && node src/server.js",
+    "start": "prisma migrate resolve --rolled-back 20260317201241_add_order_shipping_fields 2>/dev/null || true && prisma migrate deploy && node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:resolve-failed": "prisma migrate resolve --rolled-back 20260317201241_add_order_shipping_fields",
