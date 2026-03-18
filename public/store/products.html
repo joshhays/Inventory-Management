@@ -104,6 +104,18 @@
       }
     }
 
+    /** Build dropdown options for quantity. Uses min/max or common values. */
+    function getQtyDropdownOptions(minQty, maxQty) {
+      const min = minQty != null ? Math.max(1, minQty) : 1;
+      const max = maxQty != null ? Math.max(min, maxQty) : 1000;
+      if (max - min <= 50) {
+        return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+      }
+      const steps = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
+      const opts = [...new Set(steps.filter((s) => s >= min && s <= max).concat(min, max))].sort((a, b) => a - b);
+      return opts.length ? opts : [min];
+    }
+
     function getAvailableQty(p) {
       if ((p.productType || "regular") === "kit" && p.kitItems?.length) {
         let min = Infinity;
@@ -211,11 +223,12 @@
           const allowedQty = parseAllowedQuantities(p.allowedQuantities);
           const minQty = p.minOrderQty != null ? Number(p.minOrderQty) : 1;
           const maxQty = p.maxOrderQty != null ? Number(p.maxOrderQty) : null;
-          const defaultQty = allowedQty && allowedQty.length ? allowedQty[0] : minQty;
-          const qtyControl = allowedQty && allowedQty.length
-            ? '<select class="store-qty-select store-list-qty" data-id="' + p.id + '">' +
-              allowedQty.map((q) => '<option value="' + q + '">' + q + '</option>').join("") + "</select>"
-            : '<input type="number" min="' + minQty + '"' + (maxQty != null ? ' max="' + maxQty + '"' : '') + ' value="' + defaultQty + '" class="store-qty-input store-list-qty" data-id="' + p.id + '">';
+          const qtyOptions = allowedQty && allowedQty.length
+            ? allowedQty
+            : getQtyDropdownOptions(minQty, maxQty);
+          const defaultQty = qtyOptions[0];
+          const qtyControl = '<select class="store-qty-select store-list-qty" data-id="' + p.id + '">' +
+            qtyOptions.map((q) => '<option value="' + q + '">' + q + '</option>').join("") + "</select>";
           const actionsCell = isPOD
             ? '<button type="button" class="btn-apply store-pod-customize-btn" data-id="' + p.id + '">Customize & Add</button>'
             : qtyControl + '<button type="button" class="btn-apply store-add-btn" data-id="' + p.id + '">Add</button>';

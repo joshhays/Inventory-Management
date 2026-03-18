@@ -128,6 +128,17 @@
       }
     }
 
+    function getQtyDropdownOptions(minQty, maxQty) {
+      const min = minQty != null ? Math.max(1, minQty) : 1;
+      const max = maxQty != null ? Math.max(min, maxQty) : 1000;
+      if (max - min <= 50) {
+        return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+      }
+      const steps = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
+      const opts = [...new Set(steps.filter((s) => s >= min && s <= max).concat(min, max))].sort((a, b) => a - b);
+      return opts.length ? opts : [min];
+    }
+
     function updateQty(productId, deltaOrValue, isSet = false) {
       const cart = getCart();
       const item = cart.find((i) => i.productId === productId);
@@ -184,6 +195,18 @@
         shippingRatesRow.style.display = (window.shippingEnabled !== false) ? "block" : "none";
       }
 
+      cart.forEach((i) => {
+        const allowed = parseAllowedQuantities(i.allowedQuantities);
+        const minQty = i.minOrderQty != null ? Number(i.minOrderQty) : 1;
+        const maxQty = i.maxOrderQty != null ? Number(i.maxOrderQty) : null;
+        const options = allowed && allowed.length ? allowed : getQtyDropdownOptions(minQty, maxQty);
+        const qty = i.quantity || 1;
+        if (!options.includes(qty)) {
+          i.quantity = options[0];
+        }
+      });
+      setCart(cart);
+
       const subtotal = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
       const shippingCost = window.selectedShipping?.totalCharges ?? 0;
@@ -237,15 +260,11 @@
                       const qty = i.quantity || 1;
                       const minQty = i.minOrderQty != null ? Number(i.minOrderQty) : 1;
                       const maxQty = i.maxOrderQty != null ? Number(i.maxOrderQty) : null;
-                      const displayQty = allowed && allowed.includes(qty) ? qty : (allowed ? allowed[0] : Math.max(minQty, maxQty != null ? Math.min(maxQty, qty) : qty));
-                      if (allowed && allowed.length) {
-                        return '<select class="store-cart-qty-select" data-id="' + i.productId + '">' +
-                          allowed.map((n) => '<option value="' + n + '"' + (n === displayQty ? ' selected' : '') + '>' + n + '</option>').join("") +
-                          '</select>';
-                      }
-                      return '<button type="button" class="store-cart-qty-btn" data-id="' + i.productId + '" data-delta="-1" aria-label="Decrease">−</button>' +
-                        '<span class="store-cart-qty-val">' + displayQty + '</span>' +
-                        '<button type="button" class="store-cart-qty-btn" data-id="' + i.productId + '" data-delta="1" aria-label="Increase">+</button>';
+                      const options = allowed && allowed.length ? allowed : getQtyDropdownOptions(minQty, maxQty);
+                      const displayQty = options.includes(qty) ? qty : options[0];
+                      return '<select class="store-cart-qty-select" data-id="' + i.productId + '">' +
+                        options.map((n) => '<option value="' + n + '"' + (n === displayQty ? ' selected' : '') + '>' + n + '</option>').join("") +
+                        '</select>';
                     })()}
                   </div>
                   <button type="button" class="store-cart-delete" data-id="${i.productId}">Delete</button>

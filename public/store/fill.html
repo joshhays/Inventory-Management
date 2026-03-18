@@ -147,6 +147,17 @@
         }
       }
 
+      function getQtyDropdownOptions(minQty, maxQty) {
+        const min = minQty != null ? Math.max(1, minQty) : 1;
+        const max = maxQty != null ? Math.max(min, maxQty) : 1000;
+        if (max - min <= 50) {
+          return Array.from({ length: max - min + 1 }, (_, i) => min + i);
+        }
+        const steps = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
+        const opts = [...new Set(steps.filter((s) => s >= min && s <= max).concat(min, max))].sort((a, b) => a - b);
+        return opts.length ? opts : [min];
+      }
+
       function validatePODRequired(config, values) {
         for (const f of config.fields || []) {
           if (!f.required) continue;
@@ -392,34 +403,24 @@
           const qtyRow = document.querySelector(".pod-qty-row");
           if (qtyRow) {
             const allowed = parseAllowedQuantities(product.allowedQuantities);
+            const minQty = product.minOrderQty != null ? Number(product.minOrderQty) : 1;
+            const maxQty = product.maxOrderQty != null ? Number(product.maxOrderQty) : null;
+            const options = allowed && allowed.length ? allowed : getQtyDropdownOptions(minQty, maxQty);
             const lab = document.createElement("label");
             lab.textContent = "Quantity";
             lab.setAttribute("for", "podQty");
             qtyRow.innerHTML = "";
             qtyRow.appendChild(lab);
-            const minQty = product.minOrderQty != null ? Number(product.minOrderQty) : 1;
-            const maxQty = product.maxOrderQty != null ? Number(product.maxOrderQty) : null;
-            if (allowed && allowed.length) {
-              const select = document.createElement("select");
-              select.id = "podQty";
-              select.className = "pod-qty-input pod-qty-select";
-              allowed.forEach((q) => {
-                const opt = document.createElement("option");
-                opt.value = q;
-                opt.textContent = q;
-                select.appendChild(opt);
-              });
-              qtyRow.appendChild(select);
-            } else {
-              const inp = document.createElement("input");
-              inp.type = "number";
-              inp.id = "podQty";
-              inp.min = minQty;
-              if (maxQty != null) inp.max = maxQty;
-              inp.value = minQty;
-              inp.className = "pod-qty-input";
-              qtyRow.appendChild(inp);
-            }
+            const select = document.createElement("select");
+            select.id = "podQty";
+            select.className = "pod-qty-input pod-qty-select";
+            options.forEach((q) => {
+              const opt = document.createElement("option");
+              opt.value = q;
+              opt.textContent = q;
+              select.appendChild(opt);
+            });
+            qtyRow.appendChild(select);
           }
 
           document.getElementById("fillBackLink").href = base + "/products";
