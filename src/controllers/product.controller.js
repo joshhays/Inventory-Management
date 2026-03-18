@@ -78,7 +78,7 @@ const getProduct = async (req, res, next) => {
 const createProduct = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Authentication required." });
-    const { name, sku, quantity, price, description, category, groupId, productType, isPrintOnDemand, printTemplateConfig } = req.body;
+    const { name, sku, quantity, price, description, category, groupId, productType, isPrintOnDemand, printTemplateConfig, allowedQuantities, minOrderQty, maxOrderQty } = req.body;
 
     if (!name || !sku || price === undefined) {
       return res.status(400).json({
@@ -111,6 +111,9 @@ const createProduct = async (req, res, next) => {
       productType,
       isPrintOnDemand,
       printTemplateConfig,
+      allowedQuantities,
+      minOrderQty,
+      maxOrderQty,
     });
 
     return res.status(201).json(withFileUrls(product));
@@ -157,7 +160,7 @@ const updateProduct = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Authentication required." });
     const { id } = req.params;
-    const { name, sku, quantity, price, description, category, groupId, productType, isPrintOnDemand, printTemplateConfig } = req.body;
+    const { name, sku, quantity, price, description, category, groupId, productType, isPrintOnDemand, printTemplateConfig, allowedQuantities, minOrderQty, maxOrderQty } = req.body;
 
     if (!name || !sku || price === undefined) {
       return res.status(400).json({
@@ -182,6 +185,9 @@ const updateProduct = async (req, res, next) => {
       productType,
       isPrintOnDemand,
       printTemplateConfig,
+      allowedQuantities,
+      minOrderQty,
+      maxOrderQty,
     });
     if (!product) {
       return res.status(404).json({ message: "Product not found." });
