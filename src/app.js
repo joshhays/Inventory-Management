@@ -49,7 +49,7 @@ app.use(
 app.use(requirePageAuth);
 app.use(storeRoutes);
 app.use(express.static(path.join(__dirname, "../public")));
-const adminUiPath = path.join(__dirname, "../admin-ui/dist/admin");
+const adminUiPath = path.join(__dirname, "../public/admin");
 const adminIndexPath = path.join(adminUiPath, "index.html");
 const adminUiExists = fs.existsSync(adminIndexPath);
 if (adminUiExists) {
