@@ -130,7 +130,7 @@
       render();
     }
 
-    function render() {
+    async function render() {
       const cart = getCart();
       const content = document.getElementById("cartContent");
       const sidebar = document.getElementById("checkoutSidebar");
@@ -151,7 +151,25 @@
       const subtotal = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
       const shippingCost = window.selectedShipping?.totalCharges ?? 0;
-      const total = subtotal + shippingCost;
+      let discountAmount = 0;
+      let discountRuleName = null;
+      try {
+        const discountRes = await fetch("/api/discount/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            deploymentSlug: window.STORE_SLUG,
+            items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity || 1, price: i.price })),
+          }),
+        });
+        const discountData = await discountRes.json().catch(() => ({}));
+        if (discountData.discountAmount) {
+          discountAmount = discountData.discountAmount;
+          discountRuleName = discountData.ruleName;
+        }
+      } catch (_) {}
+      const total = Math.round((subtotal - discountAmount + shippingCost) * 100) / 100;
 
       content.innerHTML = `
         <h1 class="store-cart-heading">Shopping cart</h1>
@@ -196,6 +214,7 @@
           <span>Subtotal (${itemCount} ${itemCount === 1 ? "item" : "items"})</span>
           <span>$${formatPrice(subtotal)}</span>
         </div>
+        ${discountAmount > 0 ? `<div class="store-summary-row store-summary-discount"><span>Discount${discountRuleName ? " (" + escape(discountRuleName) + ")" : ""}</span><span>-$${formatPrice(discountAmount)}</span></div>` : ""}
         ${shippingCost > 0 ? `<div class="store-summary-row"><span>Shipping (${escape(window.selectedShipping?.serviceName || "")})</span><span>$${formatPrice(shippingCost)}</span></div>` : ""}
         <div class="store-summary-row store-summary-total">
           <span>Order total</span>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discount Rules - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/deployment-header.js"></script>
+  <link rel="prefetch" href="/">
+  <link rel="prefetch" href="/deployments.html">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPkludmVudG9yeTwvdGV4dD48L3N2Zz4=" alt="Inventory" class="nav-logo"></a>
+      <a href="/dashboard.html" class="top-nav-back" title="Switch deployment">Switch</a>
+    </header>
+    <main class="main-content">
+      <div class="toolbar">
+        <h1>Discount Rules</h1>
+      </div>
+      <p class="discount-hint">Define automatic discounts for orders. Example: 10% off when ordering 2+ different products (bulk discount). Rules are evaluated in priority order; the first matching rule is applied.</p>
+      <div id="noDeployment" class="error" style="display:none">
+        No deployment selected. <a href="/dashboard.html">Select a deployment</a> first.
+      </div>
+      <div id="contentWrap" style="display:none;">
+        <p class="discount-deployment">Managing rules for: <strong id="deploymentName"></strong></p>
+        <div class="discount-add-form">
+          <div class="discount-form-grid">
+            <label>Name</label>
+            <input type="text" id="newName" placeholder="e.g. Bulk discount (2+ products)">
+            <label>Type</label>
+            <select id="newType">
+              <option value="percent">Percent off</option>
+              <option value="fixed">Fixed amount off</option>
+            </select>
+            <label>Value</label>
+            <input type="number" id="newValue" placeholder="10" min="0" step="0.01" title="Percent (0-100) or dollar amount">
+            <label>Min distinct products</label>
+            <input type="number" id="newMinDistinctProducts" placeholder="2" min="0" title="Need this many different products (e.g. 2 = 2 different cards)">
+            <label>Min quantity</label>
+            <input type="number" id="newMinQuantity" placeholder="0" min="0" title="Min total item count (0 = no filter)">
+            <label>Min subtotal ($)</label>
+            <input type="number" id="newMinSubtotal" placeholder="0" min="0" step="0.01" title="Min order subtotal (0 = no filter)">
+          </div>
+          <button type="button" class="btn-create" id="btnAddRule">Add Rule</button>
+        </div>
+        <div class="table-wrap">
+          <div class="loading" id="status">Loading…</div>
+          <table id="table" style="display:none">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Min products</th>
+                <th>Min qty</th>
+                <th>Min subtotal</th>
+                <th class="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="body"></tbody>
+          </table>
+          <p id="emptyState" class="discount-empty" style="display:none">No discount rules yet. Add one above. Example: 10% off when ordering 2+ different products.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const noDeploymentEl = document.getElementById("noDeployment");
+    const contentWrap = document.getElementById("contentWrap");
+    const deploymentNameEl = document.getElementById("deploymentName");
+    const statusEl = document.getElementById("status");
+    const tableEl = document.getElementById("table");
+    const bodyEl = document.getElementById("body");
+    const emptyStateEl = document.getElementById("emptyState");
+
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    async function init() {
+      try {
+        const res = await fetch("/api/deployments/selected", { credentials: "include" });
+        const data = await res.json().catch(() => ({}));
+        const deployment = data.deployment;
+        if (!deployment || !deployment.id) {
+          noDeploymentEl.style.display = "block";
+          contentWrap.style.display = "none";
+          return;
+        }
+        noDeploymentEl.style.display = "none";
+        contentWrap.style.display = "block";
+        deploymentNameEl.textContent = deployment.name || deployment.slug || "Deployment";
+        window.currentDeploymentId = deployment.id;
+        loadRules();
+      } catch (e) {
+        noDeploymentEl.style.display = "block";
+        contentWrap.style.display = "none";
+      }
+    }
+
+    async function loadRules() {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      statusEl.style.display = "block";
+      tableEl.style.display = "none";
+      emptyStateEl.style.display = "none";
+      try {
+        const res = await fetch(`/api/deployments/${depId}/discount-rules`, { credentials: "include" });
+        const rules = res.ok ? await res.json() : [];
+        statusEl.style.display = "none";
+        if (rules.length === 0) {
+          emptyStateEl.style.display = "block";
+        } else {
+          tableEl.style.display = "table";
+          bodyEl.innerHTML = rules.map((r) => `
+            <tr>
+              <td>${escape(r.name)}</td>
+              <td>${r.type === "fixed" ? "Fixed" : "Percent"}</td>
+              <td>${r.type === "fixed" ? "$" + r.value : r.value + "%"}</td>
+              <td>${r.minDistinctProducts || "—"}</td>
+              <td>${r.minQuantity || "—"}</td>
+              <td>${r.minSubtotal > 0 ? "$" + r.minSubtotal : "—"}</td>
+              <td>
+                <button type="button" class="btn-small btn-remove" data-id="${r.id}" title="Remove">Remove</button>
+              </td>
+            </tr>
+          `).join("");
+          bodyEl.querySelectorAll("button.btn-remove").forEach((btn) => {
+            btn.addEventListener("click", () => removeRule(btn.dataset.id));
+          });
+        }
+      } catch (e) {
+        statusEl.textContent = "Error loading rules.";
+      }
+    }
+
+    async function addRule() {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      const name = document.getElementById("newName").value.trim() || "Discount";
+      const type = document.getElementById("newType").value;
+      const value = parseFloat(document.getElementById("newValue").value);
+      const minDistinctProducts = parseInt(document.getElementById("newMinDistinctProducts").value, 10) || 0;
+      const minQuantity = parseInt(document.getElementById("newMinQuantity").value, 10) || 0;
+      const minSubtotal = parseFloat(document.getElementById("newMinSubtotal").value) || 0;
+      if (isNaN(value) || value < 0) {
+        alert("Value must be 0 or more.");
+        return;
+      }
+      if (type === "percent" && value > 100) {
+        alert("Percent cannot exceed 100.");
+        return;
+      }
+      const btn = document.getElementById("btnAddRule");
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/deployments/${depId}/discount-rules`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name, type, value, minDistinctProducts, minQuantity, minSubtotal }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Failed to add");
+        document.getElementById("newName").value = "";
+        document.getElementById("newValue").value = "";
+        document.getElementById("newMinDistinctProducts").value = "";
+        document.getElementById("newMinQuantity").value = "";
+        document.getElementById("newMinSubtotal").value = "";
+        loadRules();
+      } catch (e) {
+        alert(e.message || "Failed to add rule.");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function removeRule(id) {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      if (!confirm("Remove this discount rule?")) return;
+      try {
+        const res = await fetch(`/api/deployments/${depId}/discount-rules/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to remove");
+        loadRules();
+      } catch (e) {
+        alert(e.message || "Failed to remove rule.");
+      }
+    }
+
+    document.getElementById("btnAddRule").addEventListener("click", addRule);
+
+    init();
+  </script>
+  <style>
+    .discount-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
+    .discount-deployment { margin-bottom: 1rem; color: var(--text-muted); }
+    .discount-add-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+    }
+    .discount-form-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+    }
+    .discount-form-grid label { font-size: 0.9rem; color: var(--text-muted); }
+    .discount-form-grid input, .discount-form-grid select { max-width: 140px; }
+    .discount-empty { color: var(--text-muted); font-style: italic; }
+    .btn-remove { color: var(--text-muted); }
+    .btn-remove:hover { color: var(--danger, #dc2626); }
+  </style>
+</body>
+</html>

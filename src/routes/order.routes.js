@@ -8,6 +8,7 @@ router.get("/", orderController.getOrders);
 router.get("/:id", orderController.getOrder);
 router.patch("/:id/status", orderController.updateOrderStatus);
 router.patch("/:id/items/:itemId/pick", orderController.updateOrderItemPicked);
+router.patch("/:id/items/:itemId/quantity", orderController.updateOrderItemQuantity);
 router.post("/:id/create-label", orderController.createLabel);
 router.get("/:id/items/:itemId/print-pdf", orderController.getOrderItemPrintPdf);
 

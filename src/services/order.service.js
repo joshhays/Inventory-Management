@@ -1,6 +1,7 @@
 const prisma = require("../lib/prisma");
+const discountRuleService = require("./discountRule.service");
 
-function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, items }) {
+function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, discountAmount: passedDiscountAmount, items }) {
   if (!deploymentId) throw new Error("Deployment is required.");
   const depId = Number(deploymentId);
   return prisma.$transaction(async (tx) => {
@@ -69,9 +70,23 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
       throw new Error(`Out of stock: ${outOfStock.join("; ")}`);
     }
 
+    const subtotal = total;
+    let discountAmount = 0;
+    if (passedDiscountAmount != null && Number(passedDiscountAmount) > 0) {
+      discountAmount = Math.min(Number(passedDiscountAmount), subtotal);
+    } else {
+      const discountItems = orderItems.map((i) => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        price: i.unitPrice,
+      }));
+      const discountResult = await discountRuleService.findBestDiscount(depId, discountItems, subtotal);
+      if (discountResult) discountAmount = discountResult.discountAmount;
+    }
+
     const shippingCostNum = Math.max(0, Number(shippingCost) || 0);
     const shippingMethodStr = shippingMethod ? String(shippingMethod).trim() : null;
-    total = Math.round((total + shippingCostNum) * 100) / 100;
+    total = Math.round((subtotal + shippingCostNum - discountAmount) * 100) / 100;
 
     const order = await tx.order.create({
       data: {
@@ -82,6 +97,7 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
         shippingAddress: shippingAddress ? String(shippingAddress) : null,
         shippingCost: shippingCostNum,
         shippingMethod: shippingMethodStr,
+        discountAmount,
         status: "pending",
         total,
         items: {
@@ -179,6 +195,31 @@ async function updateItemPicked(orderId, itemId, picked, deploymentId) {
   return findById(orderId, deploymentId);
 }
 
+async function updateItemQuantity(orderId, itemId, quantity, deploymentId) {
+  const order = await findById(orderId, deploymentId);
+  if (!order) return null;
+  const item = await prisma.orderItem.findFirst({
+    where: { id: Number(itemId), orderId: Number(orderId) },
+  });
+  if (!item) return null;
+  const newQty = Math.max(1, Math.floor(Number(quantity) || 1));
+  const lineTotal = Math.round(item.unitPrice * newQty * 100) / 100;
+  await prisma.$transaction(async (tx) => {
+    await tx.orderItem.update({
+      where: { id: Number(itemId) },
+      data: { quantity: newQty, lineTotal },
+    });
+    const items = await tx.orderItem.findMany({ where: { orderId: Number(orderId) } });
+    const subtotal = items.reduce((s, i) => s + i.lineTotal, 0);
+    const total = Math.round((subtotal + (order.shippingCost || 0) - (order.discountAmount || 0)) * 100) / 100;
+    await tx.order.update({
+      where: { id: Number(orderId) },
+      data: { total },
+    });
+  });
+  return findById(orderId, deploymentId);
+}
+
 async function updateLabelInfo(orderId, { shippingLabelUrl, trackingCode, easypostShipmentId }, deploymentId) {
   const where = { id: Number(orderId) };
   if (deploymentId != null) where.deploymentId = Number(deploymentId);
@@ -200,5 +241,6 @@ module.exports = {
   findById,
   updateStatus,
   updateItemPicked,
+  updateItemQuantity,
   updateLabelInfo,
 };

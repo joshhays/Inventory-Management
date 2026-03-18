@@ -80,6 +80,15 @@
       <label>Shipping Address</label>
       <p id="orderDetailAddress"></p>
     </div>
+    <div class="detail-section" id="orderDetailLabelWrap" style="display:none">
+      <label>Shipping Label</label>
+      <p id="orderDetailLabel"></p>
+      <p id="orderDetailTracking"></p>
+    </div>
+    <div class="detail-section" id="orderDetailLabelActions" style="display:none">
+      <button type="button" class="btn-create" id="btnCreateLabel">Create shipping label</button>
+      <p class="label-hint">Creates an EasyPost label and saves tracking to the order. Requires EASYPOST_API_KEY.</p>
+    </div>
     <div class="detail-section" id="orderDetailPickTimeWrap" style="display:none">
       <label>Pick time</label>
       <p id="orderDetailPickTime"></p>
@@ -196,8 +205,22 @@
         document.getElementById("orderDetailCustomer").textContent = order.customerName;
         document.getElementById("orderDetailEmail").textContent = order.customerEmail;
         document.getElementById("orderDetailPhone").textContent = order.customerPhone || "—";
-        document.getElementById("orderDetailAddress").textContent = order.shippingAddress || "—";
+        document.getElementById("orderDetailAddress").textContent = formatAddress(order.shippingAddress);
         document.getElementById("orderDetailStatus").value = order.status;
+        const labelWrap = document.getElementById("orderDetailLabelWrap");
+        const labelActions = document.getElementById("orderDetailLabelActions");
+        if (order.shippingLabelUrl || order.trackingCode) {
+          labelWrap.style.display = "block";
+          document.getElementById("orderDetailLabel").innerHTML = order.shippingLabelUrl
+            ? `<a href="${escapeAttr(order.shippingLabelUrl)}" target="_blank" rel="noopener">Print label</a>`
+            : "—";
+          document.getElementById("orderDetailTracking").textContent = order.trackingCode ? `Tracking: ${order.trackingCode}` : "";
+          labelActions.querySelector("#btnCreateLabel").textContent = "Create new label";
+        } else {
+          labelWrap.style.display = "none";
+          labelActions.querySelector("#btnCreateLabel").textContent = "Create shipping label";
+        }
+        labelActions.style.display = order.shippingAddress ? "block" : "none";
         document.getElementById("orderDetailTotal").textContent = formatPrice(order.total);
         const pickWrap = document.getElementById("orderDetailPickTimeWrap");
         const pickEl = document.getElementById("orderDetailPickTime");
@@ -215,13 +238,29 @@
         const itemsList = document.getElementById("orderDetailItems");
         itemsList.innerHTML = (order.items || []).map(i => `
           <li class="pick-item ${i.picked ? 'picked' : ''}" data-item-id="${i.id}">
-            <span class="pick-status">${i.picked ? '✓ Picked' : '○ Not picked'}</span>
-            <span class="pick-details">${escapeHtml(i.productName)} · ${i.quantity} × ${formatPrice(i.unitPrice)}</span>
+            <span class="pick-status" data-pick-trigger>${i.picked ? '✓ Picked' : '○ Not picked'}</span>
+            <span class="pick-details">
+              ${escapeHtml(i.productName)}
+              <span class="pick-qty-wrap">
+                <input type="number" class="pick-qty-input" min="1" value="${i.quantity}" data-item-id="${i.id}" title="Edit quantity">
+                × ${formatPrice(i.unitPrice)} = ${formatPrice(i.lineTotal)}
+              </span>
+            </span>
             ${i.printData && i.printData.trim() ? `<a href="/api/orders/${order.id}/items/${i.id}/print-pdf" class="pick-download-pdf" target="_blank" rel="noopener">Download print PDF</a>` : ""}
           </li>
         `).join("");
         itemsList.querySelectorAll(".pick-item").forEach(li => {
-          li.addEventListener("click", () => toggleItemPick(Number(li.dataset.itemId), li.classList.contains("picked")));
+          const pickTrigger = li.querySelector("[data-pick-trigger]");
+          if (pickTrigger) pickTrigger.addEventListener("click", (e) => { e.stopPropagation(); toggleItemPick(Number(li.dataset.itemId), li.classList.contains("picked")); });
+        });
+        itemsList.querySelectorAll(".pick-qty-input").forEach(input => {
+          input.addEventListener("change", (e) => {
+            const qty = parseInt(e.target.value, 10);
+            if (isNaN(qty) || qty < 1) { e.target.value = e.target.dataset.lastValid || 1; return; }
+            e.target.dataset.lastValid = qty;
+            updateItemQuantity(Number(input.dataset.itemId), qty);
+          });
+          input.dataset.lastValid = input.value;
         });
         orderDetailSidebar.classList.add("open");
         orderDetailOverlay.classList.add("open");
@@ -239,6 +278,29 @@
     document.getElementById("btnCloseOrderDetail").addEventListener("click", closeOrderDetail);
     orderDetailOverlay.addEventListener("click", closeOrderDetail);
 
+    document.getElementById("btnCreateLabel").addEventListener("click", async () => {
+      if (!selectedOrderId) return;
+      const btn = document.getElementById("btnCreateLabel");
+      btn.disabled = true;
+      btn.textContent = "Creating…";
+      try {
+        const res = await fetch(`/api/orders/${selectedOrderId}/create-label`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({}),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Failed to create label");
+        openOrderDetail(selectedOrderId);
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = document.getElementById("orderDetailLabelWrap").style.display === "none" ? "Create shipping label" : "Create new label";
+      }
+    });
+
     async function toggleItemPick(itemId, currentlyPicked) {
       if (!selectedOrderId) return;
       try {
@@ -246,6 +308,22 @@
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ picked: !currentlyPicked }),
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error((await res.json()).message || res.statusText);
+        openOrderDetail(selectedOrderId);
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    }
+
+    async function updateItemQuantity(itemId, quantity) {
+      if (!selectedOrderId) return;
+      try {
+        const res = await fetch(`/api/orders/${selectedOrderId}/items/${itemId}/quantity`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quantity }),
           credentials: "include",
         });
         if (!res.ok) throw new Error((await res.json()).message || res.statusText);
@@ -277,6 +355,19 @@
       const div = document.createElement("div");
       div.textContent = s || "";
       return div.innerHTML;
+    }
+    function escapeAttr(s) {
+      return String(s || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;");
+    }
+    function formatAddress(addr) {
+      if (!addr) return "—";
+      try {
+        const o = typeof addr === "string" ? JSON.parse(addr) : addr;
+        const parts = [o.address1, o.address2, [o.city, o.state, o.zip].filter(Boolean).join(", ")].filter(Boolean);
+        return parts.join(", ") || addr;
+      } catch (_) {
+        return addr;
+      }
     }
 
     function formatPrice(n) {

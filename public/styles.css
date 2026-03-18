@@ -1595,6 +1595,27 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   color: var(--text);
 }
 
+.pick-qty-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: 0.25rem;
+}
+
+.pick-qty-input {
+  width: 3rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.pick-qty-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .pick-download-pdf {
   font-size: 0.8rem;
   color: var(--accent);
@@ -2513,6 +2534,10 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   justify-content: space-between;
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
+}
+
+.store-summary-discount {
+  color: var(--success, #10b981);
 }
 
 .store-summary-total {

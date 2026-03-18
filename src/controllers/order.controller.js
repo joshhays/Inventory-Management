@@ -100,6 +100,23 @@ const updateOrderItemPicked = async (req, res, next) => {
   }
 };
 
+const updateOrderItemQuantity = async (req, res, next) => {
+  try {
+    const { id, itemId } = req.params;
+    const { quantity } = req.body;
+    if (quantity === undefined || quantity === null) {
+      return res.status(400).json({ message: "quantity is required." });
+    }
+    const order = await orderService.updateItemQuantity(id, itemId, quantity, req.deploymentId);
+    if (!order) {
+      return res.status(404).json({ message: "Order or item not found." });
+    }
+    return res.status(200).json(order);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const getOrderItemPrintPdf = async (req, res, next) => {
   try {
     const { id: orderId, itemId } = req.params;
@@ -150,7 +167,9 @@ const createLabel = async (req, res, next) => {
     if (!order.shippingAddress) {
       return res.status(400).json({ message: "Order has no shipping address." });
     }
-    const result = await shippingService.createLabel(order, parcel || null);
+    const itemCount = (order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
+    const opts = { deploymentId: order.deploymentId, itemCount };
+    const result = await shippingService.createLabel(order, parcel || null, opts);
     const updated = await orderService.updateLabelInfo(
       id,
       {
@@ -175,6 +194,7 @@ module.exports = {
   getOrder,
   updateOrderStatus,
   updateOrderItemPicked,
+  updateOrderItemQuantity,
   getOrderItemPrintPdf,
   createLabel,
 };

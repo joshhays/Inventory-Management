@@ -110,19 +110,35 @@ async function getRates(dest, itemCount, deploymentId = null) {
  *
  * @param {Object} orderDetails - Order with shippingAddress (JSON), optional parcel overrides
  * @param {Object} [parcel] - Optional { length, width, height, weight } in inches/lbs
+ * @param {Object} [opts] - Optional { deploymentId, itemCount } to use shipping tier for parcel
  * @returns {Promise<{ labelUrl: string, trackingCode: string, easypostShipmentId: string }>}
  */
-async function createLabel(orderDetails, parcel = null) {
+async function createLabel(orderDetails, parcel = null, opts = {}) {
   const client = getClient();
   const fromAddress = getOriginAddress();
   const toAddress = parseShippingAddress(orderDetails.shippingAddress);
 
-  const parcelData = parcel || {
-    length: Number(process.env.EASYPOST_PARCEL_LENGTH) || 8,
-    width: Number(process.env.EASYPOST_PARCEL_WIDTH) || 5,
-    height: Number(process.env.EASYPOST_PARCEL_HEIGHT) || 5,
-    weight: Number(process.env.EASYPOST_PARCEL_WEIGHT) || 1,
-  };
+  let parcelData = parcel;
+  if (!parcelData && opts.deploymentId != null && opts.itemCount != null) {
+    const shippingTierService = require("./shippingTier.service");
+    const tier = await shippingTierService.findTierForQuantity(opts.deploymentId, opts.itemCount);
+    if (tier) {
+      parcelData = {
+        length: tier.lengthInches,
+        width: tier.widthInches,
+        height: tier.heightInches,
+        weight: tier.weightLbs,
+      };
+    }
+  }
+  if (!parcelData) {
+    parcelData = {
+      length: Number(process.env.EASYPOST_PARCEL_LENGTH) || 8,
+      width: Number(process.env.EASYPOST_PARCEL_WIDTH) || 5,
+      height: Number(process.env.EASYPOST_PARCEL_HEIGHT) || 5,
+      weight: Number(process.env.EASYPOST_PARCEL_WEIGHT) || 1,
+    };
+  }
 
   const shipment = await client.Shipment.create({
     from_address: fromAddress,
