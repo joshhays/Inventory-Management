@@ -1,8 +1,6 @@
 const express = require("express");
 const upsService = require("../services/ups.service");
 const deploymentService = require("../services/deployment.service");
-const { requireAuth } = require("../middleware/auth.middleware");
-
 const router = express.Router();
 
 const DEFAULT_WEIGHT_LBS_PER_ITEM = 1;
@@ -28,7 +26,7 @@ async function resolveDeploymentId(req, res, next) {
  * Body: { deploymentSlug?, address: { name, address1, address2?, city, state, zip }, items: [{ productId, quantity }] }
  * Returns: { rates: [{ serviceCode, serviceName, totalCharges, currencyCode, transitDays? }] }
  */
-router.post("/rates", requireAuth, resolveDeploymentId, async (req, res, next) => {
+router.post("/rates", resolveDeploymentId, async (req, res, next) => {
   try {
     const { address, items } = req.body;
     const deploymentId = req.resolvedDeploymentId ?? req.body?.deploymentId ?? req.session?.selectedDeploymentId ?? 1;
