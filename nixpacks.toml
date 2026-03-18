@@ -1,6 +1,9 @@
 # Nixpacks config for Railway
+# Python + build-essential needed for node-gyp (canvas, better-sqlite3 native modules)
 # Use npm install instead of npm ci (avoids lockfile sync failures)
-# Ensures admin-ui is built during deployment
+
+[phases.setup]
+aptPkgs = ["...", "python3", "build-essential"]
 
 [phases.install]
 cmds = ["npm install"]
