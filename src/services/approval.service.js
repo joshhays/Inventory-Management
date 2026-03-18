@@ -1,28 +1,29 @@
 /**
  * Approval workflow service for orders with print-on-demand items.
  * When an order has POD items, it starts as PENDING_APPROVAL.
- * Manager approves → status becomes APPROVED → EasyPost creates shipping label.
+ * Manager approves → status becomes APPROVED → EasyPost creates shipping label → ORDER_APPROVED email.
  */
 
 const prisma = require("../lib/prisma");
 const shippingService = require("./shipping.service");
 const orderService = require("./order.service");
+const mailService = require("./mail.service");
 
 const STATUS_PENDING_APPROVAL = "pending_approval";
 const STATUS_APPROVED = "approved";
 
 /**
- * Approve an order: update status to APPROVED and create shipping label via EasyPost.
+ * Approve an order: update status to APPROVED, create EasyPost label, trigger ORDER_APPROVED email.
  * @param {number} orderId - Order ID
  * @param {number} [deploymentId] - Optional deployment filter
- * @returns {Promise<Object>} Updated order with label info
+ * @returns {Promise<Object>} Updated order with label info and trackingCode
  */
 async function approveOrder(orderId, deploymentId = null) {
   const order = await orderService.findById(orderId, deploymentId);
   if (!order) {
     throw new Error("Order not found");
   }
-  if (order.status !== STATUS_PENDING_APPROVAL) {
+  if (order.status !== STATUS_PENDING_APPROVAL && order.approvalStatus !== "PENDING") {
     throw new Error(`Order cannot be approved: status is "${order.status}"`);
   }
   if (!order.shippingAddress) {
@@ -40,7 +41,7 @@ async function approveOrder(orderId, deploymentId = null) {
 
   const result = await shippingService.createLabel(order, null, opts);
 
-  const updated = await orderService.updateLabelInfo(orderId, {
+  await orderService.updateLabelInfo(orderId, {
     shippingLabelUrl: result.labelUrl,
     trackingCode: result.trackingCode,
     easypostShipmentId: result.easypostShipmentId,
@@ -48,16 +49,55 @@ async function approveOrder(orderId, deploymentId = null) {
 
   await orderService.updateStatus(orderId, STATUS_APPROVED, deploymentId);
 
+  await prisma.order.update({
+    where: { id: Number(orderId) },
+    data: { approvalStatus: "APPROVED" },
+  });
+
+  try {
+    await mailService.triggerNotification(orderId, "ORDER_APPROVED");
+  } catch (mailErr) {
+    console.error("ORDER_APPROVED email failed:", mailErr.message);
+  }
+
+  const updated = await orderService.findById(orderId, deploymentId);
+  return { ...updated, trackingCode: result.trackingCode };
+}
+
+/**
+ * Reject an order: set approvalStatus to REJECTED and status to rejected.
+ * @param {number} orderId - Order ID
+ * @param {number} [deploymentId] - Optional deployment filter
+ * @returns {Promise<Object>} Updated order
+ */
+async function rejectOrder(orderId, deploymentId = null) {
+  const order = await orderService.findById(orderId, deploymentId);
+  if (!order) throw new Error("Order not found");
+  if (order.status === STATUS_APPROVED) {
+    throw new Error("Order is already approved");
+  }
+
+  await orderService.updateStatus(orderId, "rejected", deploymentId);
+  await prisma.order.update({
+    where: { id: Number(orderId) },
+    data: { approvalStatus: "REJECTED" },
+  });
+
   return orderService.findById(orderId, deploymentId);
 }
 
 /**
- * Get all orders with status PENDING_APPROVAL.
+ * Get all orders with status PENDING_APPROVAL or approvalStatus PENDING.
  * @param {number} [deploymentId] - Optional deployment filter
  * @returns {Promise<Array>} Orders with customer name and proof PDF URLs
  */
 async function getPendingApprovals(deploymentId = null) {
-  const where = { status: STATUS_PENDING_APPROVAL };
+  const where = {
+    OR: [
+      { status: STATUS_PENDING_APPROVAL },
+      { approvalStatus: "PENDING" },
+    ],
+  };
   if (deploymentId != null) where.deploymentId = Number(deploymentId);
 
   const orders = await prisma.order.findMany({
@@ -91,6 +131,7 @@ async function getPendingApprovals(deploymentId = null) {
 
 module.exports = {
   approveOrder,
+  rejectOrder,
   getPendingApprovals,
   STATUS_PENDING_APPROVAL,
   STATUS_APPROVED,

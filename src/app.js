@@ -48,6 +48,11 @@ app.use(
 app.use(requirePageAuth);
 app.use(storeRoutes);
 app.use(express.static(path.join(__dirname, "../public")));
+const adminUiPath = path.join(__dirname, "../admin-ui/dist/admin");
+app.use("/admin", express.static(adminUiPath));
+app.get(["/admin", "/admin/*"], (req, res, next) => {
+  res.sendFile(path.join(adminUiPath, "index.html"), (err) => (err ? next(err) : null));
+});
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/product-files", express.static(path.join(__dirname, "../product-files")));
 
@@ -75,6 +80,7 @@ app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
 app.use("/api/shipping", require("./routes/shipping.routes"));
 app.use("/api/discount", require("./routes/discount.routes"));
 app.use("/api/admin", require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/admin.routes"));
+app.use("/api/notification-templates", requireAuth, requireAdmin, require("./routes/notificationTemplate.routes"));
 
 app.use(notFoundHandler);
 app.use(errorHandler);

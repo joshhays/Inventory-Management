@@ -185,6 +185,21 @@ model InventoryLog {
   createdAt      DateTime @default(now())
 }
 
+model NotificationTemplate {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique // e.g. 'ORDER_APPROVED', 'ORDER_PLACED'
+  subject   String
+  body      String   // Supports placeholders: {{name}}, {{email}}, {{trackingCode}}, etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model OrderDiscountRule {
   id                 Int        @id @default(autoincrement())
   deploymentId       Int
@@ -215,6 +230,7 @@ model Order {
   trackingCode        String?      // Carrier tracking number
   easypostShipmentId  String?      // EasyPost shipment ID for label creation
   status              String      @default("pending")
+  approvalStatus      ApprovalStatus? // PENDING = awaiting approval, APPROVED = approved, REJECTED = rejected
   total               Float
   pickingStartedAt    DateTime?
   pickingCompletedAt  DateTime?

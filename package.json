@@ -7,7 +7,9 @@
   },
   "scripts": {
     "dev": "nodemon src/server.js",
+    "dev:admin": "cd admin-ui && npm run dev",
     "build": "prisma generate",
+    "build:admin": "cd admin-ui && npm install && npm run build",
     "start": "node scripts/fix-failed-migration.js && prisma db push && node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -15,7 +17,8 @@
     "prisma:baseline": "prisma migrate resolve --applied 20260326000000_init",
     "prisma:studio": "prisma studio",
     "seed": "node scripts/seed-from-csv.js",
-    "seed:admin": "node scripts/seed-admin.js"
+    "seed:admin": "node scripts/seed-admin.js",
+    "seed:templates": "node scripts/seed-notification-templates.js"
   },
   "keywords": [],
   "author": "",
@@ -38,7 +41,8 @@
     "pdf-lib": "^1.17.1",
     "prisma": "^6.8.2",
     "better-sqlite3": "^11.6.0",
-    "@easypost/api": "^8.8.0"
+    "@easypost/api": "^8.8.0",
+    "resend": "^4.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

@@ -2,8 +2,50 @@ const path = require("path");
 const fs = require("fs");
 const orderService = require("../services/order.service");
 const shippingService = require("../services/shipping.service");
+const approvalService = require("../services/approval.service");
 const { generateBusinessCardPdf } = require("../services/podPdf.service");
 const { businessCardTemplate } = require("../podTemplates");
+
+const approveOrder = async (req, res, next) => {
+  try {
+    const orderId = Number(req.body.orderId ?? req.params.id);
+    if (!orderId || isNaN(orderId)) {
+      return res.status(400).json({ message: "orderId is required." });
+    }
+    const order = await approvalService.approveOrder(orderId, req.deploymentId);
+    return res.status(200).json({ order, trackingCode: order.trackingCode });
+  } catch (err) {
+    if (err.message?.includes("Order not found")) {
+      return res.status(404).json({ message: err.message });
+    }
+    if (err.message?.includes("cannot be approved") || err.message?.includes("no shipping address")) {
+      return res.status(400).json({ message: err.message });
+    }
+    if (err.message?.includes("Shipping is disabled") || err.message?.includes("EASYPOST")) {
+      return res.status(503).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
+
+const rejectOrder = async (req, res, next) => {
+  try {
+    const orderId = Number(req.body.orderId ?? req.params.id);
+    if (!orderId || isNaN(orderId)) {
+      return res.status(400).json({ message: "orderId is required." });
+    }
+    const order = await approvalService.rejectOrder(orderId, req.deploymentId);
+    return res.status(200).json(order);
+  } catch (err) {
+    if (err.message?.includes("Order not found")) {
+      return res.status(404).json({ message: err.message });
+    }
+    if (err.message?.includes("already approved")) {
+      return res.status(400).json({ message: err.message });
+    }
+    return next(err);
+  }
+};
 
 const createOrder = async (req, res, next) => {
   try {
@@ -194,6 +236,8 @@ const createLabel = async (req, res, next) => {
 };
 
 module.exports = {
+  approveOrder,
+  rejectOrder,
   createOrder,
   getOrders,
   getOrder,
