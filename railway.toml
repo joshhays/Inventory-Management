@@ -5,6 +5,6 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "prisma migrate deploy && node src/server.js"
+startCommand = "prisma db push && node src/server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
