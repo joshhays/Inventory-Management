@@ -8,10 +8,11 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "build": "prisma generate",
-    "start": "node scripts/fix-failed-migration.js && prisma migrate deploy && node src/server.js",
+    "start": "node scripts/fix-failed-migration.js && (prisma migrate resolve --applied 20260326000000_init 2>/dev/null || true) && prisma migrate deploy && node src/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:resolve-failed": "prisma migrate resolve --rolled-back 20260317201241_add_order_shipping_fields",
+    "prisma:baseline": "prisma migrate resolve --applied 20260326000000_init",
     "prisma:studio": "prisma studio",
     "seed": "node scripts/seed-from-csv.js",
     "seed:admin": "node scripts/seed-admin.js"
