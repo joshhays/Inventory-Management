@@ -1,5 +1,9 @@
 # Nixpacks config for Railway
+# Use npm install instead of npm ci (avoids lockfile sync failures)
 # Ensures admin-ui is built during deployment
+
+[phases.install]
+cmds = ["npm install"]
 
 [phases.build]
 cmds = ["npm run build"]
