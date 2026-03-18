@@ -1,9 +1,5 @@
-# Railway build config for Node.js + Prisma
-[phases.setup]
-nixPkgs = ["nodejs_20", "openssl"]
-
-[phases.install]
-cmds = ["npm install"]
+# Nixpacks config for Railway
+# Ensures admin-ui is built during deployment
 
 [phases.build]
 cmds = ["npm run build"]

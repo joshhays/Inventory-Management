@@ -2,6 +2,7 @@ const express = require("express");
 const session = require("express-session");
 const SQLiteStore = require("connect-sqlite3")(session);
 const path = require("path");
+const fs = require("fs");
 
 const env = require("./config/env");
 const productRoutes = require("./routes/product.routes");
@@ -49,10 +50,26 @@ app.use(requirePageAuth);
 app.use(storeRoutes);
 app.use(express.static(path.join(__dirname, "../public")));
 const adminUiPath = path.join(__dirname, "../admin-ui/dist/admin");
-app.use("/admin", express.static(adminUiPath));
-app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
-  res.sendFile(path.join(adminUiPath, "index.html"), (err) => (err ? next(err) : null));
-});
+const adminIndexPath = path.join(adminUiPath, "index.html");
+const adminUiExists = fs.existsSync(adminIndexPath);
+if (adminUiExists) {
+  app.use("/admin", express.static(adminUiPath));
+  app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
+    res.sendFile(adminIndexPath, (err) => (err ? next(err) : null));
+  });
+} else {
+  app.get(/^\/admin(\/.*)?$/, (req, res) => {
+    res.status(503).type("html").send(`
+      <!DOCTYPE html><html><head><title>Admin UI</title></head><body style="font-family:sans-serif;padding:2rem;">
+        <h1>Admin UI not built</h1>
+        <p>The React admin app was not built during deployment. Ensure your Railway build runs:</p>
+        <pre>npm install && npm run build</pre>
+        <p>Check the <strong>Build logs</strong> in Railway for errors in <code>npm run build:admin</code>.</p>
+        <p>You can also use the classic admin at <a href="/pending-approvals.html">/pending-approvals.html</a>.</p>
+      </body></html>
+    `);
+  });
+}
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 app.use("/product-files", express.static(path.join(__dirname, "../product-files")));
 
