@@ -83,6 +83,22 @@ model Deployment {
   orders       Order[]
   groups       UserGroup[]
   categories   DeploymentCategory[]
+  shippingTiers ShippingTier[]
+}
+
+model ShippingTier {
+  id            Int        @id @default(autoincrement())
+  deploymentId  Int
+  deployment    Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  minQuantity   Int        // Applies when item count >= this (e.g. 1, 251, 501)
+  weightLbs     Float      // Total weight in lbs
+  lengthInches  Float      // Box length
+  widthInches   Float      // Box width
+  heightInches  Float      // Box height
+  name          String?    // Optional label, e.g. "250 cards"
+  sortOrder     Int        @default(0) // Lower = higher priority when matching
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 }
 
 model DeploymentCategory {

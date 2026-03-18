@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shipping Tiers - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/deployment-header.js"></script>
+  <link rel="prefetch" href="/">
+  <link rel="prefetch" href="/deployments.html">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPkludmVudG9yeTwvdGV4dD48L3N2Zz4=" alt="Inventory" class="nav-logo"></a>
+      <a href="/dashboard.html" class="top-nav-back" title="Switch deployment">Switch</a>
+    </header>
+    <main class="main-content">
+      <div class="toolbar">
+        <h1>Shipping Tiers</h1>
+      </div>
+      <p class="shipping-hint">Define box sizes and weights by item count. When a cart has X items, the tier with the highest "Min quantity" ≤ X is used. Example: 250 cards = 2 lbs in 8×5×5; 500 cards = 3 lbs in 8×5×5; 750 cards = 4 lbs in 12×9×5.</p>
+      <div id="noDeployment" class="error" style="display:none">
+        No deployment selected. <a href="/dashboard.html">Select a deployment</a> first.
+      </div>
+      <div id="contentWrap" style="display:none;">
+        <p class="shipping-deployment">Managing tiers for: <strong id="deploymentName"></strong></p>
+        <div class="shipping-add-form">
+          <div class="shipping-form-grid">
+            <label>Name (optional)</label>
+            <input type="text" id="newName" placeholder="e.g. 250 cards">
+            <label>Min quantity</label>
+            <input type="number" id="newMinQuantity" placeholder="1" min="0" title="When cart has this many items or more">
+            <label>Weight (lbs)</label>
+            <input type="number" id="newWeightLbs" placeholder="2" min="0.1" step="0.1">
+            <label>Box (L×W×H in)</label>
+            <div class="shipping-dims">
+              <input type="number" id="newLength" placeholder="8" min="1" step="0.5">
+              <span>×</span>
+              <input type="number" id="newWidth" placeholder="5" min="1" step="0.5">
+              <span>×</span>
+              <input type="number" id="newHeight" placeholder="5" min="1" step="0.5">
+            </div>
+          </div>
+          <button type="button" class="btn-create" id="btnAddTier">Add Tier</button>
+        </div>
+        <div class="table-wrap">
+          <div class="loading" id="status">Loading…</div>
+          <table id="table" style="display:none">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Min qty</th>
+                <th>Weight</th>
+                <th>Box (L×W×H)</th>
+                <th class="actions-col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="body"></tbody>
+          </table>
+          <p id="emptyState" class="shipping-empty" style="display:none">No tiers yet. Add one above. Without tiers, default weight (1 lb/item) and box (8×5×5) are used.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script>
+    const noDeploymentEl = document.getElementById("noDeployment");
+    const contentWrap = document.getElementById("contentWrap");
+    const deploymentNameEl = document.getElementById("deploymentName");
+    const statusEl = document.getElementById("status");
+    const tableEl = document.getElementById("table");
+    const bodyEl = document.getElementById("body");
+    const emptyStateEl = document.getElementById("emptyState");
+
+    function escape(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    async function init() {
+      try {
+        const res = await fetch("/api/deployments/selected", { credentials: "include" });
+        const data = await res.json().catch(() => ({}));
+        const deployment = data.deployment;
+        if (!deployment || !deployment.id) {
+          noDeploymentEl.style.display = "block";
+          contentWrap.style.display = "none";
+          return;
+        }
+        noDeploymentEl.style.display = "none";
+        contentWrap.style.display = "block";
+        deploymentNameEl.textContent = deployment.name || deployment.slug || "Deployment";
+        window.currentDeploymentId = deployment.id;
+        loadTiers();
+      } catch (e) {
+        noDeploymentEl.style.display = "block";
+        contentWrap.style.display = "none";
+      }
+    }
+
+    async function loadTiers() {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      statusEl.style.display = "block";
+      tableEl.style.display = "none";
+      emptyStateEl.style.display = "none";
+      try {
+        const res = await fetch(`/api/deployments/${depId}/shipping-tiers`, { credentials: "include" });
+        const tiers = res.ok ? await res.json() : [];
+        statusEl.style.display = "none";
+        if (tiers.length === 0) {
+          emptyStateEl.style.display = "block";
+        } else {
+          tableEl.style.display = "table";
+          bodyEl.innerHTML = tiers.map((t) => `
+            <tr>
+              <td>${escape(t.name || "—")}</td>
+              <td>${t.minQuantity}</td>
+              <td>${t.weightLbs} lbs</td>
+              <td>${t.lengthInches}×${t.widthInches}×${t.heightInches}</td>
+              <td>
+                <button type="button" class="btn-small btn-remove" data-id="${t.id}" title="Remove">Remove</button>
+              </td>
+            </tr>
+          `).join("");
+          bodyEl.querySelectorAll("button.btn-remove").forEach((btn) => {
+            btn.addEventListener("click", () => removeTier(btn.dataset.id));
+          });
+        }
+      } catch (e) {
+        statusEl.textContent = "Error loading tiers.";
+      }
+    }
+
+    async function addTier() {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      const minQuantity = parseInt(document.getElementById("newMinQuantity").value, 10);
+      const weightLbs = parseFloat(document.getElementById("newWeightLbs").value);
+      const lengthInches = parseFloat(document.getElementById("newLength").value);
+      const widthInches = parseFloat(document.getElementById("newWidth").value);
+      const heightInches = parseFloat(document.getElementById("newHeight").value);
+      const name = document.getElementById("newName").value.trim() || null;
+      if (isNaN(minQuantity) || minQuantity < 0) {
+        alert("Min quantity must be 0 or more.");
+        return;
+      }
+      if (isNaN(weightLbs) || weightLbs < 0.1) {
+        alert("Weight must be at least 0.1 lbs.");
+        return;
+      }
+      if (isNaN(lengthInches) || isNaN(widthInches) || isNaN(heightInches) || lengthInches < 1 || widthInches < 1 || heightInches < 1) {
+        alert("Box dimensions must be at least 1 inch.");
+        return;
+      }
+      const btn = document.getElementById("btnAddTier");
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/deployments/${depId}/shipping-tiers`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ minQuantity, weightLbs, lengthInches, widthInches, heightInches, name }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Failed to add");
+        document.getElementById("newMinQuantity").value = "";
+        document.getElementById("newWeightLbs").value = "";
+        document.getElementById("newLength").value = "";
+        document.getElementById("newWidth").value = "";
+        document.getElementById("newHeight").value = "";
+        document.getElementById("newName").value = "";
+        loadTiers();
+      } catch (e) {
+        alert(e.message || "Failed to add tier.");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function removeTier(id) {
+      const depId = window.currentDeploymentId;
+      if (!depId) return;
+      if (!confirm("Remove this shipping tier?")) return;
+      try {
+        const res = await fetch(`/api/deployments/${depId}/shipping-tiers/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+        if (!res.ok) throw new Error("Failed to remove");
+        loadTiers();
+      } catch (e) {
+        alert(e.message || "Failed to remove tier.");
+      }
+    }
+
+    document.getElementById("btnAddTier").addEventListener("click", addTier);
+
+    init();
+  </script>
+  <style>
+    .shipping-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
+    .shipping-deployment { margin-bottom: 1rem; color: var(--text-muted); }
+    .shipping-add-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+    }
+    .shipping-form-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1rem;
+      align-items: center;
+    }
+    .shipping-form-grid label { font-size: 0.9rem; color: var(--text-muted); }
+    .shipping-form-grid input { max-width: 100px; }
+    .shipping-dims { display: flex; align-items: center; gap: 0.25rem; }
+    .shipping-dims input { max-width: 56px; }
+    .shipping-empty { color: var(--text-muted); font-style: italic; }
+    .btn-remove { color: var(--text-muted); }
+    .btn-remove:hover { color: var(--danger, #dc2626); }
+  </style>
+</body>
+</html>

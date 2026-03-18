@@ -3,8 +3,6 @@ const shippingService = require("../services/shipping.service");
 const deploymentService = require("../services/deployment.service");
 const router = express.Router();
 
-const DEFAULT_WEIGHT_LBS_PER_ITEM = 1;
-
 async function resolveDeploymentId(req, res, next) {
   const fromBody = req.body?.deploymentId ?? req.body?.deploymentSlug;
   const fromQuery = req.query?.deploymentId ?? req.query?.deployment;
@@ -43,7 +41,7 @@ router.post("/rates", resolveDeploymentId, async (req, res, next) => {
     if (items && Array.isArray(items)) {
       itemCount = items.reduce((s, it) => s + Math.max(1, Number(it.quantity) || 1), 0);
     }
-    const weightLbs = Math.max(0.1, itemCount * DEFAULT_WEIGHT_LBS_PER_ITEM);
+    itemCount = Math.max(1, itemCount);
 
     const dest = {
       name: (name || "Recipient").trim(),
@@ -55,7 +53,7 @@ router.post("/rates", resolveDeploymentId, async (req, res, next) => {
       countryCode: "US",
     };
 
-    const rates = await shippingService.getRates(dest, weightLbs);
+    const rates = await shippingService.getRates(dest, itemCount, deploymentId);
     return res.status(200).json({ rates });
   } catch (err) {
     if (err.message?.includes("EASYPOST_API_KEY")) {

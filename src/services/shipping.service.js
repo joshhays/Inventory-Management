@@ -45,13 +45,14 @@ function parseShippingAddress(shippingAddress) {
 /**
  * Get shipping rates for an address (no purchase).
  * Creates an EasyPost Shipment to fetch rates, returns formatted for cart display.
+ * Uses ShippingTier if deploymentId provided and tiers exist; otherwise uses defaults.
  *
  * @param {Object} dest - { name, address1, address2?, city, state, zip }
- * @param {number} weightLbs - Total package weight in pounds
- * @param {Object} [parcel] - Optional { length, width, height } in inches
+ * @param {number} itemCount - Total item count in cart
+ * @param {number} [deploymentId] - Optional; if set, look up tier for weight/dimensions
  * @returns {Promise<Array<{ serviceCode, serviceName, totalCharges, currencyCode, transitDays? }>>}
  */
-async function getRates(dest, weightLbs, parcel = null) {
+async function getRates(dest, itemCount, deploymentId = null) {
   const client = getClient();
   const fromAddress = getOriginAddress();
   const toAddress = {
@@ -63,12 +64,28 @@ async function getRates(dest, weightLbs, parcel = null) {
     zip: dest.zip,
     country: dest.countryCode || "US",
   };
-  const parcelData = parcel || {
+
+  let weightLbs = itemCount * 1;
+  let parcelData = {
     length: Number(process.env.EASYPOST_PARCEL_LENGTH) || 8,
     width: Number(process.env.EASYPOST_PARCEL_WIDTH) || 5,
     height: Number(process.env.EASYPOST_PARCEL_HEIGHT) || 5,
     weight: weightLbs,
   };
+
+  if (deploymentId) {
+    const shippingTierService = require("./shippingTier.service");
+    const tier = await shippingTierService.findTierForQuantity(deploymentId, itemCount);
+    if (tier) {
+      weightLbs = tier.weightLbs;
+      parcelData = {
+        length: tier.lengthInches,
+        width: tier.widthInches,
+        height: tier.heightInches,
+        weight: weightLbs,
+      };
+    }
+  }
 
   const shipment = await client.Shipment.create({
     from_address: fromAddress,
