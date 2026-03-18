@@ -1094,8 +1094,8 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   position: fixed;
   top: 0;
   right: 0;
-  width: 380px;
-  max-width: 100%;
+  width: 520px;
+  max-width: 95vw;
   height: 100vh;
   background: var(--glass-bg-strong);
   backdrop-filter: blur(var(--blur-strong));
@@ -2316,6 +2316,7 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   margin-bottom: 0.5rem;
+  min-width: 0;
 }
 
 .pod-admin-fields-header.pod-admin-fields-header-grid {
@@ -2343,9 +2344,10 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 
 .pod-admin-field-main {
   display: grid;
-  grid-template-columns: 1fr 1fr auto auto auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(5rem, auto) minmax(0, auto) minmax(0, auto) auto;
   gap: 0.5rem;
   align-items: center;
+  min-width: 0;
 }
 
 .pod-field-order-btns {
