@@ -49,13 +49,34 @@ app.use(
 app.use(requirePageAuth);
 app.use(storeRoutes);
 app.use(express.static(path.join(__dirname, "../public")));
-const adminUiPath = path.join(__dirname, "../public/admin");
-const adminIndexPath = path.join(adminUiPath, "index.html");
-const adminUiExists = fs.existsSync(adminIndexPath);
+const adminPaths = [
+  path.join(__dirname, "../public/admin"),
+  path.join(__dirname, "../admin-ui/dist/admin"),
+];
+const adminUiPath = adminPaths.find((p) => fs.existsSync(path.join(p, "index.html")));
+const adminIndexPath = adminUiPath ? path.join(adminUiPath, "index.html") : null;
+const adminUiExists = !!adminUiPath;
 if (adminUiExists) {
   app.use("/admin", express.static(adminUiPath));
   app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
-    res.sendFile(adminIndexPath, (err) => (err ? next(err) : null));
+    res.sendFile(adminIndexPath, (err) => {
+      if (err) {
+        if (err.code === "ENOENT") {
+          return res.status(503).type("html").send(`
+            <!DOCTYPE html><html><head><title>Admin UI</title></head><body style="font-family:sans-serif;padding:2rem;">
+              <h1>Admin UI not found</h1>
+              <p>The admin app files were not found. Use these instead:</p>
+              <ul>
+                <li><a href="/pending-approvals.html">Pending Approvals</a></li>
+                <li><a href="/templates.html">Notification Templates</a></li>
+                <li><a href="/orders.html">Orders</a></li>
+              </ul>
+            </body></html>
+          `);
+        }
+        return next(err);
+      }
+    });
   });
 } else {
   app.get(/^\/admin(\/.*)?$/, (req, res) => {

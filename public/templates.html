@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notification Templates - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/pending-approvals.html" class="top-nav-back">Pending Approvals</a>
+    </header>
+    <main class="main-content">
+      <h1>Notification Templates</h1>
+      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}.</p>
+      <div class="form-group">
+        <label for="templateSelect">Template:</label>
+        <select id="templateSelect" class="form-control" style="max-width:300px"></select>
+      </div>
+      <div class="form-group" id="editorSection" style="display:none">
+        <label for="subject">Subject</label>
+        <input type="text" id="subject" class="form-control" style="max-width:500px">
+        <label for="body" style="margin-top:1rem">Body</label>
+        <textarea id="body" class="form-control" rows="12" style="max-width:600px;font-family:inherit"></textarea>
+        <button type="button" id="saveBtn" class="btn-create" style="margin-top:1rem">Save</button>
+      </div>
+      <div id="message" style="margin-top:1rem;display:none"></div>
+    </main>
+  </div>
+  <script>
+    const templateSelect = document.getElementById("templateSelect");
+    const editorSection = document.getElementById("editorSection");
+    const subjectInput = document.getElementById("subject");
+    const bodyInput = document.getElementById("body");
+    const saveBtn = document.getElementById("saveBtn");
+    const messageEl = document.getElementById("message");
+
+    function showMessage(text, isError) {
+      messageEl.textContent = text;
+      messageEl.style.display = "block";
+      messageEl.style.color = isError ? "#dc2626" : "#16a34a";
+      setTimeout(() => { messageEl.style.display = "none"; }, 3000);
+    }
+
+    async function loadTemplates() {
+      const res = await fetch("/api/notification-templates", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load templates");
+      const templates = await res.json();
+      templateSelect.innerHTML = '<option value="">— Select —</option>' +
+        templates.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+      if (templates.length) {
+        templateSelect.value = templates[0].id;
+        loadTemplate(templates[0].id);
+      }
+    }
+
+    async function loadTemplate(id) {
+      const res = await fetch(`/api/notification-templates/${id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load template");
+      const t = await res.json();
+      subjectInput.value = t.subject;
+      bodyInput.value = t.body;
+      editorSection.style.display = "block";
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    templateSelect.addEventListener("change", () => {
+      const id = templateSelect.value;
+      if (id) loadTemplate(id);
+      else editorSection.style.display = "none";
+    });
+
+    saveBtn.addEventListener("click", async () => {
+      const id = templateSelect.value;
+      if (!id) return;
+      saveBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/notification-templates/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Save failed");
+        showMessage("Template saved.", false);
+      } catch (e) {
+        showMessage(e.message || "Failed to save", true);
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+
+    loadTemplates().catch(e => showMessage(e.message || "Could not load templates", true));
+  </script>
+</body>
+</html>
