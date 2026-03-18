@@ -135,6 +135,7 @@
             <span>Key</span>
             <span>Type</span>
             <span>Required</span>
+            <span>Order</span>
             <span></span>
           </div>
           <div id="podFieldsBody"></div>
@@ -452,6 +453,10 @@
           '<option value="multiselect"' + (type === "multiselect" ? " selected" : "") + '>Dropdown (multi)</option>' +
           '</select>' +
           '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"' + (field.required ? " checked" : "") + '> Required</label>' +
+          '<span class="pod-field-order-btns">' +
+          '<button type="button" class="pod-field-move-up" aria-label="Move up">↑</button>' +
+          '<button type="button" class="pod-field-move-down" aria-label="Move down">↓</button>' +
+          '</span>' +
           '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
           '</div>' +
           '<div class="pod-admin-field-options-wrap" style="display:' + (isSelectLike ? "block" : "none") + '">' +
@@ -464,6 +469,14 @@
           optionsWrap.style.display = (typeSelect.value === "select" || typeSelect.value === "multiselect") ? "block" : "none";
         });
         row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
+        row.querySelector(".pod-field-move-up")?.addEventListener("click", () => {
+          const prev = row.previousElementSibling;
+          if (prev && prev.classList.contains("pod-admin-field-row")) body.insertBefore(row, prev);
+        });
+        row.querySelector(".pod-field-move-down")?.addEventListener("click", () => {
+          const next = row.nextElementSibling;
+          if (next && next.classList.contains("pod-admin-field-row")) body.insertBefore(next, row);
+        });
         body.appendChild(row);
       });
     }
@@ -552,6 +565,10 @@
           '<input type="text" class="pod-field-key" placeholder="key">' +
           '<select class="pod-field-type"><option value="text">Text</option><option value="textarea">Multi-line</option><option value="select">Dropdown</option><option value="multiselect">Dropdown (multi)</option></select>' +
           '<label class="pod-field-required-wrap"><input type="checkbox" class="pod-field-required"> Required</label>' +
+          '<span class="pod-field-order-btns">' +
+          '<button type="button" class="pod-field-move-up" aria-label="Move up">↑</button>' +
+          '<button type="button" class="pod-field-move-down" aria-label="Move down">↓</button>' +
+          '</span>' +
           '<button type="button" class="pod-field-remove" aria-label="Remove">✕</button>' +
           '</div>' +
           '<div class="pod-admin-field-options-wrap" style="display:none"><label>Options (one per line)</label><textarea class="pod-field-options" rows="2" placeholder="Option 1\nOption 2"></textarea></div>';
@@ -561,6 +578,14 @@
           optionsWrap.style.display = (typeSelect.value === "select" || typeSelect.value === "multiselect") ? "block" : "none";
         });
         row.querySelector(".pod-field-remove").addEventListener("click", () => row.remove());
+        row.querySelector(".pod-field-move-up")?.addEventListener("click", () => {
+          const prev = row.previousElementSibling;
+          if (prev && prev.classList.contains("pod-admin-field-row")) body.insertBefore(row, prev);
+        });
+        row.querySelector(".pod-field-move-down")?.addEventListener("click", () => {
+          const next = row.nextElementSibling;
+          if (next && next.classList.contains("pod-admin-field-row")) body.insertBefore(next, row);
+        });
         body.appendChild(row);
       });
     }

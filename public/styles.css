@@ -2320,7 +2320,7 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 
 .pod-admin-fields-header.pod-admin-fields-header-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr auto auto auto;
+  grid-template-columns: 1fr 1fr auto auto auto auto;
   gap: 0.5rem;
   align-items: center;
 }
@@ -2343,9 +2343,28 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
 
 .pod-admin-field-main {
   display: grid;
-  grid-template-columns: 1fr 1fr auto auto auto;
+  grid-template-columns: 1fr 1fr auto auto auto auto;
   gap: 0.5rem;
   align-items: center;
+}
+
+.pod-field-order-btns {
+  display: flex;
+  gap: 0.2rem;
+}
+.pod-field-move-up,
+.pod-field-move-down {
+  padding: 0.25rem 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1;
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: 4px;
+  background: var(--glass-bg, #f8fafc);
+  cursor: pointer;
+}
+.pod-field-move-up:hover,
+.pod-field-move-down:hover {
+  background: var(--glass-border-subtle, #e2e8f0);
 }
 
 .pod-admin-field-options-wrap {
