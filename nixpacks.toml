@@ -1,12 +1,7 @@
 # Nixpacks config for Railway
-# Python + build-essential needed for node-gyp (canvas, better-sqlite3 native modules)
-# Use npm install instead of npm ci (avoids lockfile sync failures)
-
-[phases.setup]
-aptPkgs = ["...", "python3", "build-essential"]
-
+# Skip optional deps (canvas) to avoid native build; PDF preview falls back to raw PDF
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm install --omit=optional"]
 
 [phases.build]
 cmds = ["npm run build"]

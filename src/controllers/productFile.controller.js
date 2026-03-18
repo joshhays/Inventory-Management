@@ -73,24 +73,30 @@ const getPreview = async (req, res, next) => {
       const { businessCardTemplate } = require("../podTemplates");
       const basePdfBytes = fs.readFileSync(POD_BASE_PDF);
       const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, {}, businessCardTemplate);
-      const { pdf } = await import("pdf-to-img");
-      // v3 accepts file path; write buffer to temp file for compatibility
-      const tmpPath = path.join(os.tmpdir(), `pod-preview-${Date.now()}.pdf`);
       try {
-        fs.writeFileSync(tmpPath, pdfBuffer);
-        const document = await pdf(tmpPath, { scale: 2 });
-        let firstPage = null;
-        for await (const image of document) {
-          firstPage = image;
-          break;
+        const { pdf } = await import("pdf-to-img");
+        const tmpPath = path.join(os.tmpdir(), `pod-preview-${Date.now()}.pdf`);
+        try {
+          fs.writeFileSync(tmpPath, pdfBuffer);
+          const document = await pdf(tmpPath, { scale: 2 });
+          let firstPage = null;
+          for await (const image of document) {
+            firstPage = image;
+            break;
+          }
+          if (firstPage) {
+            res.setHeader("Content-Type", "image/png");
+            res.setHeader("Cache-Control", "public, max-age=3600");
+            return res.send(firstPage);
+          }
+        } finally {
+          try { fs.unlinkSync(tmpPath); } catch (_) {}
         }
-        if (firstPage) {
-          res.setHeader("Content-Type", "image/png");
-          res.setHeader("Cache-Control", "public, max-age=3600");
-          return res.send(firstPage);
-        }
-      } finally {
-        try { fs.unlinkSync(tmpPath); } catch (_) {}
+      } catch (_) {
+        // PDF preview unavailable (e.g. canvas omitted); serve raw PDF
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "inline");
+        return res.send(pdfBuffer);
       }
     }
 
@@ -98,21 +104,26 @@ const getPreview = async (req, res, next) => {
       return res.status(404).json({ message: "No image or PDF file found. For POD products, add business-card-base.pdf to product-files." });
     }
 
-    const { pdf } = await import("pdf-to-img");
-    const document = await pdf(fullPath, { scale: 2 });
-    let firstPage = null;
-    for await (const image of document) {
-      firstPage = image;
-      break; // Only first page
+    try {
+      const { pdf } = await import("pdf-to-img");
+      const document = await pdf(fullPath, { scale: 2 });
+      let firstPage = null;
+      for await (const image of document) {
+        firstPage = image;
+        break;
+      }
+      if (firstPage) {
+        res.setHeader("Content-Type", "image/png");
+        res.setHeader("Cache-Control", "public, max-age=3600");
+        return res.send(firstPage);
+      }
+    } catch (_) {
+      // PDF preview unavailable; redirect to raw PDF
+      const pdfUrl = productFileService.getFileUrl(pdfFile);
+      if (pdfUrl) return res.redirect(302, pdfUrl);
     }
 
-    if (!firstPage) {
-      return res.status(500).json({ message: "Could not convert PDF." });
-    }
-
-    res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.send(firstPage);
+    return res.status(500).json({ message: "Could not generate preview." });
   } catch (error) {
     next(error);
   }
