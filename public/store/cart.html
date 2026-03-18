@@ -297,11 +297,13 @@
       const hasPOD = cart.some((i) => i.printData && Object.keys(i.printData).length);
       const proofRow = document.getElementById("proofApprovedRow");
       const proofCheck = document.getElementById("proofApproved");
+      const placeOrderBtn = document.getElementById("placeOrderBtn");
       if (proofRow) proofRow.style.display = hasPOD ? "block" : "none";
       if (proofCheck) {
         proofCheck.checked = false;
         proofCheck.required = hasPOD;
       }
+      if (placeOrderBtn) placeOrderBtn.textContent = hasPOD ? "Submit for Approval" : "Place your order";
 
       sidebar.style.display = "block";
       loadSavedAddresses();

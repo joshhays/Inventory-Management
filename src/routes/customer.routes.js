@@ -62,6 +62,9 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
     }
 
     const deploymentId = req.resolvedDeploymentId ?? req.body.deploymentId ?? req.session?.selectedDeploymentId ?? 1;
+    const hasPODItems = items.some((i) => i.printData != null && (typeof i.printData === "object" ? Object.keys(i.printData).length : String(i.printData).trim()));
+    const status = hasPODItems ? "pending_approval" : undefined;
+
     const order = await orderService.create({
       deploymentId,
       customerName,
@@ -71,11 +74,12 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
       shippingCost: shippingCost ?? 0,
       shippingMethod: shippingMethod || null,
       items,
+      status,
     });
 
-    // Auto-create shipping label when order has shipping address (and deployment has shipping enabled)
+    // Auto-create shipping label when order has shipping address, no POD (already approved flow), and deployment has shipping enabled
     const dep = await deploymentService.findById(deploymentId);
-    if (shippingStr && order?.id && dep?.shippingEnabled !== false) {
+    if (shippingStr && order?.id && !hasPODItems && dep?.shippingEnabled !== false) {
       try {
         const itemCount = (order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
         const result = await shippingService.createLabel(order, null, { deploymentId, itemCount });

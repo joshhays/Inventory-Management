@@ -23,13 +23,16 @@
       <div class="orders-toolbar">
         <select id="statusFilter">
           <option value="">All statuses</option>
+          <option value="pending_approval">Pending Approval</option>
           <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
           <option value="in process">In Process</option>
           <option value="picked">Picked</option>
           <option value="ready">Ready</option>
           <option value="shipped">Shipped</option>
           <option value="cancelled">Cancelled</option>
         </select>
+        <a href="/pending-approvals.html" class="btn-create" style="margin-left:0.5rem">Pending Approvals</a>
         <select id="pageSize">
           <option value="25">25 per page</option>
           <option value="50" selected>50 per page</option>
@@ -96,13 +99,19 @@
     <div class="detail-section">
       <label>Status</label>
       <select id="orderDetailStatus" class="status-select">
+        <option value="pending_approval">Pending Approval</option>
         <option value="pending">Pending</option>
+        <option value="approved">Approved</option>
         <option value="in process">In Process</option>
         <option value="picked">Picked</option>
         <option value="ready">Ready</option>
         <option value="shipped">Shipped</option>
         <option value="cancelled">Cancelled</option>
       </select>
+    </div>
+    <div class="detail-section" id="orderDetailApproveWrap" style="display:none">
+      <button type="button" class="btn-create" id="btnApproveOrder">Approve & Create Label</button>
+      <p class="label-hint">Creates EasyPost shipping label and updates status to Approved.</p>
     </div>
     <div class="detail-section">
       <label>Pick list</label>
@@ -220,7 +229,9 @@
           labelWrap.style.display = "none";
           labelActions.querySelector("#btnCreateLabel").textContent = "Create shipping label";
         }
-        labelActions.style.display = order.shippingAddress ? "block" : "none";
+        labelActions.style.display = order.shippingAddress && order.status !== "pending_approval" ? "block" : "none";
+        const approveWrap = document.getElementById("orderDetailApproveWrap");
+        approveWrap.style.display = order.status === "pending_approval" && order.shippingAddress ? "block" : "none";
         document.getElementById("orderDetailTotal").textContent = formatPrice(order.total);
         const pickWrap = document.getElementById("orderDetailPickTimeWrap");
         const pickEl = document.getElementById("orderDetailPickTime");
@@ -277,6 +288,27 @@
 
     document.getElementById("btnCloseOrderDetail").addEventListener("click", closeOrderDetail);
     orderDetailOverlay.addEventListener("click", closeOrderDetail);
+
+    document.getElementById("btnApproveOrder")?.addEventListener("click", async () => {
+      if (!selectedOrderId) return;
+      const btn = document.getElementById("btnApproveOrder");
+      btn.disabled = true;
+      btn.textContent = "Approving…";
+      try {
+        const res = await fetch(`/api/admin/orders/${selectedOrderId}/approve`, {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Failed to approve");
+        openOrderDetail(selectedOrderId);
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Approve & Create Label";
+      }
+    });
 
     document.getElementById("btnCreateLabel").addEventListener("click", async () => {
       if (!selectedOrderId) return;

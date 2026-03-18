@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pending Approvals - Inventory</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/js/deployment-header.js"></script>
+  <link rel="prefetch" href="/">
+  <link rel="prefetch" href="/orders.html">
+</head>
+<body>
+  <div class="app-layout">
+    <header class="top-nav top-nav-simple">
+      <a href="/" class="top-nav-back">← Dashboard</a>
+      <a href="/" class="top-nav-brand nav-logo-wrap"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPkludmVudG9yeTwvdGV4dD48L3N2Zz4=" alt="Inventory" class="nav-logo"></a>
+      <a href="/dashboard.html" class="top-nav-back" title="Switch deployment">Switch</a>
+    </header>
+    <main class="main-content">
+      <h1>Pending Approvals</h1>
+      <p class="approvals-hint">Orders with custom print-on-demand items awaiting manager approval. Review the PDF proof, then click Approve to create the shipping label.</p>
+      <div class="table-wrap">
+        <div class="loading" id="loading">Loading…</div>
+        <div class="empty" id="emptyState" style="display:none">No orders pending approval.</div>
+        <table class="orders-table" id="approvalsTable" style="display:none">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Order #</th>
+              <th>Customer</th>
+              <th>Total</th>
+              <th>Proof</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="approvalsBody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+  <script>
+    const loading = document.getElementById("loading");
+    const emptyState = document.getElementById("emptyState");
+    const approvalsTable = document.getElementById("approvalsTable");
+    const approvalsBody = document.getElementById("approvalsBody");
+
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
+    }
+
+    function formatPrice(n) {
+      return "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    async function loadPendingApprovals() {
+      loading.style.display = "block";
+      emptyState.style.display = "none";
+      approvalsTable.style.display = "none";
+      try {
+        const res = await fetch("/api/admin/pending-approvals", { credentials: "include" });
+        if (!res.ok) throw new Error("Failed to load");
+        const { orders } = await res.json();
+        loading.style.display = "none";
+        if (!orders || orders.length === 0) {
+          emptyState.style.display = "block";
+          return;
+        }
+        approvalsTable.style.display = "table";
+        approvalsBody.innerHTML = orders.map((o) => {
+          const proofLinks = (o.proofUrls || []).map((p) =>
+            `<a href="${escapeHtml(p.proofPdfUrl)}" target="_blank" rel="noopener" class="btn-small btn-apply">View ${escapeHtml(p.productName)} PDF</a>`
+          ).join(" ");
+          return `
+            <tr data-id="${o.id}">
+              <td>${new Date(o.createdAt).toLocaleString()}</td>
+              <td>#${o.id}</td>
+              <td>${escapeHtml(o.customerName)}<br><small>${escapeHtml(o.customerEmail)}</small></td>
+              <td class="num">${formatPrice(o.total)}</td>
+              <td>${proofLinks || "—"}</td>
+              <td>
+                <button type="button" class="btn-create btn-approve" data-id="${o.id}">Approve</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+        approvalsBody.querySelectorAll(".btn-approve").forEach((btn) => {
+          btn.addEventListener("click", () => approveOrder(Number(btn.dataset.id)));
+        });
+      } catch (e) {
+        loading.textContent = "Error: " + (e.message || "Could not load");
+      }
+    }
+
+    async function approveOrder(orderId) {
+      const btn = approvalsBody.querySelector(`.btn-approve[data-id="${orderId}"]`);
+      if (btn) btn.disabled = true;
+      try {
+        const res = await fetch(`/api/admin/orders/${orderId}/approve`, {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Approval failed");
+        await loadPendingApprovals();
+      } catch (e) {
+        alert(e.message || "Failed to approve order");
+        if (btn) btn.disabled = false;
+      }
+    }
+
+    loadPendingApprovals();
+  </script>
+  <style>
+    .approvals-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
+    .btn-approve { font-size: 0.9rem; padding: 0.4rem 0.75rem; }
+  </style>
+</body>
+</html>

@@ -74,6 +74,7 @@ app.use("/api/deployments", requireAuth, require("./routes/deployment.routes"));
 app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
 app.use("/api/shipping", require("./routes/shipping.routes"));
 app.use("/api/discount", require("./routes/discount.routes"));
+app.use("/api/admin", require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/admin.routes"));
 
 app.use(notFoundHandler);
 app.use(errorHandler);

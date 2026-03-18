@@ -1,7 +1,7 @@
 const prisma = require("../lib/prisma");
 const discountRuleService = require("./discountRule.service");
 
-function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, discountAmount: passedDiscountAmount, items }) {
+function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, discountAmount: passedDiscountAmount, items, status: initialStatus }) {
   if (!deploymentId) throw new Error("Deployment is required.");
   const depId = Number(deploymentId);
   return prisma.$transaction(async (tx) => {
@@ -117,7 +117,7 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
         shippingCost: shippingCostNum,
         shippingMethod: shippingMethodStr,
         discountAmount,
-        status: "pending",
+        status: initialStatus && String(initialStatus).trim() ? String(initialStatus).trim().toLowerCase() : "pending",
         total,
         items: {
           create: orderItems,
