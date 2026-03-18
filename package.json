@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "dev:admin": "cd admin-ui && npm run dev",
-    "build": "prisma generate",
+    "build": "prisma generate && npm run build:admin",
     "build:admin": "cd admin-ui && npm install && npm run build",
     "start": "node scripts/fix-failed-migration.js && prisma db push && node src/server.js",
     "prisma:generate": "prisma generate",
