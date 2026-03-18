@@ -1,5 +1,5 @@
 const express = require("express");
-const upsService = require("../services/ups.service");
+const shippingService = require("../services/shipping.service");
 const deploymentService = require("../services/deployment.service");
 const router = express.Router();
 
@@ -55,10 +55,10 @@ router.post("/rates", resolveDeploymentId, async (req, res, next) => {
       countryCode: "US",
     };
 
-    const rates = await upsService.getRates(dest, weightLbs);
+    const rates = await shippingService.getRates(dest, weightLbs);
     return res.status(200).json({ rates });
   } catch (err) {
-    if (err.message?.includes("UPS_CLIENT_ID") || err.message?.includes("UPS_CLIENT_SECRET")) {
+    if (err.message?.includes("EASYPOST_API_KEY")) {
       return res.status(503).json({ message: "Shipping rates are not configured" });
     }
     next(err);

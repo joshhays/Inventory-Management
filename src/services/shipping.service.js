@@ -43,6 +43,51 @@ function parseShippingAddress(shippingAddress) {
 }
 
 /**
+ * Get shipping rates for an address (no purchase).
+ * Creates an EasyPost Shipment to fetch rates, returns formatted for cart display.
+ *
+ * @param {Object} dest - { name, address1, address2?, city, state, zip }
+ * @param {number} weightLbs - Total package weight in pounds
+ * @param {Object} [parcel] - Optional { length, width, height } in inches
+ * @returns {Promise<Array<{ serviceCode, serviceName, totalCharges, currencyCode, transitDays? }>>}
+ */
+async function getRates(dest, weightLbs, parcel = null) {
+  const client = getClient();
+  const fromAddress = getOriginAddress();
+  const toAddress = {
+    name: dest.name || "Recipient",
+    street1: dest.address1,
+    street2: dest.address2 || undefined,
+    city: dest.city,
+    state: dest.state,
+    zip: dest.zip,
+    country: dest.countryCode || "US",
+  };
+  const parcelData = parcel || {
+    length: Number(process.env.EASYPOST_PARCEL_LENGTH) || 8,
+    width: Number(process.env.EASYPOST_PARCEL_WIDTH) || 5,
+    height: Number(process.env.EASYPOST_PARCEL_HEIGHT) || 5,
+    weight: weightLbs,
+  };
+
+  const shipment = await client.Shipment.create({
+    from_address: fromAddress,
+    to_address: toAddress,
+    parcel: parcelData,
+  });
+
+  const rates = (shipment.rates || []).map((r) => ({
+    serviceCode: r.id || `${r.carrier}_${r.service}`,
+    serviceName: `${r.carrier} ${r.service}`.trim(),
+    totalCharges: parseFloat(r.rate) || 0,
+    currencyCode: r.currency || "USD",
+    transitDays: r.delivery_days != null ? r.delivery_days : null,
+  }));
+
+  return rates.sort((a, b) => a.totalCharges - b.totalCharges);
+}
+
+/**
  * Create a shipping label for an order.
  * Creates an EasyPost Shipment, buys the cheapest rate, returns label URL and tracking code.
  *
@@ -90,6 +135,7 @@ async function createLabel(orderDetails, parcel = null) {
 }
 
 module.exports = {
+  getRates,
   createLabel,
   getOriginAddress,
   parseShippingAddress,
