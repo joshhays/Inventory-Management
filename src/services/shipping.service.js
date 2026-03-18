@@ -23,6 +23,19 @@ function getOriginAddress() {
 }
 
 /**
+ * Filter EasyPost rates to only UPSDAP (UPS Delivery Access Point) options.
+ * @param {Array} rates - EasyPost rate objects
+ * @returns {Array} Rates where service or carrier includes UPSDAP
+ */
+function filterUpsdapRates(rates) {
+  return (rates || []).filter(
+    (r) =>
+      (r.service && String(r.service).toUpperCase().includes("UPSDAP")) ||
+      (r.carrier && String(r.carrier).toUpperCase().includes("UPSDAP"))
+  );
+}
+
+/**
  * Parse shipping address from Order (JSON string or object)
  */
 function parseShippingAddress(shippingAddress) {
@@ -93,7 +106,9 @@ async function getRates(dest, itemCount, deploymentId = null) {
     parcel: parcelData,
   });
 
-  const rates = (shipment.rates || []).map((r) => ({
+  const upsdapRates = filterUpsdapRates(shipment.rates);
+
+  const rates = upsdapRates.map((r) => ({
     serviceCode: r.id || `${r.carrier}_${r.service}`,
     serviceName: `${r.carrier} ${r.service}`.trim(),
     totalCharges: parseFloat(r.rate) || 0,
@@ -146,9 +161,19 @@ async function createLabel(orderDetails, parcel = null, opts = {}) {
     parcel: parcelData,
   });
 
-  const lowestRate = shipment.lowestRate();
+  const allRates = shipment.rates || [];
+  const upsdapRates = filterUpsdapRates(allRates);
+  const lowestRate =
+    upsdapRates.length > 0
+      ? upsdapRates.reduce((a, b) => (parseFloat(a.rate) < parseFloat(b.rate) ? a : b))
+      : null;
+
   if (!lowestRate) {
-    throw new Error("No shipping rates available for this address");
+    throw new Error(
+      upsdapRates.length === 0 && allRates.length > 0
+        ? "No UPSDAP shipping rates available for this address"
+        : "No shipping rates available for this address"
+    );
   }
 
   const boughtShipment = await client.Shipment.buy(shipment.id, lowestRate);
