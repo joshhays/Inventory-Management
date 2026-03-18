@@ -2052,7 +2052,8 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   margin-top: 0.75rem;
 }
 
-.store-qty-input {
+.store-qty-input,
+.store-qty-select {
   width: 60px;
   padding: 0.4rem;
   font-size: 0.9rem;
@@ -2486,6 +2487,15 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   min-width: 36px;
   text-align: center;
   font-size: 0.95rem;
+}
+
+.store-cart-qty-select {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.9rem;
+  border: none;
+  background: var(--glass-bg);
+  cursor: pointer;
+  min-width: 72px;
 }
 
 .store-cart-delete {

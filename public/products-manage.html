@@ -81,6 +81,11 @@
         <input type="number" id="productPrice" step="0.01" min="0" required placeholder="0.00">
       </div>
       <div class="form-row">
+        <label>Allowed quantities</label>
+        <input type="text" id="productAllowedQuantities" placeholder="e.g. 250, 500, 750" title="Restrict order qty to these values (comma-separated). Leave empty for any quantity.">
+        <p class="form-hint">For products like business cards: only let customers order 250, 500, 750, etc. Leave empty to allow any quantity.</p>
+      </div>
+      <div class="form-row">
         <label>Description</label>
         <textarea id="productDescription" placeholder="Optional description"></textarea>
       </div>
@@ -196,6 +201,16 @@
     const status = document.getElementById("status");
     const table = document.getElementById("table");
     const body = document.getElementById("body");
+
+    function formatAllowedQuantitiesForInput(val) {
+      if (!val) return "";
+      try {
+        const arr = typeof val === "string" && val.startsWith("[") ? JSON.parse(val) : val;
+        return Array.isArray(arr) ? arr.join(", ") : "";
+      } catch (_) {
+        return "";
+      }
+    }
 
     function escape(s) {
       const div = document.createElement("div");
@@ -548,6 +563,7 @@
       document.getElementById("productSku").value = p.sku;
       document.getElementById("productQuantity").value = p.quantity;
       document.getElementById("productPrice").value = p.price;
+      document.getElementById("productAllowedQuantities").value = formatAllowedQuantitiesForInput(p.allowedQuantities);
       document.getElementById("productDescription").value = p.description || "";
       document.getElementById("productCategory").value = p.category || "";
       document.getElementById("productGroup").value = p.groupId ?? "";
@@ -566,6 +582,7 @@
       document.getElementById("formSidebarTitle").textContent = "Create Product";
       productForm.reset();
       document.getElementById("productQuantity").value = "0";
+      document.getElementById("productAllowedQuantities").value = "";
       document.getElementById("productCategory").value = "";
       document.getElementById("productGroup").value = "";
       document.getElementById("productType").value = "regular";
@@ -621,6 +638,7 @@
         productType: isKit ? "kit" : "regular",
         isPrintOnDemand: document.getElementById("productPrintOnDemand").checked,
         printTemplateConfig: document.getElementById("productPrintTemplateConfig").value.trim() || null,
+        allowedQuantities: document.getElementById("productAllowedQuantities").value.trim() || null,
       };
       if (!payload.name || !payload.sku || payload.price === undefined) {
         alert("Name, SKU, and price are required.");

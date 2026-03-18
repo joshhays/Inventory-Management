@@ -94,6 +94,16 @@
       cartCount.textContent = cart.reduce((s, i) => s + (i.quantity || 1), 0);
     }
 
+    function parseAllowedQuantities(val) {
+      if (!val) return null;
+      try {
+        const arr = typeof val === "string" && val.startsWith("[") ? JSON.parse(val) : val;
+        return Array.isArray(arr) && arr.length ? arr.map((n) => parseInt(n, 10)).filter((n) => !isNaN(n) && n > 0) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
     function getAvailableQty(p) {
       if ((p.productType || "regular") === "kit" && p.kitItems?.length) {
         let min = Infinity;
@@ -110,6 +120,11 @@
     function addToCart(productId, qty, printData) {
       const p = products.find((x) => x.id === productId);
       if (!p) return;
+      const allowed = parseAllowedQuantities(p.allowedQuantities);
+      if (allowed && allowed.length && !allowed.includes(qty)) {
+        alert(p.name + " can only be ordered in quantities of: " + allowed.join(", "));
+        return;
+      }
       const available = getAvailableQty(p);
       const cart = getCart();
       const existing = cart.find((i) => i.productId === productId && JSON.stringify(i.printData || {}) === JSON.stringify(printData || {}));
@@ -134,6 +149,7 @@
           name: p.name,
           price: p.price,
           imageUrl: imgUrl || null,
+          allowedQuantities: p.allowedQuantities || null,
         };
         if (printData && typeof printData === "object" && Object.keys(printData).length) item.printData = printData;
         cart.push(item);
@@ -180,10 +196,14 @@
                 '" alt="" class="store-list-thumb-img store-list-thumb-contain" loading="lazy" onerror="this.nextElementSibling.style.display=\'block\';this.style.display=\'none\'"><span class="store-list-thumb-placeholder" style="display:none">—</span></span></a>'
               : '<span class="store-list-thumb-wrap"><img src="' + imgUrl + '" alt="" class="store-list-thumb-img store-list-thumb-contain" loading="lazy" onerror="this.nextElementSibling.style.display=\'block\';this.style.display=\'none\'"><span class="store-list-thumb-placeholder" style="display:none">—</span></span>'
             : '<div class="store-list-thumb-placeholder">—</div>';
+          const allowedQty = parseAllowedQuantities(p.allowedQuantities);
+          const qtyControl = allowedQty && allowedQty.length
+            ? '<select class="store-qty-select store-list-qty" data-id="' + p.id + '">' +
+              allowedQty.map((q) => '<option value="' + q + '">' + q + '</option>').join("") + "</select>"
+            : '<input type="number" min="1" value="1" class="store-qty-input store-list-qty" data-id="' + p.id + '">';
           const actionsCell = isPOD
             ? '<button type="button" class="btn-apply store-pod-customize-btn" data-id="' + p.id + '">Customize & Add</button>'
-            : '<input type="number" min="1" value="1" class="store-qty-input store-list-qty" data-id="' + p.id + '">' +
-              '<button type="button" class="btn-apply store-add-btn" data-id="' + p.id + '">Add</button>';
+            : qtyControl + '<button type="button" class="btn-apply store-add-btn" data-id="' + p.id + '">Add</button>';
           return (
             "<tr>" +
             '<td class="store-list-thumb-cell">' +
@@ -212,8 +232,8 @@
       body.querySelectorAll(".store-add-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const id = Number(btn.dataset.id);
-          const input = body.querySelector('.store-list-qty[data-id="' + id + '"]');
-          const qty = Math.max(1, parseInt(input?.value, 10) || 1);
+          const qtyEl = body.querySelector('.store-list-qty[data-id="' + id + '"]');
+          const qty = Math.max(1, parseInt(qtyEl?.value, 10) || 1);
           addToCart(id, qty);
         });
       });

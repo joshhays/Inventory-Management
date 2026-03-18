@@ -1,6 +1,25 @@
 const prisma = require("../lib/prisma");
 const inventoryLog = require("./inventoryLog.service");
 
+/** Parse allowedQuantities input to JSON array string. Accepts "250, 500, 750" or "[250,500,750]" */
+function parseAllowedQuantities(input) {
+  if (input == null || String(input).trim() === "") return null;
+  const s = String(input).trim();
+  let arr = [];
+  try {
+    if (s.startsWith("[")) {
+      arr = JSON.parse(s);
+    } else {
+      arr = s.split(/[,\s]+/).map((n) => parseInt(n, 10)).filter((n) => !isNaN(n) && n > 0);
+    }
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    arr = [...new Set(arr)].sort((a, b) => a - b);
+    return JSON.stringify(arr);
+  } catch (_) {
+    return null;
+  }
+}
+
 /** Calculate kit quantity from child products: min(floor(child.qty / qtyPerKit)) */
 const calculateKitQuantity = async (kitId) => {
   const items = await prisma.kitItem.findMany({
@@ -78,6 +97,7 @@ const createProduct = (productData) => {
         productData.printTemplateConfig != null && String(productData.printTemplateConfig).trim()
           ? String(productData.printTemplateConfig).trim()
           : null,
+      allowedQuantities: parseAllowedQuantities(productData.allowedQuantities),
       ...(productData.groupId != null && productData.groupId !== "" && {
         groupId: Number(productData.groupId) || null,
       }),
@@ -120,6 +140,9 @@ const updateProduct = async (id, productData) => {
           productData.printTemplateConfig == null || String(productData.printTemplateConfig).trim() === ""
             ? null
             : String(productData.printTemplateConfig).trim(),
+      }),
+      ...(productData.allowedQuantities !== undefined && {
+        allowedQuantities: parseAllowedQuantities(productData.allowedQuantities),
       }),
     },
   });

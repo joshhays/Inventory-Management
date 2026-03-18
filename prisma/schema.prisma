@@ -142,6 +142,7 @@ model Product {
   group               UserGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
   isPrintOnDemand     Boolean      @default(false)
   printTemplateConfig String?      // JSON: { layout, fields: [{ key, label }] }
+  allowedQuantities   String?      // JSON array e.g. [250,500,750] - restrict order qty to these values
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   files               ProductFile[]

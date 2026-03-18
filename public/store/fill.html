@@ -137,6 +137,16 @@
         return values;
       }
 
+      function parseAllowedQuantities(val) {
+        if (!val) return null;
+        try {
+          const arr = typeof val === "string" && val.startsWith("[") ? JSON.parse(val) : val;
+          return Array.isArray(arr) && arr.length ? arr.map((n) => parseInt(n, 10)).filter((n) => !isNaN(n) && n > 0) : null;
+        } catch (_) {
+          return null;
+        }
+      }
+
       function validatePODRequired(config, values) {
         for (const f of config.fields || []) {
           if (!f.required) continue;
@@ -379,6 +389,36 @@
           const config = getPODConfig(product);
           buildForm(product, config);
 
+          const qtyRow = document.querySelector(".pod-qty-row");
+          if (qtyRow) {
+            const allowed = parseAllowedQuantities(product.allowedQuantities);
+            const lab = document.createElement("label");
+            lab.textContent = "Quantity";
+            lab.setAttribute("for", "podQty");
+            qtyRow.innerHTML = "";
+            qtyRow.appendChild(lab);
+            if (allowed && allowed.length) {
+              const select = document.createElement("select");
+              select.id = "podQty";
+              select.className = "pod-qty-input pod-qty-select";
+              allowed.forEach((q) => {
+                const opt = document.createElement("option");
+                opt.value = q;
+                opt.textContent = q;
+                select.appendChild(opt);
+              });
+              qtyRow.appendChild(select);
+            } else {
+              const inp = document.createElement("input");
+              inp.type = "number";
+              inp.id = "podQty";
+              inp.min = 1;
+              inp.value = 1;
+              inp.className = "pod-qty-input";
+              qtyRow.appendChild(inp);
+            }
+          }
+
           document.getElementById("fillBackLink").href = base + "/products";
           document.getElementById("fillCancelBtn").href = base + "/products";
 
@@ -389,7 +429,12 @@
               alert(validation.message);
               return;
             }
-            const qty = Math.max(1, parseInt(document.getElementById("podQty").value, 10) || 1);
+            const qty = Math.max(1, parseInt(document.getElementById("podQty")?.value, 10) || 1);
+            const allowed = parseAllowedQuantities(product.allowedQuantities);
+            if (allowed && allowed.length && !allowed.includes(qty)) {
+              alert(product.name + " can only be ordered in quantities of: " + allowed.join(", "));
+              return;
+            }
             const cart = getCart();
             const existing = cart.find((i) => i.productId === product.id && JSON.stringify(i.printData || {}) === JSON.stringify(printData || {}));
             const requested = (existing ? existing.quantity : 0) + qty;
@@ -412,6 +457,7 @@
                 price: product.price,
                 imageUrl: imgUrl || null,
                 printData: printData,
+                allowedQuantities: product.allowedQuantities || null,
               });
             }
             setCart(cart);

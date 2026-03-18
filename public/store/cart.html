@@ -118,13 +118,29 @@
       if (el) el.textContent = count;
     }
 
-    function updateQty(productId, delta) {
+    function parseAllowedQuantities(val) {
+      if (!val) return null;
+      try {
+        const arr = typeof val === "string" && val.startsWith("[") ? JSON.parse(val) : val;
+        return Array.isArray(arr) && arr.length ? arr.map((n) => parseInt(n, 10)).filter((n) => !isNaN(n) && n > 0) : null;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function updateQty(productId, deltaOrValue, isSet = false) {
       const cart = getCart();
       const item = cart.find((i) => i.productId === productId);
       if (!item) return;
-      item.quantity = Math.max(0, (item.quantity || 1) + delta);
-      if (item.quantity <= 0) {
+      const newQty = isSet ? Math.max(1, parseInt(deltaOrValue, 10) || 1) : Math.max(0, (item.quantity || 1) + deltaOrValue);
+      const allowed = parseAllowedQuantities(item.allowedQuantities);
+      const finalQty = allowed && allowed.length
+        ? (allowed.includes(newQty) ? newQty : allowed[0])
+        : newQty;
+      if (finalQty <= 0) {
         cart.splice(cart.indexOf(item), 1);
+      } else {
+        item.quantity = finalQty;
       }
       setCart(cart);
       render();
@@ -191,9 +207,24 @@
                 <p class="store-cart-card-price">$${formatPrice(i.price)}</p>
                 <div class="store-cart-card-actions">
                   <div class="store-cart-qty-wrap">
-                    <button type="button" class="store-cart-qty-btn" data-id="${i.productId}" data-delta="-1" aria-label="Decrease">−</button>
-                    <span class="store-cart-qty-val">${i.quantity || 1}</span>
-                    <button type="button" class="store-cart-qty-btn" data-id="${i.productId}" data-delta="1" aria-label="Increase">+</button>
+                    ${(function() {
+                      const allowed = (function() {
+                        try {
+                          const arr = typeof i.allowedQuantities === "string" && i.allowedQuantities.startsWith("[") ? JSON.parse(i.allowedQuantities) : i.allowedQuantities;
+                          return Array.isArray(arr) && arr.length ? arr : null;
+                        } catch (_) { return null; }
+                      })();
+                      const qty = i.quantity || 1;
+                      const displayQty = allowed && allowed.includes(qty) ? qty : (allowed ? allowed[0] : qty);
+                      if (allowed && allowed.length) {
+                        return '<select class="store-cart-qty-select" data-id="' + i.productId + '">' +
+                          allowed.map((n) => '<option value="' + n + '"' + (n === displayQty ? ' selected' : '') + '>' + n + '</option>').join("") +
+                          '</select>';
+                      }
+                      return '<button type="button" class="store-cart-qty-btn" data-id="' + i.productId + '" data-delta="-1" aria-label="Decrease">−</button>' +
+                        '<span class="store-cart-qty-val">' + displayQty + '</span>' +
+                        '<button type="button" class="store-cart-qty-btn" data-id="' + i.productId + '" data-delta="1" aria-label="Increase">+</button>';
+                    })()}
                   </div>
                   <button type="button" class="store-cart-delete" data-id="${i.productId}">Delete</button>
                 </div>
@@ -236,6 +267,9 @@
 
       content.querySelectorAll(".store-cart-qty-btn").forEach((btn) => {
         btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), Number(btn.dataset.delta)));
+      });
+      content.querySelectorAll(".store-cart-qty-select").forEach((sel) => {
+        sel.addEventListener("change", () => updateQty(Number(sel.dataset.id), Number(sel.value), true));
       });
       content.querySelectorAll(".store-cart-delete").forEach((btn) => {
         btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), -999));

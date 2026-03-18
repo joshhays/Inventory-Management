@@ -25,6 +25,17 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
       }
 
       const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
+      let allowedQuantities = null;
+      try {
+        const raw = product.allowedQuantities;
+        if (raw && typeof raw === "string" && raw.startsWith("[")) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length) allowedQuantities = arr;
+        }
+      } catch (_) {}
+      if (allowedQuantities && allowedQuantities.length && !allowedQuantities.includes(quantity)) {
+        throw new Error(`${product.name} can only be ordered in quantities of: ${allowedQuantities.join(", ")}`);
+      }
       let available = 0;
       if (product.productType === "kit" && product.kitItems?.length) {
         let minAvailable = Infinity;
