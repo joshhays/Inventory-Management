@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const orderService = require("../services/order.service");
+const shippingService = require("../services/shipping.service");
 const { generateBusinessCardPdf } = require("../services/podPdf.service");
 const { businessCardTemplate } = require("../podTemplates");
 
@@ -138,6 +139,36 @@ const getOrderItemPrintPdf = async (req, res, next) => {
   }
 };
 
+const createLabel = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { parcel } = req.body;
+    const order = await orderService.findById(id, req.deploymentId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+    if (!order.shippingAddress) {
+      return res.status(400).json({ message: "Order has no shipping address." });
+    }
+    const result = await shippingService.createLabel(order, parcel || null);
+    const updated = await orderService.updateLabelInfo(
+      id,
+      {
+        shippingLabelUrl: result.labelUrl,
+        trackingCode: result.trackingCode,
+        easypostShipmentId: result.easypostShipmentId,
+      },
+      req.deploymentId
+    );
+    return res.status(200).json(updated);
+  } catch (error) {
+    if (error.message?.includes("EASYPOST_API_KEY")) {
+      return res.status(503).json({ message: "Shipping labels are not configured." });
+    }
+    return next(error);
+  }
+};
+
 module.exports = {
   createOrder,
   getOrders,
@@ -145,4 +176,5 @@ module.exports = {
   updateOrderStatus,
   updateOrderItemPicked,
   getOrderItemPrintPdf,
+  createLabel,
 };

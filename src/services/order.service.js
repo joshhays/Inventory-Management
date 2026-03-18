@@ -179,6 +179,20 @@ async function updateItemPicked(orderId, itemId, picked, deploymentId) {
   return findById(orderId, deploymentId);
 }
 
+async function updateLabelInfo(orderId, { shippingLabelUrl, trackingCode, easypostShipmentId }, deploymentId) {
+  const where = { id: Number(orderId) };
+  if (deploymentId != null) where.deploymentId = Number(deploymentId);
+  return prisma.order.update({
+    where,
+    data: {
+      shippingLabelUrl: shippingLabelUrl || undefined,
+      trackingCode: trackingCode || undefined,
+      easypostShipmentId: easypostShipmentId || undefined,
+    },
+    include: { items: true },
+  });
+}
+
 module.exports = {
   create,
   findMany,
@@ -186,4 +200,5 @@ module.exports = {
   findById,
   updateStatus,
   updateItemPicked,
+  updateLabelInfo,
 };

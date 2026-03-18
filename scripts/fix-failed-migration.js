@@ -4,10 +4,14 @@
  * Uses better-sqlite3 directly to avoid Prisma schema validation issues.
  */
 require("dotenv").config();
+const dbUrl = process.env.DATABASE_URL || "";
+if (dbUrl.startsWith("postgresql")) {
+  process.exit(0);
+}
 const path = require("path");
 const fs = require("fs");
 
-let dbPath = (process.env.DATABASE_URL || "file:./dev.db").replace(/^file:/, "").trim();
+let dbPath = dbUrl.replace(/^file:/, "").trim() || "./dev.db";
 if (!path.isAbsolute(dbPath)) {
   dbPath = path.resolve(process.cwd(), dbPath);
 }

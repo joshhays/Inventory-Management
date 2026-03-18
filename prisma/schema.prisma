@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -174,9 +174,9 @@ model Order {
   shippingAddress     String?
   shippingCost        Float        @default(0)
   shippingMethod      String?
-  trackingNumber      String?      // UPS tracking for label integration
-  shippingLabelUrl    String?      // URL to printed label (POD)
-  upsShipmentId       String?      // UPS shipment ID for label creation
+  shippingLabelUrl    String?      // URL to shipping label (EasyPost, etc.)
+  trackingCode        String?      // Carrier tracking number
+  easypostShipmentId  String?      // EasyPost shipment ID for label creation
   status              String      @default("pending")
   total               Float
   pickingStartedAt    DateTime?
