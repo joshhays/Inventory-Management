@@ -144,6 +144,8 @@ model Product {
   isPrintOnDemand     Boolean      @default(false)
   printTemplateConfig String?      // JSON: { layout, fields: [{ key, label }] }
   allowedQuantities   String?      // JSON array e.g. [250,500,750] - restrict order qty to these values
+  minOrderQty        Int?         // Min quantity per order (null = no min)
+  maxOrderQty        Int?         // Max quantity per order (null = no max)
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   files               ProductFile[]

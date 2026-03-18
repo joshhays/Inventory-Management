@@ -36,6 +36,14 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
       if (allowedQuantities && allowedQuantities.length && !allowedQuantities.includes(quantity)) {
         throw new Error(`${product.name} can only be ordered in quantities of: ${allowedQuantities.join(", ")}`);
       }
+      const minOrderQty = product.minOrderQty != null ? Number(product.minOrderQty) : null;
+      const maxOrderQty = product.maxOrderQty != null ? Number(product.maxOrderQty) : null;
+      if (minOrderQty != null && quantity < minOrderQty) {
+        throw new Error(`${product.name} requires a minimum order quantity of ${minOrderQty}`);
+      }
+      if (maxOrderQty != null && quantity > maxOrderQty) {
+        throw new Error(`${product.name} has a maximum order quantity of ${maxOrderQty}`);
+      }
       let available = 0;
       if (product.productType === "kit" && product.kitItems?.length) {
         let minAvailable = Infinity;

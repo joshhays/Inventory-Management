@@ -42,6 +42,22 @@
               <input type="number" id="productPrice" step="0.01" min="0" required placeholder="0.00">
             </div>
             <div class="form-row">
+              <label>Order quantity rules</label>
+              <div class="order-qty-rules">
+                <div class="order-qty-row">
+                  <label for="productAllowedQuantities">Allowed quantities</label>
+                  <input type="text" id="productAllowedQuantities" placeholder="e.g. 250, 500, 750">
+                </div>
+                <div class="order-qty-row order-qty-minmax">
+                  <label for="productMinOrderQty">Min order qty</label>
+                  <input type="number" id="productMinOrderQty" min="1" placeholder="—">
+                  <label for="productMaxOrderQty">Max order qty</label>
+                  <input type="number" id="productMaxOrderQty" min="1" placeholder="—">
+                </div>
+              </div>
+              <p class="form-hint">Allowed quantities: exact values only. Or min/max for a range. Leave empty for any quantity.</p>
+            </div>
+            <div class="form-row">
               <label>Description</label>
               <textarea id="productDescription" placeholder="Optional description" rows="3"></textarea>
             </div>
@@ -128,6 +144,16 @@
       const div = document.createElement("div");
       div.textContent = s ?? "";
       return div.innerHTML;
+    }
+
+    function formatAllowedQuantitiesForInput(val) {
+      if (!val) return "";
+      try {
+        const arr = typeof val === "string" && val.startsWith("[") ? JSON.parse(val) : val;
+        return Array.isArray(arr) ? arr.join(", ") : "";
+      } catch (_) {
+        return "";
+      }
     }
 
     function getDefaultPODConfig() {
@@ -308,6 +334,9 @@
         document.getElementById("productQuantity").value = product.productType === "kit" ? (product.quantity ?? 0) : (product.quantity ?? 0);
         document.getElementById("productType").value = product.productType || "regular";
         document.getElementById("productPrice").value = product.price ?? "";
+        document.getElementById("productAllowedQuantities").value = formatAllowedQuantitiesForInput(product.allowedQuantities);
+        document.getElementById("productMinOrderQty").value = product.minOrderQty != null ? product.minOrderQty : "";
+        document.getElementById("productMaxOrderQty").value = product.maxOrderQty != null ? product.maxOrderQty : "";
         document.getElementById("productDescription").value = product.description || "";
         const categorySelect = document.getElementById("productCategory");
         const productCat = product.category || "";
@@ -415,6 +444,9 @@
         productType: isKit ? "kit" : "regular",
         isPrintOnDemand: document.getElementById("productPrintOnDemand").checked,
         printTemplateConfig: document.getElementById("productPrintTemplateConfig").value.trim() || null,
+        allowedQuantities: document.getElementById("productAllowedQuantities").value.trim() || null,
+        minOrderQty: document.getElementById("productMinOrderQty").value.trim() || null,
+        maxOrderQty: document.getElementById("productMaxOrderQty").value.trim() || null,
       };
       try {
         const res = await fetch("/api/products/" + productId, {

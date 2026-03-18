@@ -1,6 +1,13 @@
 const prisma = require("../lib/prisma");
 const inventoryLog = require("./inventoryLog.service");
 
+/** Parse optional int for min/max order qty. Returns null for empty/invalid. */
+function parseOptionalInt(input) {
+  if (input == null || String(input).trim() === "") return null;
+  const n = parseInt(String(input).trim(), 10);
+  return !isNaN(n) && n > 0 ? n : null;
+}
+
 /** Parse allowedQuantities input to JSON array string. Accepts "250, 500, 750" or "[250,500,750]" */
 function parseAllowedQuantities(input) {
   if (input == null || String(input).trim() === "") return null;
@@ -98,6 +105,8 @@ const createProduct = (productData) => {
           ? String(productData.printTemplateConfig).trim()
           : null,
       allowedQuantities: parseAllowedQuantities(productData.allowedQuantities),
+      minOrderQty: parseOptionalInt(productData.minOrderQty),
+      maxOrderQty: parseOptionalInt(productData.maxOrderQty),
       ...(productData.groupId != null && productData.groupId !== "" && {
         groupId: Number(productData.groupId) || null,
       }),
@@ -143,6 +152,12 @@ const updateProduct = async (id, productData) => {
       }),
       ...(productData.allowedQuantities !== undefined && {
         allowedQuantities: parseAllowedQuantities(productData.allowedQuantities),
+      }),
+      ...(productData.minOrderQty !== undefined && {
+        minOrderQty: parseOptionalInt(productData.minOrderQty),
+      }),
+      ...(productData.maxOrderQty !== undefined && {
+        maxOrderQty: parseOptionalInt(productData.maxOrderQty),
       }),
     },
   });

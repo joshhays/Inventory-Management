@@ -1169,6 +1169,27 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   resize: vertical;
 }
 
+.order-qty-rules .order-qty-row {
+  margin-bottom: 0.5rem;
+}
+.order-qty-rules .order-qty-row label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.85rem;
+}
+.order-qty-rules .order-qty-minmax {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+.order-qty-rules .order-qty-minmax label {
+  flex: 0 0 auto;
+}
+.order-qty-rules .order-qty-minmax input {
+  width: 80px;
+}
+
 .form-sidebar .form-actions {
   display: flex;
   gap: 0.5rem;

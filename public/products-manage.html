@@ -81,9 +81,20 @@
         <input type="number" id="productPrice" step="0.01" min="0" required placeholder="0.00">
       </div>
       <div class="form-row">
-        <label>Allowed quantities</label>
-        <input type="text" id="productAllowedQuantities" placeholder="e.g. 250, 500, 750" title="Restrict order qty to these values (comma-separated). Leave empty for any quantity.">
-        <p class="form-hint">For products like business cards: only let customers order 250, 500, 750, etc. Leave empty to allow any quantity.</p>
+        <label>Order quantity rules</label>
+        <div class="order-qty-rules">
+          <div class="order-qty-row">
+            <label for="productAllowedQuantities">Allowed quantities</label>
+            <input type="text" id="productAllowedQuantities" placeholder="e.g. 250, 500, 750" title="Restrict to these exact values (comma-separated). Leave empty for any quantity.">
+          </div>
+          <div class="order-qty-row order-qty-minmax">
+            <label for="productMinOrderQty">Min order qty</label>
+            <input type="number" id="productMinOrderQty" min="1" placeholder="—" title="Minimum quantity per order. Leave empty for no minimum.">
+            <label for="productMaxOrderQty">Max order qty</label>
+            <input type="number" id="productMaxOrderQty" min="1" placeholder="—" title="Maximum quantity per order. Leave empty for no maximum.">
+          </div>
+        </div>
+        <p class="form-hint">Allowed quantities: only let customers order 250, 500, 750, etc. Or use min/max for a range (e.g. min 1, max 1000). Leave all empty for any quantity.</p>
       </div>
       <div class="form-row">
         <label>Description</label>
@@ -564,6 +575,8 @@
       document.getElementById("productQuantity").value = p.quantity;
       document.getElementById("productPrice").value = p.price;
       document.getElementById("productAllowedQuantities").value = formatAllowedQuantitiesForInput(p.allowedQuantities);
+      document.getElementById("productMinOrderQty").value = p.minOrderQty != null ? p.minOrderQty : "";
+      document.getElementById("productMaxOrderQty").value = p.maxOrderQty != null ? p.maxOrderQty : "";
       document.getElementById("productDescription").value = p.description || "";
       document.getElementById("productCategory").value = p.category || "";
       document.getElementById("productGroup").value = p.groupId ?? "";
@@ -583,6 +596,8 @@
       productForm.reset();
       document.getElementById("productQuantity").value = "0";
       document.getElementById("productAllowedQuantities").value = "";
+      document.getElementById("productMinOrderQty").value = "";
+      document.getElementById("productMaxOrderQty").value = "";
       document.getElementById("productCategory").value = "";
       document.getElementById("productGroup").value = "";
       document.getElementById("productType").value = "regular";
@@ -639,6 +654,8 @@
         isPrintOnDemand: document.getElementById("productPrintOnDemand").checked,
         printTemplateConfig: document.getElementById("productPrintTemplateConfig").value.trim() || null,
         allowedQuantities: document.getElementById("productAllowedQuantities").value.trim() || null,
+        minOrderQty: document.getElementById("productMinOrderQty").value.trim() || null,
+        maxOrderQty: document.getElementById("productMaxOrderQty").value.trim() || null,
       };
       if (!payload.name || !payload.sku || payload.price === undefined) {
         alert("Name, SKU, and price are required.");

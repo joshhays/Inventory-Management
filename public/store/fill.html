@@ -397,6 +397,8 @@
             lab.setAttribute("for", "podQty");
             qtyRow.innerHTML = "";
             qtyRow.appendChild(lab);
+            const minQty = product.minOrderQty != null ? Number(product.minOrderQty) : 1;
+            const maxQty = product.maxOrderQty != null ? Number(product.maxOrderQty) : null;
             if (allowed && allowed.length) {
               const select = document.createElement("select");
               select.id = "podQty";
@@ -412,8 +414,9 @@
               const inp = document.createElement("input");
               inp.type = "number";
               inp.id = "podQty";
-              inp.min = 1;
-              inp.value = 1;
+              inp.min = minQty;
+              if (maxQty != null) inp.max = maxQty;
+              inp.value = minQty;
               inp.className = "pod-qty-input";
               qtyRow.appendChild(inp);
             }
@@ -433,6 +436,16 @@
             const allowed = parseAllowedQuantities(product.allowedQuantities);
             if (allowed && allowed.length && !allowed.includes(qty)) {
               alert(product.name + " can only be ordered in quantities of: " + allowed.join(", "));
+              return;
+            }
+            const minQty = product.minOrderQty != null ? Number(product.minOrderQty) : null;
+            const maxQty = product.maxOrderQty != null ? Number(product.maxOrderQty) : null;
+            if (minQty != null && qty < minQty) {
+              alert(product.name + " requires a minimum order quantity of " + minQty);
+              return;
+            }
+            if (maxQty != null && qty > maxQty) {
+              alert(product.name + " has a maximum order quantity of " + maxQty);
               return;
             }
             const cart = getCart();
@@ -458,6 +471,8 @@
                 imageUrl: imgUrl || null,
                 printData: printData,
                 allowedQuantities: product.allowedQuantities || null,
+                minOrderQty: product.minOrderQty ?? null,
+                maxOrderQty: product.maxOrderQty ?? null,
               });
             }
             setCart(cart);

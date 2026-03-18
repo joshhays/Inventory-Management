@@ -125,6 +125,16 @@
         alert(p.name + " can only be ordered in quantities of: " + allowed.join(", "));
         return;
       }
+      const minQty = p.minOrderQty != null ? Number(p.minOrderQty) : null;
+      const maxQty = p.maxOrderQty != null ? Number(p.maxOrderQty) : null;
+      if (minQty != null && qty < minQty) {
+        alert(p.name + " requires a minimum order quantity of " + minQty);
+        return;
+      }
+      if (maxQty != null && qty > maxQty) {
+        alert(p.name + " has a maximum order quantity of " + maxQty);
+        return;
+      }
       const available = getAvailableQty(p);
       const cart = getCart();
       const existing = cart.find((i) => i.productId === productId && JSON.stringify(i.printData || {}) === JSON.stringify(printData || {}));
@@ -150,6 +160,8 @@
           price: p.price,
           imageUrl: imgUrl || null,
           allowedQuantities: p.allowedQuantities || null,
+          minOrderQty: p.minOrderQty ?? null,
+          maxOrderQty: p.maxOrderQty ?? null,
         };
         if (printData && typeof printData === "object" && Object.keys(printData).length) item.printData = printData;
         cart.push(item);
@@ -197,10 +209,13 @@
               : '<span class="store-list-thumb-wrap"><img src="' + imgUrl + '" alt="" class="store-list-thumb-img store-list-thumb-contain" loading="lazy" onerror="this.nextElementSibling.style.display=\'block\';this.style.display=\'none\'"><span class="store-list-thumb-placeholder" style="display:none">—</span></span>'
             : '<div class="store-list-thumb-placeholder">—</div>';
           const allowedQty = parseAllowedQuantities(p.allowedQuantities);
+          const minQty = p.minOrderQty != null ? Number(p.minOrderQty) : 1;
+          const maxQty = p.maxOrderQty != null ? Number(p.maxOrderQty) : null;
+          const defaultQty = allowedQty && allowedQty.length ? allowedQty[0] : minQty;
           const qtyControl = allowedQty && allowedQty.length
             ? '<select class="store-qty-select store-list-qty" data-id="' + p.id + '">' +
               allowedQty.map((q) => '<option value="' + q + '">' + q + '</option>').join("") + "</select>"
-            : '<input type="number" min="1" value="1" class="store-qty-input store-list-qty" data-id="' + p.id + '">';
+            : '<input type="number" min="' + minQty + '"' + (maxQty != null ? ' max="' + maxQty + '"' : '') + ' value="' + defaultQty + '" class="store-qty-input store-list-qty" data-id="' + p.id + '">';
           const actionsCell = isPOD
             ? '<button type="button" class="btn-apply store-pod-customize-btn" data-id="' + p.id + '">Customize & Add</button>'
             : qtyControl + '<button type="button" class="btn-apply store-add-btn" data-id="' + p.id + '">Add</button>';
