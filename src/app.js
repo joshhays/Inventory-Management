@@ -50,7 +50,7 @@ app.use(storeRoutes);
 app.use(express.static(path.join(__dirname, "../public")));
 const adminUiPath = path.join(__dirname, "../admin-ui/dist/admin");
 app.use("/admin", express.static(adminUiPath));
-app.get(["/admin", "/admin/*"], (req, res, next) => {
+app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
   res.sendFile(path.join(adminUiPath, "index.html"), (err) => (err ? next(err) : null));
 });
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
