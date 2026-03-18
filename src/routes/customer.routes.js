@@ -73,8 +73,9 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
       items,
     });
 
-    // Auto-create shipping label when order has shipping address
-    if (shippingStr && order?.id) {
+    // Auto-create shipping label when order has shipping address (and deployment has shipping enabled)
+    const dep = await deploymentService.findById(deploymentId);
+    if (shippingStr && order?.id && dep?.shippingEnabled !== false) {
       try {
         const itemCount = (order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
         const result = await shippingService.createLabel(order, null, { deploymentId, itemCount });

@@ -47,11 +47,11 @@ const getSelected = async (req, res, next) => {
 
 const create = async (req, res, next) => {
   try {
-    const { name, slug, logoUrl, brandColor1, brandColor2, customerInfo } = req.body;
+    const { name, slug, logoUrl, brandColor1, brandColor2, customerInfo, shippingEnabled } = req.body;
     if (!name || !slug) {
       return res.status(400).json({ message: "name and slug are required." });
     }
-    const deployment = await deploymentService.create({ name, slug, logoUrl, brandColor1, brandColor2, customerInfo });
+    const deployment = await deploymentService.create({ name, slug, logoUrl, brandColor1, brandColor2, customerInfo, shippingEnabled });
     res.status(201).json(deployment);
   } catch (error) {
     if (error.code === "P2002") {
@@ -64,8 +64,8 @@ const create = async (req, res, next) => {
 const update = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, slug, logoUrl, brandColor1, brandColor2, customerInfo } = req.body;
-    const deployment = await deploymentService.update(id, { name, slug, logoUrl, brandColor1, brandColor2, customerInfo });
+    const { name, slug, logoUrl, brandColor1, brandColor2, customerInfo, shippingEnabled } = req.body;
+    const deployment = await deploymentService.update(id, { name, slug, logoUrl, brandColor1, brandColor2, customerInfo, shippingEnabled });
     if (!deployment) {
       return res.status(404).json({ message: "Deployment not found." });
     }

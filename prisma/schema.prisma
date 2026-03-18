@@ -70,14 +70,15 @@ model UserGroupMember {
 }
 
 model Deployment {
-  id           Int         @id @default(autoincrement())
-  name         String      // e.g. "Acme Corp"
-  slug         String      @unique // e.g. "acme"
-  logoUrl      String?
-  brandColor1  String?     // PMS color 1 (hex) - header
-  brandColor2  String?     // PMS color 2 (hex) - background gradient
-  customerInfo String?     // JSON: { address?, phone?, email?, ... }
-  createdAt    DateTime    @default(now())
+  id             Int         @id @default(autoincrement())
+  name           String      // e.g. "Acme Corp"
+  slug           String      @unique // e.g. "acme"
+  logoUrl        String?
+  brandColor1    String?     // PMS color 1 (hex) - header
+  brandColor2    String?     // PMS color 2 (hex) - background gradient
+  customerInfo   String?     // JSON: { address?, phone?, email?, ... }
+  shippingEnabled Boolean   @default(true) // false = no EasyPost rates/labels for this deployment
+  createdAt      DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   products     Product[]
   orders       Order[]

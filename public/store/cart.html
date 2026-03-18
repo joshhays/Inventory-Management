@@ -164,6 +164,20 @@
         return;
       }
 
+      const shippingRatesRow = document.getElementById("shippingRatesRow");
+      if (shippingRatesRow && window.shippingEnabled === undefined) {
+        try {
+          const statusRes = await fetch("/api/shipping/status?deployment=" + encodeURIComponent(window.STORE_SLUG || ""), { credentials: "include" });
+          const statusData = await statusRes.json().catch(() => ({}));
+          window.shippingEnabled = statusData.shippingEnabled !== false;
+        } catch (_) {
+          window.shippingEnabled = true;
+        }
+      }
+      if (shippingRatesRow) {
+        shippingRatesRow.style.display = (window.shippingEnabled !== false) ? "block" : "none";
+      }
+
       const subtotal = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
       const shippingCost = window.selectedShipping?.totalCharges ?? 0;
@@ -360,6 +374,10 @@
           throw new Error(data.message || "Could not get shipping rates");
         }
         const rates = data.rates || [];
+        if (data.shippingDisabled) {
+          listEl.innerHTML = "<p class=\"store-shipping-no-rates\">Shipping rates are not available for this store.</p>";
+          return;
+        }
         if (rates.length === 0) {
           listEl.innerHTML = "<p class=\"store-shipping-no-rates\">No shipping options available.</p>";
           return;

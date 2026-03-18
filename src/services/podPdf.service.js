@@ -80,13 +80,33 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
 
   const fields = Array.isArray(templateConfig?.fields) ? templateConfig.fields : [];
 
+  function formatPhoneForCard(val) {
+    const digits = String(val || "").replace(/\D/g, "");
+    if (digits.length < 10) return null;
+    const last10 = digits.slice(-10);
+    return "+1 " + last10.slice(0, 3) + " " + last10.slice(3, 6) + " " + last10.slice(6);
+  }
+
+  function buildPhoneDisplay(userData) {
+    const p = formatPhoneForCard(userData.phoneP);
+    const m = formatPhoneForCard(userData.phoneM);
+    const parts = [];
+    if (p) parts.push("P " + p);
+    if (m) parts.push("M " + m);
+    if (parts.length === 0) return null;
+    return parts.join("  |  ");
+  }
+
   const drawCommands = [];
 
   for (const field of fields) {
     const key = field.key;
     if (!key) continue;
 
-    const rawValue = userData[key];
+    let rawValue = userData[key];
+    if (key === "phone") {
+      rawValue = buildPhoneDisplay(userData);
+    }
     // Suppression: if the data is empty, draw nothing (including any implied label/prefix)
     if (rawValue == null || String(rawValue).trim() === "") continue;
     const text = String(rawValue).trim();
@@ -168,8 +188,8 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
     }
   }
 
-  // Normalize font size across contact block (email, phoneP, phoneM, address, website)
-  const groupKeys = new Set(["email", "phoneP", "phoneM", "address", "website"]);
+  // Normalize font size across contact block (email, phone, address, website)
+  const groupKeys = new Set(["email", "phone", "address", "website"]);
   let groupMinSize = null;
   for (const cmd of drawCommands) {
     if (groupKeys.has(cmd.key)) {

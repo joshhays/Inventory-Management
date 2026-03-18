@@ -26,6 +26,7 @@ function serveStorePage(slug, page, dep, res, next) {
   if (!fs.existsSync(filePath)) return next();
   const base = `/store/${encodeURIComponent(slug)}`;
   const logoUrl = dep?.logoUrl || DEFAULT_LOGO_SVG;
+  const storeName = dep?.name || slug || "Store";
   const c1 = dep?.brandColor1 || null;
   const c2 = dep?.brandColor2 || null;
   const brandCss = [];
@@ -40,7 +41,8 @@ function serveStorePage(slug, page, dep, res, next) {
     let out = html
       .replace(/__STORE_BASE__/g, base)
       .replace(/__STORE_SLUG__/g, slug)
-      .replace(/__STORE_LOGO__/g, logoUrl);
+      .replace(/__STORE_LOGO__/g, logoUrl)
+      .replace(/__STORE_NAME__/g, storeName);
     if (brandCss.length) {
       out = out.replace("</head>", `<style id="store-brand">:root{${brandCss.join(" ")}}</style>\n</head>`);
     }
@@ -80,9 +82,6 @@ router.get(["/store", "/store/"], async (req, res, next) => {
     <header class="dashboard-header">
       <h1>Store</h1>
       <p class="dashboard-subtitle">Choose a storefront to shop</p>
-      <div class="dashboard-actions">
-        <a href="/login.html" class="btn-secondary">Admin login</a>
-      </div>
     </header>
     <main class="dashboard-main">
       <div class="bento-grid" id="storeList">

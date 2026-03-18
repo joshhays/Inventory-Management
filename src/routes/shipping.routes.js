@@ -24,10 +24,26 @@ async function resolveDeploymentId(req, res, next) {
  * Body: { deploymentSlug?, address: { name, address1, address2?, city, state, zip }, items: [{ productId, quantity }] }
  * Returns: { rates: [{ serviceCode, serviceName, totalCharges, currencyCode, transitDays? }] }
  */
+router.get("/status", resolveDeploymentId, async (req, res, next) => {
+  try {
+    const deploymentId = req.resolvedDeploymentId ?? req.query?.deploymentId ?? req.session?.selectedDeploymentId ?? 1;
+    const dep = deploymentId ? await deploymentService.findById(deploymentId) : null;
+    const shippingEnabled = dep ? dep.shippingEnabled !== false : true;
+    return res.status(200).json({ shippingEnabled });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/rates", resolveDeploymentId, async (req, res, next) => {
   try {
     const { address, items } = req.body;
     const deploymentId = req.resolvedDeploymentId ?? req.body?.deploymentId ?? req.session?.selectedDeploymentId ?? 1;
+
+    const dep = deploymentId ? await deploymentService.findById(deploymentId) : null;
+    if (dep && dep.shippingEnabled === false) {
+      return res.status(200).json({ rates: [], shippingDisabled: true });
+    }
 
     if (!address || typeof address !== "object") {
       return res.status(400).json({ message: "address (object with name, address1, city, state, zip) is required" });

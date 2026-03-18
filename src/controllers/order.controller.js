@@ -164,6 +164,11 @@ const createLabel = async (req, res, next) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found." });
     }
+    const deploymentService = require("../services/deployment.service");
+    const dep = await deploymentService.findById(order.deploymentId);
+    if (dep && dep.shippingEnabled === false) {
+      return res.status(503).json({ message: "Shipping API is disabled for this deployment." });
+    }
     if (!order.shippingAddress) {
       return res.status(400).json({ message: "Order has no shipping address." });
     }

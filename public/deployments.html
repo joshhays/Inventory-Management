@@ -87,6 +87,13 @@
           <textarea id="deploymentCustomerInfo" rows="4" placeholder='{"address":"123 Main St","phone":"555-1234","email":"contact@company.com"}'></textarea>
           <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">JSON: address, phone, email. Or plain text.</p>
         </div>
+        <div class="modal-row">
+          <label class="form-check-label">
+            <input type="checkbox" id="deploymentShippingEnabled" checked>
+            <span>Shipping API enabled</span>
+          </label>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">When unchecked, customers won't see shipping rates at checkout and labels can't be created for this deployment.</p>
+        </div>
         <div class="modal-row" id="categoriesRow" style="display:none;">
           <label>Store Categories</label>
           <p class="kit-modal-hint" style="margin: 0 0 0.5rem;">Categories for the storefront. Tag products with these to sort them on the front end.</p>
@@ -224,6 +231,8 @@
               brandColor1Hex.value = d.brandColor1 || "#0f172a";
               brandColor2Input.value = d.brandColor2 || "#e2e8f0";
               brandColor2Hex.value = d.brandColor2 || "#e2e8f0";
+              customerInfoInput.value = d.customerInfo || "";
+              document.getElementById("deploymentShippingEnabled").checked = d.shippingEnabled !== false;
               document.getElementById("deploymentModalTitle").textContent = "Edit Deployment";
               document.getElementById("btnSubmit").textContent = "Save";
               document.getElementById("categoriesRow").style.display = "block";
@@ -320,6 +329,8 @@
       brandColor1Hex.value = "#0f172a";
       brandColor2Input.value = "#e2e8f0";
       brandColor2Hex.value = "#e2e8f0";
+      customerInfoInput.value = "";
+      document.getElementById("deploymentShippingEnabled").checked = true;
       categoriesRow.style.display = "none";
       categoriesList.innerHTML = "";
       document.getElementById("deploymentModalTitle").textContent = "Add Deployment";
@@ -355,6 +366,7 @@
         brandColor1: brandColor1Hex.value.trim() || undefined,
         brandColor2: brandColor2Hex.value.trim() || undefined,
         customerInfo: customerInfoInput.value.trim() || undefined,
+        shippingEnabled: document.getElementById("deploymentShippingEnabled").checked,
       };
       try {
         const deployId = editIdInput.value;
