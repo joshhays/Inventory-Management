@@ -3,6 +3,7 @@ const orderService = require("../services/order.service");
 const deploymentService = require("../services/deployment.service");
 const shippingService = require("../services/shipping.service");
 const customerController = require("../controllers/customer.controller");
+const mailService = require("../services/mail.service");
 const { requireAuth } = require("../middleware/auth.middleware");
 
 const router = express.Router();
@@ -76,6 +77,13 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
       items,
       status,
     });
+
+    // Send ORDER_PLACED email (template must exist)
+    try {
+      await mailService.triggerNotification(order.id, "ORDER_PLACED");
+    } catch (mailErr) {
+      console.warn("ORDER_PLACED email failed:", mailErr.message);
+    }
 
     // Auto-create shipping label when order has shipping address, no POD (already approved flow), and deployment has shipping enabled
     const dep = await deploymentService.findById(deploymentId);

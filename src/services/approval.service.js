@@ -83,6 +83,12 @@ async function rejectOrder(orderId, deploymentId = null) {
     data: { approvalStatus: "REJECTED" },
   });
 
+  try {
+    await mailService.triggerNotification(orderId, "ORDER_REJECTED");
+  } catch (mailErr) {
+    console.error("ORDER_REJECTED email failed:", mailErr.message);
+  }
+
   return orderService.findById(orderId, deploymentId);
 }
 

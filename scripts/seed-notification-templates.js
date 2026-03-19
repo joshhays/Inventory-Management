@@ -17,6 +17,11 @@ const TEMPLATES = [
     subject: "Order confirmation - #{{orderId}}",
     body: "Hi {{name}},\n\nThank you for your order. We've received your order #{{orderId}}.\n\nTotal: ${{total}}\n\nWe'll notify you when it ships.",
   },
+  {
+    name: "ORDER_REJECTED",
+    subject: "Update on your order #{{orderId}}",
+    body: "Hi {{name}},\n\nUnfortunately we were unable to approve your order #{{orderId}}. Please contact us if you have questions.",
+  },
 ];
 
 async function main() {

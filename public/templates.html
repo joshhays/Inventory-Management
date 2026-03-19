@@ -14,10 +14,29 @@
     </header>
     <main class="main-content">
       <h1>Notification Templates</h1>
-      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}.</p>
-      <div class="form-group">
+      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}, {{orderId}}, {{total}}. <strong>Trigger names</strong> (e.g. ORDER_APPROVED, ORDER_PLACED) must match the code that sends the email.</p>
+      <div class="form-group" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
         <label for="templateSelect">Template:</label>
         <select id="templateSelect" class="form-control" style="max-width:300px"></select>
+        <button type="button" id="createBtn" class="btn-create">+ Create new</button>
+      </div>
+      <div id="createSection" style="display:none;margin:1rem 0;padding:1rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc">
+        <h3 style="margin-top:0">Create template</h3>
+        <p class="text-muted" style="font-size:0.9rem">Name must match a trigger (e.g. ORDER_APPROVED, ORDER_PLACED, ORDER_REJECTED).</p>
+        <div class="form-group">
+          <label for="newName">Name (trigger)</label>
+          <input type="text" id="newName" class="form-control" placeholder="ORDER_PLACED" style="max-width:300px">
+        </div>
+        <div class="form-group">
+          <label for="newSubject">Subject</label>
+          <input type="text" id="newSubject" class="form-control" placeholder="Order confirmation - #{{orderId}}" style="max-width:500px">
+        </div>
+        <div class="form-group">
+          <label for="newBody">Body</label>
+          <textarea id="newBody" class="form-control" rows="6" placeholder="Hi {{name}},&#10;&#10;Thank you for your order..." style="max-width:600px;font-family:inherit"></textarea>
+        </div>
+        <button type="button" id="createSubmitBtn" class="btn-create">Create</button>
+        <button type="button" id="createCancelBtn" class="btn-secondary" style="margin-left:0.5rem">Cancel</button>
       </div>
       <div class="form-group" id="editorSection" style="display:none">
         <label for="subject">Subject</label>
@@ -97,6 +116,54 @@
         showMessage(e.message || "Failed to save", true);
       } finally {
         saveBtn.disabled = false;
+      }
+    });
+
+    const createSection = document.getElementById("createSection");
+    const createBtn = document.getElementById("createBtn");
+    const createSubmitBtn = document.getElementById("createSubmitBtn");
+    const createCancelBtn = document.getElementById("createCancelBtn");
+    const newNameInput = document.getElementById("newName");
+    const newSubjectInput = document.getElementById("newSubject");
+    const newBodyInput = document.getElementById("newBody");
+
+    createBtn.addEventListener("click", () => {
+      createSection.style.display = "block";
+      newNameInput.value = "";
+      newSubjectInput.value = "";
+      newBodyInput.value = "";
+    });
+    createCancelBtn.addEventListener("click", () => { createSection.style.display = "none"; });
+
+    createSubmitBtn.addEventListener("click", async () => {
+      const name = (newNameInput.value || "").trim();
+      const subject = (newSubjectInput.value || "").trim();
+      const body = (newBodyInput.value || "").trim();
+      if (!name || !subject || body === undefined) {
+        showMessage("Name, subject, and body are required", true);
+        return;
+      }
+      createSubmitBtn.disabled = true;
+      try {
+        const res = await fetch("/api/notification-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ name, subject, body }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Create failed");
+        showMessage("Template created.", false);
+        createSection.style.display = "none";
+        await loadTemplates();
+        if (data.id) {
+          templateSelect.value = data.id;
+          loadTemplate(data.id);
+        }
+      } catch (e) {
+        showMessage(e.message || "Failed to create", true);
+      } finally {
+        createSubmitBtn.disabled = false;
       }
     });
 

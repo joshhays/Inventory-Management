@@ -2,6 +2,13 @@
  * Mail service using Resend.
  * Sends notification emails from templates with placeholder replacement.
  * Requires RESEND_API_KEY and RESEND_FROM_EMAIL in env.
+ *
+ * Trigger mapping (template name → when it fires):
+ * - ORDER_PLACED: when a customer places an order (customer.routes.js)
+ * - ORDER_APPROVED: when an admin approves a POD order (approval.service.js)
+ * - ORDER_REJECTED: when an admin rejects a POD order (approval.service.js)
+ *
+ * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}
  */
 
 const { Resend } = require("resend");
