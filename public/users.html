@@ -34,6 +34,7 @@
               <th>Name</th>
               <th>Admin</th>
               <th>User</th>
+              <th>Approver</th>
               <th>Groups</th>
               <th class="actions-col">Actions</th>
             </tr>
@@ -73,6 +74,12 @@
           <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Can access user frontend (when available).</p>
         </div>
         <div class="modal-row">
+          <label>
+            <input type="checkbox" id="userIsApprover"> Approver
+          </label>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Can approve orders on the storefront. Adds user to the Order Approvers group. <a href="/dashboard.html">Select a deployment</a> first.</p>
+        </div>
+        <div class="modal-row">
           <label>Product Groups</label>
           <select id="userGroups" multiple size="4" style="min-height: 80px;">
             <option value="">No groups</option>
@@ -101,6 +108,7 @@
   <script>
     let users = [];
     let groups = [];
+    let approverGroupId = null;
     let editingId = null;
     let deleteTargetId = null;
 
@@ -122,6 +130,14 @@
       const res = await fetch("/api/user-groups", { credentials: "include" });
       if (!res.ok) return [];
       return res.json();
+    }
+
+    async function loadApproverGroup() {
+      const res = await fetch("/api/user-groups/approver-group", { credentials: "include" });
+      if (!res.ok) return null;
+      const g = await res.json();
+      approverGroupId = g?.id || null;
+      return approverGroupId;
     }
 
     async function loadUsers() {
@@ -151,6 +167,7 @@
           <td>${escape(u.name) || "—"}</td>
           <td>${u.isAdmin ? "✓" : "—"}</td>
           <td>${u.isUser ? "✓" : "—"}</td>
+          <td>${(u.groups || []).some((g) => g.name === "Order Approvers") ? "✓" : "—"}</td>
           <td>${(u.groups || []).map((g) => escape(g.name)).join(", ") || "—"}</td>
           <td class="actions-col">
             <button type="button" class="btn-edit" data-id="${u.id}">Edit</button>
@@ -188,6 +205,7 @@
       document.getElementById("userName").value = "";
       document.getElementById("userIsAdmin").checked = false;
       document.getElementById("userIsUser").checked = true;
+      document.getElementById("userIsApprover").checked = false;
       populateGroupsSelect([]);
       userModal.classList.add("open");
     }
@@ -205,6 +223,7 @@
       document.getElementById("userName").value = u.name || "";
       document.getElementById("userIsAdmin").checked = u.isAdmin;
       document.getElementById("userIsUser").checked = u.isUser;
+      document.getElementById("userIsApprover").checked = (u.groups || []).some((g) => g.name === "Order Approvers");
       populateGroupsSelect(u.groupIds || []);
       userModal.classList.add("open");
     }
@@ -234,9 +253,18 @@
       const name = document.getElementById("userName").value.trim() || null;
       const isAdmin = document.getElementById("userIsAdmin").checked;
       const isUser = document.getElementById("userIsUser").checked;
-      const groupIds = Array.from(document.getElementById("userGroups").selectedOptions)
+      const isApprover = document.getElementById("userIsApprover").checked;
+      let groupIds = Array.from(document.getElementById("userGroups").selectedOptions)
         .map((o) => Number(o.value))
         .filter((id) => !isNaN(id) && id > 0);
+
+      if (approverGroupId) {
+        if (isApprover && !groupIds.includes(approverGroupId)) {
+          groupIds = [...groupIds, approverGroupId];
+        } else if (!isApprover) {
+          groupIds = groupIds.filter((id) => id !== approverGroupId);
+        }
+      }
 
       if (!editingId && !password) {
         alert("Password is required for new users.");
@@ -308,6 +336,7 @@
 
     (async () => {
       groups = await loadGroups();
+      await loadApproverGroup();
       await loadUsers();
     })();
   </script>

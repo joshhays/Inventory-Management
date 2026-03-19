@@ -5,6 +5,7 @@ const { requireAdmin } = require("../middleware/auth.middleware");
 const router = express.Router();
 
 router.get("/", userGroupController.getUserGroups);
+router.get("/approver-group", userGroupController.getApproverGroup);
 router.get("/:id", requireAdmin, userGroupController.getUserGroup);
 router.post("/", requireAdmin, userGroupController.createUserGroup);
 router.patch("/:id", requireAdmin, userGroupController.updateUserGroup);

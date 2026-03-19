@@ -1,5 +1,7 @@
 const prisma = require("../lib/prisma");
 
+const APPROVER_GROUP_NAME = "Order Approvers";
+
 function findAll(deploymentId) {
   const where = deploymentId != null ? { deploymentId: Number(deploymentId) } : {};
   return prisma.userGroup.findMany({
@@ -7,6 +9,32 @@ function findAll(deploymentId) {
     include: { products: true },
     orderBy: { name: "asc" },
   });
+}
+
+async function findOrCreateApproverGroup(deploymentId) {
+  if (!deploymentId) return null;
+  let group = await prisma.userGroup.findFirst({
+    where: { deploymentId: Number(deploymentId), name: APPROVER_GROUP_NAME },
+  });
+  if (!group) {
+    group = await prisma.userGroup.create({
+      data: { deploymentId: Number(deploymentId), name: APPROVER_GROUP_NAME },
+    });
+    // Add to ORDER_APPROVAL_NEEDED template so approvers receive emails and can access approval queue
+    const template = await prisma.notificationTemplate.findUnique({
+      where: { name: "ORDER_APPROVAL_NEEDED" },
+    });
+    if (template) {
+      try {
+        await prisma.notificationTemplateRecipient.create({
+          data: { templateId: template.id, groupId: group.id },
+        });
+      } catch (e) {
+        if (e.code !== "P2002") throw e; // ignore duplicate
+      }
+    }
+  }
+  return group;
 }
 
 function create({ deploymentId, name }) {
@@ -56,6 +84,7 @@ async function remove(id, deploymentId) {
 
 module.exports = {
   findAll,
+  findOrCreateApproverGroup,
   create,
   findById,
   update,

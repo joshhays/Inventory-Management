@@ -57,6 +57,18 @@ const deleteUserGroup = async (req, res, next) => {
   }
 };
 
+const getApproverGroup = async (req, res, next) => {
+  try {
+    if (!req.deploymentId) {
+      return res.status(400).json({ message: "Deployment required. Select a deployment first." });
+    }
+    const group = await userGroupService.findOrCreateApproverGroup(req.deploymentId);
+    return res.status(200).json(group);
+  } catch (error) {
+    next(error);
+  }
+};
+
 const getUserGroup = async (req, res, next) => {
   try {
     const group = await userGroupService.findById(req.params.id, req.deploymentId);
@@ -69,6 +81,7 @@ const getUserGroup = async (req, res, next) => {
 
 module.exports = {
   getUserGroups,
+  getApproverGroup,
   getUserGroup,
   createUserGroup,
   updateUserGroup,
