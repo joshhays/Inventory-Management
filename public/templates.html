@@ -53,6 +53,8 @@
       if (templates.length) {
         templateSelect.value = templates[0].id;
         loadTemplate(templates[0].id);
+      } else {
+        showMessage("No templates found. Run: npm run seed:templates", true);
       }
     }
 

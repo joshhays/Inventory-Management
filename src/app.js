@@ -49,6 +49,12 @@ app.use(
 app.use(requirePageAuth);
 app.use(storeRoutes);
 app.use(express.static(path.join(__dirname, "../public")));
+
+// Direct route for notification templates (works even when React admin UI isn't built)
+app.get("/admin/templates", (req, res, next) => {
+  res.sendFile(path.join(__dirname, "../public/templates.html"), (err) => (err ? next(err) : null));
+});
+
 const adminPaths = [
   path.join(__dirname, "../public/admin"),
   path.join(__dirname, "../admin-ui/dist/admin"),
