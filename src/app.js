@@ -55,15 +55,12 @@ app.get("/admin/templates", (req, res, next) => {
   res.sendFile(path.join(__dirname, "../public/templates.html"), (err) => (err ? next(err) : null));
 });
 
-const adminPaths = [
-  path.join(__dirname, "../public/admin"),
-  path.join(__dirname, "../admin-ui/dist/admin"),
-];
-const adminUiPath = adminPaths.find((p) => fs.existsSync(path.join(p, "index.html")));
-const adminIndexPath = adminUiPath ? path.join(adminUiPath, "index.html") : null;
-const adminUiExists = !!adminUiPath;
+// Admin UI: Vite outputs to public/admin/ (see admin-ui/vite.config.ts outDir)
+const adminUiDir = path.join(__dirname, "..", "public", "admin");
+const adminIndexPath = path.join(adminUiDir, "index.html");
+const adminUiExists = fs.existsSync(adminIndexPath);
 if (adminUiExists) {
-  app.use("/admin", express.static(adminUiPath));
+  app.use("/admin", express.static(adminUiDir));
   app.get(/^\/admin(\/.*)?$/, (req, res, next) => {
     res.sendFile(adminIndexPath, (err) => {
       if (err) {

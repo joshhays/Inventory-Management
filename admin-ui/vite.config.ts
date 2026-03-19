@@ -3,9 +3,9 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/admin/",
+  base: "/admin/", // URL base for assets (e.g. /admin/assets/xxx.js)
   build: {
-    outDir: "../public/admin",
+    outDir: "../public/admin", // Output to project public/admin/ (not admin-ui/dist)
     emptyOutDir: true,
   },
   server: {
