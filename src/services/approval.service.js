@@ -1,11 +1,10 @@
 /**
  * Approval workflow service for orders with print-on-demand items.
  * When an order has POD items, it starts as PENDING_APPROVAL.
- * Manager approves → status becomes APPROVED → EasyPost creates shipping label → ORDER_APPROVED email.
+ * Approve = mark as approved (print proof OK). Label is created separately when admin clicks Create label.
  */
 
 const prisma = require("../lib/prisma");
-const shippingService = require("./shipping.service");
 const orderService = require("./order.service");
 const mailService = require("./mail.service");
 
@@ -13,10 +12,11 @@ const STATUS_PENDING_APPROVAL = "pending_approval";
 const STATUS_APPROVED = "approved";
 
 /**
- * Approve an order: update status to APPROVED, create EasyPost label, trigger ORDER_APPROVED email.
+ * Approve an order: update status to APPROVED. Does NOT create a label.
+ * Label is created when admin clicks Create label on the Orders page.
  * @param {number} orderId - Order ID
  * @param {number} [deploymentId] - Optional deployment filter
- * @returns {Promise<Object>} Updated order with label info and trackingCode
+ * @returns {Promise<Object>} Updated order
  */
 async function approveOrder(orderId, deploymentId = null) {
   const order = await orderService.findById(orderId, deploymentId);
@@ -26,26 +26,6 @@ async function approveOrder(orderId, deploymentId = null) {
   if (order.status !== STATUS_PENDING_APPROVAL && order.approvalStatus !== "PENDING") {
     throw new Error(`Order cannot be approved: status is "${order.status}"`);
   }
-  if (!order.shippingAddress) {
-    throw new Error("Order has no shipping address");
-  }
-
-  const deploymentService = require("./deployment.service");
-  const dep = await deploymentService.findById(order.deploymentId);
-  if (dep && dep.shippingEnabled === false) {
-    throw new Error("Shipping is disabled for this deployment");
-  }
-
-  const itemCount = (order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
-  const opts = { deploymentId: order.deploymentId, itemCount };
-
-  const result = await shippingService.createLabel(order, null, opts);
-
-  await orderService.updateLabelInfo(orderId, {
-    shippingLabelUrl: result.labelUrl,
-    trackingCode: result.trackingCode,
-    easypostShipmentId: result.easypostShipmentId,
-  }, deploymentId);
 
   await orderService.updateStatus(orderId, STATUS_APPROVED, deploymentId);
 
@@ -54,14 +34,7 @@ async function approveOrder(orderId, deploymentId = null) {
     data: { approvalStatus: "APPROVED" },
   });
 
-  try {
-    await mailService.triggerNotification(orderId, "ORDER_APPROVED");
-  } catch (mailErr) {
-    console.error("ORDER_APPROVED email failed:", mailErr.message);
-  }
-
-  const updated = await orderService.findById(orderId, deploymentId);
-  return { ...updated, trackingCode: result.trackingCode };
+  return orderService.findById(orderId, deploymentId);
 }
 
 /**

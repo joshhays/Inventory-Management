@@ -226,6 +226,12 @@ const createLabel = async (req, res, next) => {
       },
       req.deploymentId
     );
+    try {
+      const mailService = require("../services/mail.service");
+      await mailService.triggerNotification(Number(id), "ORDER_APPROVED");
+    } catch (mailErr) {
+      console.warn("ORDER_APPROVED email failed:", mailErr.message);
+    }
     return res.status(200).json(updated);
   } catch (error) {
     if (error.message?.includes("EASYPOST_API_KEY")) {

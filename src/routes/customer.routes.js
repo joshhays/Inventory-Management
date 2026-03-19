@@ -115,26 +115,7 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
       }
     }
 
-    // Auto-create shipping label when order has shipping address, no POD (already approved flow), and deployment has shipping enabled
-    const dep = await deploymentService.findById(deploymentId);
-    if (shippingStr && order?.id && !hasPODItems && dep?.shippingEnabled !== false) {
-      try {
-        const itemCount = (order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
-        const result = await shippingService.createLabel(order, null, { deploymentId, itemCount });
-        await orderService.updateLabelInfo(order.id, {
-          shippingLabelUrl: result.labelUrl,
-          trackingCode: result.trackingCode,
-          easypostShipmentId: result.easypostShipmentId,
-        }, deploymentId);
-        // Refetch order so response includes label info
-        const updated = await orderService.findById(order.id, deploymentId);
-        return res.status(201).json(updated);
-      } catch (err) {
-        // Log but don't fail order creation; admin can create label manually
-        console.warn("Auto-create label failed for order", order.id, err.message);
-      }
-    }
-
+    // Labels are created manually when an order is approved (POD) or via Orders page (regular orders)
     return res.status(201).json(order);
   } catch (error) {
     if (
