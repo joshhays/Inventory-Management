@@ -44,14 +44,47 @@ function replacePlaceholders(str, data) {
  * @param {string} templateName - e.g. 'ORDER_APPROVED', 'ORDER_PLACED'
  * @returns {Promise<{ success: boolean, messageId?: string }>}
  */
+/**
+ * Get recipient emails for a template. Returns customer email or admin emails from configured groups.
+ * @param {Object} template - NotificationTemplate with recipientGroups
+ * @param {Object} order - Order with deploymentId, customerEmail
+ * @returns {Promise<string[]>} Unique email addresses to send to
+ */
+async function getRecipientEmails(template, order) {
+  if (template.recipientType === "admin_groups" && template.recipientGroups?.length) {
+    const groupIds = template.recipientGroups
+      .filter((r) => r.group?.deploymentId === order.deploymentId)
+      .map((r) => r.groupId);
+    if (groupIds.length === 0) return [];
+
+    const members = await prisma.userGroupMember.findMany({
+      where: { groupId: { in: groupIds } },
+      include: { user: true },
+    });
+    const adminEmails = [...new Set(
+      members
+        .filter((m) => m.user?.isAdmin && m.user?.email)
+        .map((m) => m.user.email.toLowerCase().trim())
+    )];
+    return adminEmails;
+  }
+  return order.customerEmail ? [order.customerEmail.toLowerCase().trim()] : [];
+}
+
 async function triggerNotification(orderId, templateName) {
   const order = await orderService.findById(orderId, null);
   if (!order) throw new Error("Order not found");
 
   const template = await prisma.notificationTemplate.findUnique({
     where: { name: String(templateName).trim() },
+    include: { recipientGroups: { include: { group: true } } },
   });
   if (!template) throw new Error(`Notification template "${templateName}" not found`);
+
+  const recipients = await getRecipientEmails(template, order);
+  if (recipients.length === 0) {
+    return { success: true, messageId: null, skipped: "no recipients" };
+  }
 
   const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
   const fromName = process.env.RESEND_FROM_NAME || "Inventory System";
@@ -69,17 +102,21 @@ async function triggerNotification(orderId, templateName) {
 
   const subject = replacePlaceholders(template.subject, data);
   const body = replacePlaceholders(template.body, data);
+  const html = body.replace(/\n/g, "<br>");
 
   const resend = getClient();
-  const { data: result, error } = await resend.emails.send({
-    from: `${fromName} <${fromEmail}>`,
-    to: order.customerEmail,
-    subject,
-    html: body.replace(/\n/g, "<br>"),
-  });
-
-  if (error) throw new Error(`Resend error: ${error.message}`);
-  return { success: true, messageId: result?.id };
+  const results = [];
+  for (const to of recipients) {
+    const { data: result, error } = await resend.emails.send({
+      from: `${fromName} <${fromEmail}>`,
+      to,
+      subject,
+      html,
+    });
+    if (error) throw new Error(`Resend error: ${error.message}`);
+    results.push(result?.id);
+  }
+  return { success: true, messageId: results[0], messageIds: results };
 }
 
 module.exports = {

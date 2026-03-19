@@ -116,12 +116,13 @@ model DeploymentCategory {
 }
 
 model UserGroup {
-  id           Int              @id @default(autoincrement())
-  name         String
-  deploymentId Int
-  deployment   Deployment      @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  products     Product[]
-  members      UserGroupMember[]
+  id                    Int                           @id @default(autoincrement())
+  name                  String
+  deploymentId          Int
+  deployment            Deployment                    @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  products              Product[]
+  members               UserGroupMember[]
+  templateRecipients    NotificationTemplateRecipient[]
 
   @@unique([name, deploymentId])
 }
@@ -186,12 +187,25 @@ model InventoryLog {
 }
 
 model NotificationTemplate {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique // e.g. 'ORDER_APPROVED', 'ORDER_PLACED'
-  subject   String
-  body      String   // Supports placeholders: {{name}}, {{email}}, {{trackingCode}}, etc.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            Int                           @id @default(autoincrement())
+  name          String                        @unique // e.g. 'ORDER_APPROVED', 'ORDER_PLACED'
+  subject       String
+  body          String                        // Supports placeholders: {{name}}, {{email}}, {{trackingCode}}, etc.
+  recipientType String                        @default("customer") // "customer" | "admin_groups"
+  createdAt     DateTime                      @default(now())
+  updatedAt     DateTime                      @updatedAt
+  recipientGroups NotificationTemplateRecipient[]
+}
+
+model NotificationTemplateRecipient {
+  id         Int                 @id @default(autoincrement())
+  templateId Int
+  template   NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  groupId    Int
+  group      UserGroup           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdAt  DateTime            @default(now())
+
+  @@unique([templateId, groupId])
 }
 
 enum ApprovalStatus {

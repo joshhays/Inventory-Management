@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Notification Templates - Inventory</title>
   <link rel="stylesheet" href="/styles.css">
+  <script src="/js/deployment-header.js"></script>
 </head>
 <body>
   <div class="app-layout">
     <header class="top-nav top-nav-simple">
       <a href="/" class="top-nav-back">← Dashboard</a>
       <a href="/pending-approvals.html" class="top-nav-back">Pending Approvals</a>
+      <a href="/dashboard.html" class="top-nav-back" title="Switch deployment to change recipient groups">Switch</a>
     </header>
     <main class="main-content">
       <h1>Notification Templates</h1>
@@ -28,6 +30,16 @@
           <input type="text" id="newName" class="form-control" placeholder="ORDER_PLACED" style="max-width:300px">
         </div>
         <div class="form-group">
+          <label>Recipients</label>
+          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem">
+            <label><input type="radio" name="newRecipientType" value="customer" checked> Customer</label>
+            <label><input type="radio" name="newRecipientType" value="admin_groups"> Admin groups</label>
+          </div>
+          <div id="newGroupSelectWrap" style="display:none;margin-top:0.5rem">
+            <div id="newGroupCheckboxes"></div>
+          </div>
+        </div>
+        <div class="form-group">
           <label for="newSubject">Subject</label>
           <input type="text" id="newSubject" class="form-control" placeholder="Order confirmation - #{{orderId}}" style="max-width:500px">
         </div>
@@ -39,6 +51,17 @@
         <button type="button" id="createCancelBtn" class="btn-secondary" style="margin-left:0.5rem">Cancel</button>
       </div>
       <div class="form-group" id="editorSection" style="display:none">
+        <div style="margin-bottom:1rem">
+          <label>Recipients</label>
+          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem">
+            <label><input type="radio" name="recipientType" value="customer"> Customer (order email)</label>
+            <label><input type="radio" name="recipientType" value="admin_groups"> Admin groups</label>
+          </div>
+          <div id="groupSelectWrap" style="display:none;margin-top:0.5rem">
+            <p class="text-muted" style="font-size:0.9rem;margin:0 0 0.25rem">Admins in these groups receive the email. <a href="/dashboard.html">Switch deployment</a> to see other groups.</p>
+            <div id="groupCheckboxes"></div>
+          </div>
+        </div>
         <label for="subject">Subject</label>
         <input type="text" id="subject" class="form-control" style="max-width:500px">
         <label for="body" style="margin-top:1rem">Body</label>
@@ -77,12 +100,55 @@
       }
     }
 
+    let allGroups = [];
+
+    async function loadGroups() {
+      const res = await fetch("/api/user-groups", { credentials: "include" });
+      if (!res.ok) return [];
+      const data = await res.json();
+      allGroups = Array.isArray(data) ? data : (data.groups || data);
+      return allGroups;
+    }
+
+    function renderGroupCheckboxes(selectedIds) {
+      const wrap = document.getElementById("groupCheckboxes");
+      wrap.innerHTML = "";
+      allGroups.forEach((g) => {
+        const label = document.createElement("label");
+        label.style.display = "block";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.value = g.id;
+        cb.dataset.groupId = g.id;
+        if ((selectedIds || []).includes(g.id)) cb.checked = true;
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(" " + (g.name || "Group " + g.id)));
+        wrap.appendChild(label);
+      });
+      if (allGroups.length === 0) {
+        wrap.innerHTML = "<p class=\"text-muted\" style=\"font-size:0.9rem\">No groups. <a href=\"/groups.html\">Create groups</a> and add admin users.</p>";
+      }
+    }
+
+    function getSelectedGroupIds() {
+      return Array.from(document.querySelectorAll("#groupCheckboxes input:checked")).map((cb) => Number(cb.value));
+    }
+
     async function loadTemplate(id) {
       const res = await fetch(`/api/notification-templates/${id}`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load template");
       const t = await res.json();
       subjectInput.value = t.subject;
       bodyInput.value = t.body;
+      const rt = t.recipientType || "customer";
+      document.querySelectorAll("input[name=recipientType]").forEach((r) => { r.checked = r.value === rt; });
+      const groupSelectWrap = document.getElementById("groupSelectWrap");
+      groupSelectWrap.style.display = rt === "admin_groups" ? "block" : "none";
+      if (rt === "admin_groups") {
+        if (allGroups.length === 0) await loadGroups();
+        const selectedIds = (t.recipientGroups || []).map((r) => r.groupId || r.group?.id).filter(Boolean);
+        renderGroupCheckboxes(selectedIds);
+      }
       editorSection.style.display = "block";
     }
 
@@ -91,6 +157,13 @@
       div.textContent = s ?? "";
       return div.innerHTML;
     }
+
+    document.querySelectorAll("input[name=recipientType]").forEach((r) => {
+      r.addEventListener("change", () => {
+        document.getElementById("groupSelectWrap").style.display = r.value === "admin_groups" ? "block" : "none";
+        if (r.value === "admin_groups" && allGroups.length === 0) loadGroups().then(() => renderGroupCheckboxes([]));
+      });
+    });
 
     templateSelect.addEventListener("change", () => {
       const id = templateSelect.value;
@@ -102,12 +175,14 @@
       const id = templateSelect.value;
       if (!id) return;
       saveBtn.disabled = true;
+      const recipientType = document.querySelector("input[name=recipientType]:checked")?.value || "customer";
+      const groupIds = recipientType === "admin_groups" ? getSelectedGroupIds() : [];
       try {
         const res = await fetch(`/api/notification-templates/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value }),
+          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value, recipientType, groupIds }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || "Save failed");
@@ -132,6 +207,27 @@
       newNameInput.value = "";
       newSubjectInput.value = "";
       newBodyInput.value = "";
+      document.querySelector("input[name=newRecipientType][value=customer]").checked = true;
+      document.getElementById("newGroupSelectWrap").style.display = "none";
+    });
+    document.querySelectorAll("input[name=newRecipientType]").forEach((r) => {
+      r.addEventListener("change", () => {
+        document.getElementById("newGroupSelectWrap").style.display = r.value === "admin_groups" ? "block" : "none";
+        if (r.value === "admin_groups" && allGroups.length === 0) loadGroups().then(() => {
+          const wrap = document.getElementById("newGroupCheckboxes");
+          wrap.innerHTML = "";
+          allGroups.forEach((g) => {
+            const label = document.createElement("label");
+            label.style.display = "block";
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.value = g.id;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(" " + (g.name || "Group " + g.id)));
+            wrap.appendChild(label);
+          });
+        });
+      });
     });
     createCancelBtn.addEventListener("click", () => { createSection.style.display = "none"; });
 
@@ -149,7 +245,15 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ name, subject, body }),
+          body: JSON.stringify({
+          name,
+          subject,
+          body,
+          recipientType: document.querySelector("input[name=newRecipientType]:checked")?.value || "customer",
+          groupIds: document.querySelector("input[name=newRecipientType]:checked")?.value === "admin_groups"
+            ? Array.from(document.querySelectorAll("#newGroupCheckboxes input:checked")).map((cb) => Number(cb.value))
+            : [],
+        }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || "Create failed");

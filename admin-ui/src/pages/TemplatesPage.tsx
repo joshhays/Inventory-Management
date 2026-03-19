@@ -1,11 +1,23 @@
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
+interface Group {
+  id: number;
+  name: string;
+}
+
+interface RecipientGroup {
+  groupId?: number;
+  group?: { id: number; name: string };
+}
+
 interface Template {
   id: number;
   name: string;
   subject: string;
   body: string;
+  recipientType?: string;
+  recipientGroups?: RecipientGroup[];
 }
 
 export default function TemplatesPage() {
@@ -13,12 +25,17 @@ export default function TemplatesPage() {
   const [selected, setSelected] = useState<Template | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
+  const [recipientType, setRecipientType] = useState<"customer" | "admin_groups">("customer");
+  const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newBody, setNewBody] = useState("");
+  const [newRecipientType, setNewRecipientType] = useState<"customer" | "admin_groups">("customer");
+  const [newGroupIds, setNewGroupIds] = useState<number[]>([]);
   const [creating, setCreating] = useState(false);
 
   async function fetchTemplates() {
@@ -50,8 +67,25 @@ export default function TemplatesPage() {
     if (selected) {
       setSubject(selected.subject);
       setBody(selected.body);
+      setRecipientType((selected.recipientType as "customer" | "admin_groups") || "customer");
+      setSelectedGroupIds(
+        (selected.recipientGroups || []).map((r) => r.groupId ?? r.group?.id).filter(Boolean) as number[]
+      );
     }
   }, [selected]);
+
+  async function fetchGroups() {
+    try {
+      const res = await fetch("/api/user-groups", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
+      setGroups(Array.isArray(data) ? data : data.groups || []);
+    } catch (_) {}
+  }
+
+  useEffect(() => {
+    if (recipientType === "admin_groups" && groups.length === 0) fetchGroups();
+  }, [recipientType]);
 
   async function handleSave() {
     if (!selected) return;
@@ -61,7 +95,12 @@ export default function TemplatesPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ subject, body }),
+        body: JSON.stringify({
+          subject,
+          body,
+          recipientType,
+          groupIds: recipientType === "admin_groups" ? selectedGroupIds : [],
+        }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -146,6 +185,44 @@ export default function TemplatesPage() {
             />
           </div>
           <div style={{ marginBottom: "0.75rem" }}>
+            <label style={{ display: "block", marginBottom: "0.25rem" }}>Recipients</label>
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "0.25rem" }}>
+              <label>
+                <input
+                  type="radio"
+                  checked={newRecipientType === "customer"}
+                  onChange={() => setNewRecipientType("customer")}
+                />{" "}
+                Customer
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={newRecipientType === "admin_groups"}
+                  onChange={() => {
+                    setNewRecipientType("admin_groups");
+                    if (groups.length === 0) fetchGroups();
+                  }}
+                />{" "}
+                Admin groups
+              </label>
+            </div>
+            {newRecipientType === "admin_groups" &&
+              groups.map((g) => (
+                <label key={g.id} style={{ display: "block" }}>
+                  <input
+                    type="checkbox"
+                    checked={newGroupIds.includes(g.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setNewGroupIds((prev) => [...prev, g.id]);
+                      else setNewGroupIds((prev) => prev.filter((id) => id !== g.id));
+                    }}
+                  />{" "}
+                  {g.name}
+                </label>
+              ))}
+          </div>
+          <div style={{ marginBottom: "0.75rem" }}>
             <label style={{ display: "block", marginBottom: "0.25rem" }}>Subject</label>
             <input
               value={newSubject}
@@ -179,7 +256,13 @@ export default function TemplatesPage() {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   credentials: "include",
-                  body: JSON.stringify({ name, subject: subj, body: b }),
+                  body: JSON.stringify({
+                  name,
+                  subject: subj,
+                  body: b,
+                  recipientType: newRecipientType,
+                  groupIds: newRecipientType === "admin_groups" ? newGroupIds : [],
+                }),
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.message || "Create failed");
@@ -232,6 +315,52 @@ export default function TemplatesPage() {
       )}
       {selected && (
         <>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.25rem" }}>Recipients</label>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "0.5rem" }}>
+              <label>
+                <input
+                  type="radio"
+                  checked={recipientType === "customer"}
+                  onChange={() => setRecipientType("customer")}
+                />{" "}
+                Customer (order email)
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={recipientType === "admin_groups"}
+                  onChange={() => setRecipientType("admin_groups")}
+                />{" "}
+                Admin groups
+              </label>
+            </div>
+            {recipientType === "admin_groups" && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 0.25rem" }}>
+                  Admins in these groups receive the email. <a href="/dashboard.html">Switch deployment</a> to see other groups.
+                </p>
+                {groups.map((g) => (
+                  <label key={g.id} style={{ display: "block" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedGroupIds.includes(g.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedGroupIds((prev) => [...prev, g.id]);
+                        else setSelectedGroupIds((prev) => prev.filter((id) => id !== g.id));
+                      }}
+                    />{" "}
+                    {g.name}
+                  </label>
+                ))}
+                {groups.length === 0 && (
+                  <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
+                    No groups. <a href="/groups.html">Create groups</a> and add admin users.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor="subject" style={{ display: "block", marginBottom: "0.25rem" }}>
               Subject
