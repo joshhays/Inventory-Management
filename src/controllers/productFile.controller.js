@@ -10,6 +10,12 @@ const UPLOAD_DIR = path.join(__dirname, "../../uploads");
 const PRODUCT_FILES_DIR = path.join(__dirname, "../../product-files");
 const POD_BASE_PDF = path.join(__dirname, "../../product-files/business-card-base.pdf");
 
+// Placeholder image when PDF-to-image conversion fails (avoids server crash)
+const PLACEHOLDER_SVG = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120"><rect fill="#f1f5f9" width="200" height="120"/><text x="100" y="65" text-anchor="middle" fill="#64748b" font-family="sans-serif" font-size="14">Processing...</text></svg>',
+  "utf8"
+);
+
 async function checkProductAccess(req, res, productId) {
   const product = await productService.getProductWithFiles(productId, req.deploymentId);
   if (!product) return { status: 404, message: "Product not found." };
@@ -93,10 +99,10 @@ const getPreview = async (req, res, next) => {
           try { fs.unlinkSync(tmpPath); } catch (_) {}
         }
       } catch (_) {
-        // PDF preview unavailable (e.g. canvas omitted); serve raw PDF
-        res.setHeader("Content-Type", "application/pdf");
-        res.setHeader("Content-Disposition", "inline");
-        return res.send(pdfBuffer);
+        // PDF-to-img failed; serve placeholder image (avoids crash, works as img src)
+        res.setHeader("Content-Type", "image/svg+xml");
+        res.setHeader("Cache-Control", "public, max-age=60");
+        return res.send(PLACEHOLDER_SVG);
       }
     }
 
@@ -118,9 +124,10 @@ const getPreview = async (req, res, next) => {
         return res.send(firstPage);
       }
     } catch (_) {
-      // PDF preview unavailable; redirect to raw PDF
-      const pdfUrl = productFileService.getFileUrl(pdfFile);
-      if (pdfUrl) return res.redirect(302, pdfUrl);
+      // PDF-to-img failed; serve placeholder image (avoids crash, works as img src)
+      res.setHeader("Content-Type", "image/svg+xml");
+      res.setHeader("Cache-Control", "public, max-age=60");
+      return res.send(PLACEHOLDER_SVG);
     }
 
     return res.status(500).json({ message: "Could not generate preview." });
