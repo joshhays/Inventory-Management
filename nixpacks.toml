@@ -1,6 +1,10 @@
 [phases.setup]
 nixPkgs = ['...', 'python3', 'pkg-config', 'pixman', 'cairo', 'pango', 'libpng', 'libjpeg', 'giflib', 'librsvg']
 
+[variables]
+# This tells the compiler where to find the graphics library "blueprints"
+PKG_CONFIG_PATH = "$PKG_CONFIG_PATH:/usr/lib/pkgconfig:/usr/local/lib/pkgconfig:/root/.nix-profile/lib/pkgconfig"
+
 [phases.install]
 cmds = ['npm install']
 
