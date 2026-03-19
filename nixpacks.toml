@@ -1,8 +1,7 @@
 [phases.setup]
-nixPkgs = ['...', 'python3', 'pkg-config', 'pixman', 'cairo', 'pango', 'libpng', 'jpeg', 'giflib', 'librsvg']
+nixPkgs = ['...', 'python3', 'pkg-config', 'pixman', 'cairo', 'pango', 'libpng', 'libjpeg', 'giflib', 'librsvg']
 
 [phases.install]
-# We remove --omit=optional to ensure canvas builds
 cmds = ['npm install']
 
 [phases.build]
