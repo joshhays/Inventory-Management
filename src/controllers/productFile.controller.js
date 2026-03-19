@@ -99,7 +99,6 @@ const getPreview = async (req, res, next) => {
           try { fs.unlinkSync(tmpPath); } catch (_) {}
         }
       } catch (_) {
-        // PDF-to-img failed; serve placeholder image (avoids crash, works as img src)
         res.setHeader("Content-Type", "image/svg+xml");
         res.setHeader("Cache-Control", "public, max-age=60");
         return res.send(PLACEHOLDER_SVG);
@@ -124,7 +123,6 @@ const getPreview = async (req, res, next) => {
         return res.send(firstPage);
       }
     } catch (_) {
-      // PDF-to-img failed; serve placeholder image (avoids crash, works as img src)
       res.setHeader("Content-Type", "image/svg+xml");
       res.setHeader("Cache-Control", "public, max-age=60");
       return res.send(PLACEHOLDER_SVG);
