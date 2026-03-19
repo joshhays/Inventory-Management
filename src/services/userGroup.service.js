@@ -20,18 +20,18 @@ async function findOrCreateApproverGroup(deploymentId) {
     group = await prisma.userGroup.create({
       data: { deploymentId: Number(deploymentId), name: APPROVER_GROUP_NAME },
     });
-    // Add to ORDER_APPROVAL_NEEDED template so approvers receive emails and can access approval queue
-    const template = await prisma.notificationTemplate.findUnique({
-      where: { name: "ORDER_APPROVAL_NEEDED" },
-    });
-    if (template) {
-      try {
-        await prisma.notificationTemplateRecipient.create({
-          data: { templateId: template.id, groupId: group.id },
-        });
-      } catch (e) {
-        if (e.code !== "P2002") throw e; // ignore duplicate
-      }
+  }
+  // Always ensure Order Approvers is linked to ORDER_APPROVAL_NEEDED (for emails + approval queue access)
+  const template = await prisma.notificationTemplate.findUnique({
+    where: { name: "ORDER_APPROVAL_NEEDED" },
+  });
+  if (template) {
+    try {
+      await prisma.notificationTemplateRecipient.create({
+        data: { templateId: template.id, groupId: group.id },
+      });
+    } catch (e) {
+      if (e.code !== "P2002") throw e; // ignore duplicate
     }
   }
   return group;

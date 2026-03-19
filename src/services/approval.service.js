@@ -108,19 +108,29 @@ async function canUserApproveForDeployment(userId, deploymentId) {
   if (!user) return false;
   if (user.isAdmin) return true;
 
+  const depId = Number(deploymentId);
+  const userGroups = user.groups || [];
+  const userGroupIds = userGroups.map((m) => m.groupId);
+
+  // Path 1: Check ORDER_APPROVAL_NEEDED template recipient groups
   const template = await prisma.notificationTemplate.findUnique({
     where: { name: "ORDER_APPROVAL_NEEDED" },
     include: { recipientGroups: { include: { group: true } } },
   });
-  if (!template?.recipientGroups?.length) return false;
+  if (template?.recipientGroups?.length) {
+    const approverGroupIds = template.recipientGroups
+      .filter((r) => r.group?.deploymentId === depId)
+      .map((r) => r.groupId);
+    if (approverGroupIds.length > 0 && approverGroupIds.some((gid) => userGroupIds.includes(gid))) {
+      return true;
+    }
+  }
 
-  const approverGroupIds = template.recipientGroups
-    .filter((r) => r.group?.deploymentId === Number(deploymentId))
-    .map((r) => r.groupId);
-  if (approverGroupIds.length === 0) return false;
-
-  const userGroupIds = (user.groups || []).map((m) => m.groupId);
-  return approverGroupIds.some((gid) => userGroupIds.includes(gid));
+  // Path 2: Fallback - user in "Order Approvers" group for this deployment
+  const inOrderApprovers = userGroups.some(
+    (m) => m.group?.name === "Order Approvers" && m.group?.deploymentId === depId
+  );
+  return inOrderApprovers;
 }
 
 /**
