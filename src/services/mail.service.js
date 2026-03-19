@@ -8,7 +8,7 @@
  * - ORDER_APPROVED: when an admin approves a POD order (approval.service.js)
  * - ORDER_REJECTED: when an admin rejects a POD order (approval.service.js)
  *
- * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}
+ * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}, {{approvalLink}}
  */
 
 const { Resend } = require("resend");
@@ -89,6 +89,10 @@ async function triggerNotification(orderId, templateName) {
   const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
   const fromName = process.env.RESEND_FROM_NAME || "Inventory System";
 
+  const baseUrl = (process.env.APP_URL || process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || "").replace(/\/$/, "");
+  const approvalPath = "/pending-approvals.html";
+  const approvalLink = baseUrl ? (baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`) + approvalPath : "";
+
   const data = {
     name: order.customerName,
     email: order.customerEmail,
@@ -98,6 +102,7 @@ async function triggerNotification(orderId, templateName) {
     total: order.total,
     trackingCode: order.trackingCode || "",
     shippingLabelUrl: order.shippingLabelUrl || "",
+    approvalLink,
   };
 
   const subject = replacePlaceholders(template.subject, data);
