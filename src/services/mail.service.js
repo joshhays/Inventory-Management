@@ -90,8 +90,19 @@ async function triggerNotification(orderId, templateName) {
   const fromName = process.env.RESEND_FROM_NAME || "Inventory System";
 
   const baseUrl = (process.env.APP_URL || process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || "").replace(/\/$/, "");
-  const approvalPath = "/pending-approvals.html";
-  const approvalLink = baseUrl ? (baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`) + approvalPath : "";
+  const baseFull = baseUrl ? (baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`) : "";
+  // For admin_groups templates, link to storefront approval page; else backend
+  let approvalLink = "";
+  if (baseFull) {
+    if (template.recipientType === "admin_groups") {
+      const deploymentService = require("./deployment.service");
+      const dep = await deploymentService.findById(order.deploymentId);
+      const slug = dep?.slug || "";
+      approvalLink = slug ? `${baseFull}/store/${encodeURIComponent(slug)}/approvals` : `${baseFull}/pending-approvals.html`;
+    } else {
+      approvalLink = `${baseFull}/pending-approvals.html`;
+    }
+  }
 
   const data = {
     name: order.customerName,

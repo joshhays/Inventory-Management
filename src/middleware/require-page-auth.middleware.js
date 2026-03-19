@@ -7,7 +7,7 @@ const ADMIN_PATHS_REQUIRE_DEPLOYMENT = ["/", "/index.html", "/products.html", "/
 const DEPLOYMENT_SELECT_PATH = "/dashboard.html";
 
 // Store paths that require auth (orders, settings). Index, products, cart, login, register are public.
-const STORE_AUTH_REQUIRED = /^\/store\/[^/]+\/(orders|settings)(\/)?$/;
+const STORE_AUTH_REQUIRED = /^\/store\/[^/]+\/(orders|settings|approvals)(\/)?$/;
 
 function requirePageAuth(req, res, next) {
   if (req.method !== "GET") return next();

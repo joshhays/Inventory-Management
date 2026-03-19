@@ -4,6 +4,7 @@ const deploymentService = require("../services/deployment.service");
 const shippingService = require("../services/shipping.service");
 const customerController = require("../controllers/customer.controller");
 const mailService = require("../services/mail.service");
+const approvalService = require("../services/approval.service");
 const { requireAuth } = require("../middleware/auth.middleware");
 
 const router = express.Router();
@@ -21,6 +22,26 @@ async function resolveDeploymentId(req, res, next) {
     const dep = await deploymentService.findBySlug(String(val).trim());
     if (dep) req.resolvedDeploymentId = dep.id;
   } catch (_) {}
+  next();
+}
+
+async function requireApprover(req, res, next) {
+  const deploymentId = req.resolvedDeploymentId ?? req.query.deploymentId ?? req.query.deployment;
+  let id = deploymentId;
+  if (typeof id === "string") {
+    try {
+      const dep = await deploymentService.findBySlug(String(id).trim());
+      id = dep?.id;
+    } catch (_) {}
+  }
+  if (!id || !req.user?.id) {
+    return res.status(400).json({ message: "Deployment required. Use ?deployment=slug" });
+  }
+  const canApprove = await approvalService.canUserApproveForDeployment(req.user.id, id);
+  if (!canApprove) {
+    return res.status(403).json({ message: "You do not have permission to approve orders for this store." });
+  }
+  req.resolvedDeploymentId = id;
   next();
 }
 
@@ -83,6 +104,15 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
       await mailService.triggerNotification(order.id, "ORDER_PLACED");
     } catch (mailErr) {
       console.warn("ORDER_PLACED email failed:", mailErr.message);
+    }
+
+    // Send ORDER_APPROVAL_NEEDED to approver groups when POD order needs approval
+    if (hasPODItems) {
+      try {
+        await mailService.triggerNotification(order.id, "ORDER_APPROVAL_NEEDED");
+      } catch (mailErr) {
+        console.warn("ORDER_APPROVAL_NEEDED email failed:", mailErr.message);
+      }
     }
 
     // Auto-create shipping label when order has shipping address, no POD (already approved flow), and deployment has shipping enabled
@@ -151,6 +181,87 @@ router.get("/orders/:id", requireAuth, async (req, res, next) => {
     return res.status(200).json(order);
   } catch (error) {
     next(error);
+  }
+});
+
+/**
+ * GET /api/customer/pending-approvals?deployment=slug
+ * Customer-side approval queue. Requires user to be in an approver group for the deployment.
+ */
+router.get("/pending-approvals", requireAuth, resolveDeploymentId, requireApprover, async (req, res, next) => {
+  try {
+    const deploymentId = req.resolvedDeploymentId;
+    const orders = await approvalService.getPendingApprovals(deploymentId);
+    const dep = await deploymentService.findById(deploymentId);
+    const baseUrl = process.env.APP_URL || process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || "";
+    const storeBase = baseUrl ? (baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`) : "";
+    const storeSlug = dep?.slug || "";
+    const ordersWithStoreProofUrls = orders.map((o) => ({
+      ...o,
+      proofUrls: (o.proofUrls || []).map((p) => ({
+        ...p,
+        proofPdfUrl: `/api/customer/orders/${o.id}/items/${p.itemId}/print-pdf?deployment=${encodeURIComponent(storeSlug)}`,
+      })),
+    }));
+    return res.status(200).json({ orders: ordersWithStoreProofUrls });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/customer/orders/:id/approve?deployment=slug
+ * Approve an order. Requires approver permission.
+ */
+router.post("/orders/:id/approve", requireAuth, resolveDeploymentId, requireApprover, async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const deploymentId = req.resolvedDeploymentId;
+    const order = await approvalService.approveOrder(orderId, deploymentId);
+    return res.status(200).json(order);
+  } catch (err) {
+    if (err.message?.includes("Order not found")) return res.status(404).json({ message: err.message });
+    if (err.message?.includes("cannot be approved") || err.message?.includes("no shipping address")) {
+      return res.status(400).json({ message: err.message });
+    }
+    if (err.message?.includes("Shipping is disabled")) return res.status(503).json({ message: err.message });
+    next(err);
+  }
+});
+
+/**
+ * POST /api/customer/orders/:id/reject?deployment=slug
+ * Reject an order. Requires approver permission.
+ */
+router.post("/orders/:id/reject", requireAuth, resolveDeploymentId, requireApprover, async (req, res, next) => {
+  try {
+    const orderId = Number(req.params.id);
+    const deploymentId = req.resolvedDeploymentId;
+    const order = await approvalService.rejectOrder(orderId, deploymentId);
+    return res.status(200).json(order);
+  } catch (err) {
+    if (err.message?.includes("Order not found")) return res.status(404).json({ message: err.message });
+    if (err.message?.includes("already approved")) return res.status(400).json({ message: err.message });
+    next(err);
+  }
+});
+
+/**
+ * GET /api/customer/orders/:id/items/:itemId/print-pdf?deployment=slug
+ * Get print PDF for an order item. Requires approver permission.
+ */
+router.get("/orders/:id/items/:itemId/print-pdf", requireAuth, resolveDeploymentId, requireApprover, async (req, res, next) => {
+  try {
+    const { id: orderId, itemId } = req.params;
+    const deploymentId = req.resolvedDeploymentId;
+    const order = await orderService.findById(orderId, deploymentId);
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    const item = order.items?.find((i) => String(i.id) === String(itemId));
+    if (!item) return res.status(404).json({ message: "Order item not found." });
+    const orderController = require("../controllers/order.controller");
+    return orderController.getOrderItemPrintPdf(req, res, next);
+  } catch (err) {
+    next(err);
   }
 });
 

@@ -58,7 +58,9 @@
           throw new Error(data.message || "Login failed.");
         }
 
-        window.location.href = (window.STORE_BASE || "/store") + "/";
+        const next = new URLSearchParams(location.search).get("next");
+        const redirect = next ? (window.STORE_BASE || "/store") + (next.startsWith("/") ? next : "/" + next) : (window.STORE_BASE || "/store") + "/";
+        window.location.href = redirect;
       } catch (err) {
         errorEl.textContent = err.message || "Login failed. Please try again.";
         errorEl.style.display = "block";

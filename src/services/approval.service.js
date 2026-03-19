@@ -93,6 +93,37 @@ async function rejectOrder(orderId, deploymentId = null) {
 }
 
 /**
+ * Check if a user can approve orders for a deployment.
+ * User must be in a group that is configured as recipient for ORDER_APPROVAL_NEEDED template.
+ * Also allows backend admins (isAdmin).
+ * @param {number} userId - User ID
+ * @param {number} deploymentId - Deployment ID
+ * @returns {Promise<boolean>}
+ */
+async function canUserApproveForDeployment(userId, deploymentId) {
+  const user = await prisma.user.findUnique({
+    where: { id: Number(userId) },
+    include: { groups: { include: { group: true } } },
+  });
+  if (!user) return false;
+  if (user.isAdmin) return true;
+
+  const template = await prisma.notificationTemplate.findUnique({
+    where: { name: "ORDER_APPROVAL_NEEDED" },
+    include: { recipientGroups: { include: { group: true } } },
+  });
+  if (!template?.recipientGroups?.length) return false;
+
+  const approverGroupIds = template.recipientGroups
+    .filter((r) => r.group?.deploymentId === Number(deploymentId))
+    .map((r) => r.groupId);
+  if (approverGroupIds.length === 0) return false;
+
+  const userGroupIds = (user.groups || []).map((m) => m.groupId);
+  return approverGroupIds.some((gid) => userGroupIds.includes(gid));
+}
+
+/**
  * Get all orders with status PENDING_APPROVAL or approvalStatus PENDING.
  * @param {number} [deploymentId] - Optional deployment filter
  * @returns {Promise<Array>} Orders with customer name and proof PDF URLs
@@ -139,6 +170,7 @@ module.exports = {
   approveOrder,
   rejectOrder,
   getPendingApprovals,
+  canUserApproveForDeployment,
   STATUS_PENDING_APPROVAL,
   STATUS_APPROVED,
 };
