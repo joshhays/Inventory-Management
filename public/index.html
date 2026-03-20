@@ -17,6 +17,7 @@
   <link rel="prefetch" href="/shipping.html">
   <link rel="prefetch" href="/discounts.html">
   <link rel="prefetch" href="/reports.html">
+  <link rel="prefetch" href="/admin">
 </head>
 <body>
   <div class="app-layout">
@@ -165,6 +166,7 @@
       templates: "templates",
       logs: "logs",
       users: "users",
+      admin: "admin",
       "admin-groups": "adminGroups",
       groups: "userGroups",
       deployments: "deployments",
@@ -174,14 +176,15 @@
       reports: "reports",
     };
     const BENTO_ITEMS = [
-      { id: "products", href: "/products.html", icon: "📦", title: "Products", desc: "View inventory, adjust quantities, scan barcodes", large: true },
+      { id: "admin", href: "/admin", icon: "⚙️", title: "Admin", desc: "Approvals, templates, admin groups, permission manager", large: true },
+      { id: "products", href: "/products.html", icon: "📦", title: "Products", desc: "View inventory, adjust quantities, scan barcodes", large: false },
       { id: "products-manage", href: "/products-manage.html", icon: "✏️", title: "Manage Products", desc: "Create, edit, and organize products", large: false },
       { id: "orders", href: "/orders.html", icon: "🛒", title: "Orders", desc: "View and manage orders", large: false },
       { id: "pending-approvals", href: "/pending-approvals.html", icon: "✓", title: "Pending Approvals", desc: "Approve POD orders and create shipping labels", large: false },
-      { id: "templates", href: "/admin/templates", icon: "✉️", title: "Notification Templates", desc: "Edit email templates for order approved, order placed, etc.", large: false },
+      { id: "templates", href: "/templates.html", icon: "✉️", title: "Notification Templates", desc: "Email settings – user, reviewer, and admin notifications", large: false },
       { id: "logs", href: "/logs.html", icon: "📋", title: "Transaction Log", desc: "Audit trail of inventory changes", large: false },
       { id: "users", href: "/users.html", icon: "👥", title: "Users", desc: "Manage accounts, permissions, and groups", large: false },
-      { id: "admin-groups", href: "/admin-groups.html", icon: "👔", title: "Admin Groups", desc: "Dashboard permissions and template recipients", large: false },
+      { id: "admin-groups", href: "/admin/groups", icon: "👔", title: "Admin Groups", desc: "Dashboard permissions and template recipients", large: false },
       { id: "groups", href: "/groups.html", icon: "🏷️", title: "User/Admin Groups", desc: "User groups for storefront, admin groups for dashboard", large: false },
       { id: "deployments", href: "/deployments.html", icon: "🏢", title: "Deployments", desc: "Manage companies – add and switch between deployments", large: false },
       { id: "categories", href: "/categories.html", icon: "📂", title: "Store Categories", desc: "Add categories for the storefront – tag products to sort them", large: false },
