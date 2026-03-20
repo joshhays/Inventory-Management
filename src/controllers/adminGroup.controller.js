@@ -11,22 +11,44 @@ const getAdminGroups = async (req, res, next) => {
 
 const createAdminGroup = async (req, res, next) => {
   try {
+    const deploymentId = req.deploymentId ?? req.session?.selectedDeploymentId;
+    if (!deploymentId) {
+      return res.status(400).json({
+        message: "Select a deployment first. Go to the Dashboard and click Switch to choose a company.",
+      });
+    }
     const { name, permissions, canApproveOrders, canManageInventory, canEditUsers } = req.body;
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ message: "name is required." });
     }
     const group = await adminGroupService.create({
-      deploymentId: req.deploymentId,
+      deploymentId: Number(deploymentId),
       name: name.trim(),
       permissions: permissions || {},
       canApproveOrders,
       canManageInventory,
       canEditUsers,
     });
+    // Bootstrap: auto-add creator to the new group so they become admin
+    if (req.bootstrapCreate && req.user?.id && group) {
+      try {
+        await adminGroupService.addMember(String(group.id), String(req.user.id), Number(deploymentId));
+      } catch (_) {
+        // Ignore if add fails (e.g. duplicate)
+      }
+      // Reload group to include new member
+      const updated = await adminGroupService.findById(String(group.id), Number(deploymentId));
+      return res.status(201).json(updated || group);
+    }
     return res.status(201).json(group);
   } catch (error) {
     if (error.code === "P2002") {
       return res.status(400).json({ message: "A group with this name already exists." });
+    }
+    if (error.code === "P2003" || error.message?.includes("foreign key")) {
+      return res.status(400).json({
+        message: "Deployment not found. Select a deployment first (Dashboard → Switch).",
+      });
     }
     return next(error);
   }

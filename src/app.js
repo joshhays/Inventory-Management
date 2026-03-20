@@ -10,7 +10,7 @@ const authRoutes = require("./routes/auth.routes");
 const userRoutes = require("./routes/user.routes");
 const podRoutes = require("./routes/pod.routes");
 const { notFoundHandler, errorHandler } = require("./middleware/error.middleware");
-const { requireAuth, requireAdmin, optionalAuth, requireDeployment } = require("./middleware/auth.middleware");
+const { requireAuth, requireAdmin, requireAdminOrBootstrap, optionalAuth, requireDeployment } = require("./middleware/auth.middleware");
 const { requirePageAuth } = require("./middleware/require-page-auth.middleware");
 const storeRoutes = require("./routes/store.routes");
 
@@ -109,7 +109,13 @@ app.use("/api/products", optionalAuth, require("./middleware/deployment.middlewa
 app.use("/api/pod", podRoutes);
 app.use("/api/product-files", requireAuth, requireDeployment, require("./routes/productFile.routes"));
 app.use("/api/user-groups", requireAuth, require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/userGroup.routes"));
-app.use("/api/admin-groups", requireAuth, requireAdmin, require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/adminGroup.routes"));
+app.use(
+  "/api/admin-groups",
+  requireAuth,
+  require("./middleware/deployment.middleware").setDeploymentContext,
+  requireAdminOrBootstrap,
+  require("./routes/adminGroup.routes")
+);
 app.use("/api/logs", requireAuth, requireAdmin, requireDeployment, require("./routes/inventoryLog.routes"));
 app.use("/api/orders", requireAuth, requireAdmin, requireDeployment, require("./routes/order.routes"));
 app.use("/api/reports", requireAuth, requireAdmin, requireDeployment, require("./routes/report.routes"));

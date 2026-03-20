@@ -21,7 +21,10 @@ function requireAdmin(req, res, next) {
   const hasAdminGroup = user?.adminGroupIds?.length > 0;
   const isAdmin = user?.isAdmin || hasAdminGroup;
   if (!isAdmin) {
-    return res.status(403).json({ message: "Admin access required." });
+    return res.status(403).json({
+      message:
+        "Admin access required. For initial setup, run: npm run seed:admin-groups. Or set isAdmin=true for your user in the database.",
+    });
   }
   req.user.permissions = req.user.permissions || {
     canApproveOrders: user?.isAdmin || false,
@@ -34,6 +37,39 @@ function requireAdmin(req, res, next) {
     req.user.permissions = { canApproveOrders: true, canManageInventory: true, canEditUsers: true };
   }
   next();
+}
+
+/**
+ * Like requireAdmin but allows creating the first admin group (bootstrap) when the deployment has none.
+ * Must be used after requireAuth and setDeploymentContext.
+ */
+async function requireAdminOrBootstrap(req, res, next) {
+  const user = req.user;
+  const hasAdminGroup = user?.adminGroupIds?.length > 0;
+  const isAdmin = user?.isAdmin || hasAdminGroup;
+  if (isAdmin) {
+    return requireAdmin(req, res, next);
+  }
+  // Bootstrap: allow GET (list) and POST (create) when deployment has 0 admin groups
+  const pathMatch = (req.originalUrl || req.path || "").replace(/\?.*$/, "");
+  const isList = req.method === "GET" && /^\/api\/admin-groups\/?$/.test(pathMatch);
+  const isCreate = req.method === "POST" && /^\/api\/admin-groups\/?$/.test(pathMatch);
+  if ((isList || isCreate) && req.deploymentId) {
+    try {
+      const prisma = require("../lib/prisma");
+      const count = await prisma.adminGroup.count({ where: { deploymentId: Number(req.deploymentId) } });
+      if (count === 0) {
+        if (isCreate) req.bootstrapCreate = true;
+        return next();
+      }
+    } catch (_) {
+      // Fall through to 403
+    }
+  }
+  return res.status(403).json({
+    message:
+      "Admin access required. For initial setup, run: npm run seed:admin-groups. Or set isAdmin=true for your user in the database.",
+  });
 }
 
 /**
@@ -86,6 +122,7 @@ async function requireDeployment(req, res, next) {
 module.exports = {
   requireAuth,
   requireAdmin,
+  requireAdminOrBootstrap,
   requirePermission,
   optionalAuth,
   requireDeployment,

@@ -23,7 +23,6 @@ export default function AdminGroupsPage() {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [duplicating, setDuplicating] = useState<number | null>(null);
-  const navigate = useNavigate();
 
   async function fetchGroups() {
     setLoading(true);
