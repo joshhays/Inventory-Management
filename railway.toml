@@ -3,7 +3,7 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "npm install && npx prisma generate && npm run build"
+buildCommand = "npm install --omit=optional && npx prisma generate && npm run build"
 
 [deploy]
 # No-op so pre-deploy succeeds; actual migration runs in container ENTRYPOINT
