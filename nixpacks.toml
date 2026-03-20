@@ -3,4 +3,8 @@
 cmds = ['npm install --omit=optional']
 
 [phases.build]
-cmds = ['npm run build']
+cmds = ['npx prisma generate', 'npm run build']
+
+# prisma migrate deploy applies migrations without prompts (production-ready)
+[start]
+cmd = "prisma migrate deploy && node src/server.js"
