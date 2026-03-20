@@ -64,6 +64,29 @@ const getAdminGroup = async (req, res, next) => {
   }
 };
 
+const getGroupUsage = async (req, res, next) => {
+  try {
+    const usage = await adminGroupService.getUsage(req.params.id, req.deploymentId);
+    if (!usage) return res.status(404).json({ message: "Group not found." });
+    return res.status(200).json(usage);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const duplicateAdminGroup = async (req, res, next) => {
+  try {
+    const group = await adminGroupService.duplicate(req.params.id, req.deploymentId);
+    if (!group) return res.status(404).json({ message: "Group not found." });
+    return res.status(201).json(group);
+  } catch (error) {
+    if (error.code === "P2002") {
+      return res.status(400).json({ message: "A group with this name already exists." });
+    }
+    return next(error);
+  }
+};
+
 const addMember = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -94,6 +117,8 @@ module.exports = {
   updateAdminGroup,
   deleteAdminGroup,
   getAdminGroup,
+  getGroupUsage,
+  duplicateAdminGroup,
   addMember,
   removeMember,
 };

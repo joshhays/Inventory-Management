@@ -189,6 +189,50 @@ async function removeMemberRaw(adminGroupId, userId, deploymentId) {
   return findById(adminGroupId, deploymentId);
 }
 
+/**
+ * Get usage report for an admin group (where it's referenced).
+ * @returns {Promise<{ templates: string[], inUse: boolean }>}
+ */
+async function getUsage(id, deploymentId) {
+  const g = await findById(id, deploymentId);
+  if (!g) return null;
+  const templates = [];
+  try {
+    const rows = await prisma.$queryRaw`
+      SELECT nt.name, nt."displayName" FROM "NotificationTemplateRecipient" ntr
+      JOIN "NotificationTemplate" nt ON nt.id = ntr."templateId"
+      WHERE ntr."adminGroupId" = ${Number(id)}
+    `;
+    for (const r of rows || []) {
+      templates.push(r.displayName || r.name || "Template");
+    }
+  } catch (_) {
+    // Fallback if raw fails
+  }
+  return { templates, inUse: templates.length > 0 };
+}
+
+/**
+ * Duplicate an admin group (name, permissions). Does not copy members.
+ */
+async function duplicate(id, deploymentId) {
+  const g = await findById(id, deploymentId);
+  if (!g) return null;
+  const baseName = (g.name || "").trim();
+  let newName = baseName + " (Copy)";
+  const existing = await findAll(deploymentId);
+  const names = new Set(existing.map((x) => x.name));
+  let suffix = 1;
+  while (names.has(newName)) {
+    newName = `${baseName} (Copy ${++suffix})`;
+  }
+  return create({
+    deploymentId: g.deploymentId,
+    name: newName,
+    permissions: typeof g.permissions === "string" ? JSON.parse(g.permissions || "{}") : (g.permissions || {}),
+  });
+}
+
 module.exports = {
   findAll,
   create,
@@ -197,4 +241,6 @@ module.exports = {
   remove,
   addMember,
   removeMember,
+  getUsage,
+  duplicate,
 };
