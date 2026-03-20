@@ -150,32 +150,15 @@
             if (res.ok) loadDashboardWidgets();
           });
         });
-        await loadAllowedSections();
+        await loadBentoAccess();
         renderBentoCards();
       } catch (_) {
-        renderBentoCards();
+        loadBentoAccess().then(() => renderBentoCards());
       }
     }
 
     const BENTO_POS_KEY = "dashboardBentoPositions";
-    const BENTO_ID_TO_PERM = {
-      products: "products",
-      "products-manage": "productsManage",
-      orders: "orders",
-      "pending-approvals": "pendingApprovals",
-      templates: "templates",
-      logs: "logs",
-      users: "users",
-      admin: "admin",
-      "admin-groups": "adminGroups",
-      groups: "userGroups",
-      deployments: "deployments",
-      categories: "categories",
-      shipping: "shipping",
-      discounts: "discounts",
-      reports: "reports",
-    };
-    const BENTO_ITEMS = [
+    const BENTO_ITEMS_FALLBACK = [
       { id: "admin", href: "/admin", icon: "⚙️", title: "Admin", desc: "Approvals, templates, admin groups, permission manager", large: true },
       { id: "products", href: "/products.html", icon: "📦", title: "Products", desc: "View inventory, adjust quantities, scan barcodes", large: false },
       { id: "products-manage", href: "/products-manage.html", icon: "✏️", title: "Manage Products", desc: "Create, edit, and organize products", large: false },
@@ -199,7 +182,7 @@
         if (s) return JSON.parse(s);
       } catch (_) {}
       const out = {};
-      BENTO_ITEMS.forEach((item, i) => {
+      BENTO_ITEMS_FALLBACK.forEach((item, i) => {
         const col = i % 3;
         const row = Math.floor(i / 3);
         out[item.id] = { x: col * 320, y: row * 260 };
@@ -213,26 +196,21 @@
       localStorage.setItem(BENTO_POS_KEY, JSON.stringify(pos));
     }
 
-    let allowedSections = null;
+    let bentoAccess = {};
+    let bentoItems = BENTO_ITEMS_FALLBACK;
 
-    async function loadAllowedSections() {
+    async function loadBentoAccess() {
       try {
-        const res = await fetch("/api/dashboard-permissions", { credentials: "include" });
-        if (!res.ok) return null;
+        const res = await fetch("/api/bento-access", { credentials: "include" });
+        if (!res.ok) return;
         const data = await res.json();
-        allowedSections = data.allowed || null;
-        return allowedSections;
-      } catch (_) {
-        return null;
-      }
+        bentoAccess = data.bentoAccess || {};
+        bentoItems = data.items || BENTO_ITEMS_FALLBACK;
+      } catch (_) {}
     }
 
-    function filterBentoItems(items) {
-      if (!allowedSections || allowedSections.length === 0) return items;
-      return items.filter((item) => {
-        const perm = BENTO_ID_TO_PERM[item.id];
-        return !perm || allowedSections.includes(perm);
-      });
+    function getVisibleBentoItems() {
+      return bentoItems.filter((item) => bentoAccess[item.id] === "view" || bentoAccess[item.id] === "modify");
     }
 
     function renderBentoCards() {
@@ -240,17 +218,20 @@
       if (!layer) return;
       layer.innerHTML = "";
       const positions = getBentoPositions();
-      const items = filterBentoItems(BENTO_ITEMS);
+      const items = getVisibleBentoItems();
       items.forEach((item) => {
+        const access = bentoAccess[item.id] || "hidden";
+        const canModify = access === "modify";
         const pos = positions[item.id] || { x: 0, y: 0 };
         const a = document.createElement("a");
         a.href = item.href;
-        a.className = "bento-card board-item" + (item.large ? " bento-card-large" : "");
+        a.className = "bento-card board-item" + (item.large ? " bento-card-large" : "") + (canModify ? "" : " bento-card-view-only");
         a.dataset.bentoId = item.id;
-        a.draggable = true;
+        a.dataset.access = access;
+        a.draggable = canModify;
         a.style.left = pos.x + "px";
         a.style.top = pos.y + "px";
-        a.innerHTML = "<span class=\"bento-icon\">" + item.icon + "</span><h2>" + escapeHtml(item.title) + "</h2><p>" + escapeHtml(item.desc) + "</p>";
+        a.innerHTML = "<span class=\"bento-icon\">" + item.icon + "</span><h2>" + escapeHtml(item.title) + "</h2><p>" + escapeHtml(item.desc) + "</p>" + (canModify ? "" : "<span class=\"bento-view-only-badge\">View only</span>");
         layer.appendChild(a);
       });
       setupBoardDragDrop();

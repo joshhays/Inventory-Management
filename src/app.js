@@ -124,6 +124,7 @@ app.use("/api/discount", require("./routes/discount.routes"));
 app.use("/api/admin", require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/admin.routes"));
 app.use("/api/notification-templates", requireAuth, requireAdmin, require("./routes/notificationTemplate.routes"));
 app.use("/api/admin-access", require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/adminAccess.routes"));
+app.use("/api/bento-access", require("./middleware/deployment.middleware").setDeploymentContext, requireAuth, require("./routes/bentoAccess.routes"));
 
 app.use(notFoundHandler);
 app.use(errorHandler);

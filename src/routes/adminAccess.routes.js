@@ -1,25 +1,13 @@
 const express = require("express");
 const deploymentService = require("../services/deployment.service");
 const { requireAuth, requireAdmin } = require("../middleware/auth.middleware");
+const { BENTO_ITEMS, getDefaultAccessConfig } = require("../lib/bentoConfig");
 
 const router = express.Router();
 
-/** Default access categories (Pageflex-style) */
-const DEFAULT_ACCESS_CATEGORIES = [
-  { category: "Order Management", pages: ["Orders", "Approval Queue", "Prep Queue", "Production Queue", "Shipping Queue"] },
-  { category: "Downloads", pages: ["Downloads"] },
-  { category: "Finance", pages: ["Finance", "Ledger"] },
-  { category: "Logs", pages: ["Logs"] },
-  { category: "User Accounts Management", pages: ["User Accounts", "User Groups", "User Access", "Profile Fields", "Approvals", "Address Books"] },
-  { category: "Content Production", pages: ["Projects", "Categories", "Products", "Asset Manager", "Global Library", "Metadata Fields"] },
-  { category: "Purchasing", pages: ["Checkout", "Price Tables", "Tax Rates"] },
-  { category: "Admin Accounts Management", pages: ["Admin Accounts", "Admin Groups", "Admin Access"] },
-  { category: "Notifications", pages: ["Notifications", "Themes", "Site Options"] },
-];
-
 /**
  * GET /api/admin-access
- * Get admin access config for current deployment.
+ * Get admin access config for current deployment (bento-based).
  */
 router.get("/", requireAuth, requireAdmin, async (req, res, next) => {
   try {
@@ -30,15 +18,18 @@ router.get("/", requireAuth, requireAdmin, async (req, res, next) => {
     if (dep.adminAccessConfig) {
       try {
         config = JSON.parse(dep.adminAccessConfig);
+        config = config.map((row) => {
+          if (row.bentoId) return row;
+          const match = BENTO_ITEMS.find((b) => b.title === row.category || b.id === row.category);
+          return { ...row, bentoId: match?.id || row.category };
+        });
       } catch (_) {}
     }
     if (!Array.isArray(config) || config.length === 0) {
       const adminGroupService = require("../services/adminGroup.service");
       const groups = await adminGroupService.findAll(deploymentId);
-      const orderAccess = groups.find((g) => /order/i.test(g.name));
-      const firstGroup = groups[0];
-      const sampleId = (orderAccess || firstGroup)?.id;
-      config = DEFAULT_ACCESS_CATEGORIES.map((c) => ({
+      const sampleId = groups[0]?.id;
+      config = getDefaultAccessConfig().map((c) => ({
         ...c,
         viewModifyGroupIds: sampleId ? [sampleId] : [],
         viewOnlyGroupIds: sampleId ? [sampleId] : [],

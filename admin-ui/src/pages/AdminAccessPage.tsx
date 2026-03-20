@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 
 interface AccessRow {
+  bentoId: string;
   category: string;
   pages: string[];
   viewModifyGroupIds?: number[];
@@ -114,7 +115,7 @@ export default function AdminAccessPage() {
     <div>
       <h1>Admin Access</h1>
       <p style={{ color: "#64748b", marginBottom: "1rem" }}>
-        Set privileges to access general features of the administrator site.
+        Control which dashboard bento boxes each admin group can see. <strong>View and modify</strong> = full access. <strong>View only</strong> = see and click, no edit. Not listed = hidden.
       </p>
 
       {!editing ? (
@@ -172,10 +173,10 @@ export default function AdminAccessPage() {
           <thead>
             <tr style={{ background: "#f1f5f9" }}>
               <th style={{ padding: "0.5rem 1rem", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
-                Access Category
+                Bento Box
               </th>
               <th style={{ padding: "0.5rem 1rem", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
-                Accessible Pages
+                Description
               </th>
               <th style={{ padding: "0.5rem 1rem", textAlign: "left", borderBottom: "1px solid #e2e8f0" }}>
                 Who can view and modify information?
