@@ -33,10 +33,15 @@ router.get("/", requireAuth, requireAdmin, async (req, res, next) => {
       } catch (_) {}
     }
     if (!Array.isArray(config) || config.length === 0) {
+      const adminGroupService = require("../services/adminGroup.service");
+      const groups = await adminGroupService.findAll(deploymentId);
+      const orderAccess = groups.find((g) => /order/i.test(g.name));
+      const firstGroup = groups[0];
+      const sampleId = (orderAccess || firstGroup)?.id;
       config = DEFAULT_ACCESS_CATEGORIES.map((c) => ({
         ...c,
-        viewModifyGroupIds: [],
-        viewOnlyGroupIds: [],
+        viewModifyGroupIds: sampleId ? [sampleId] : [],
+        viewOnlyGroupIds: sampleId ? [sampleId] : [],
       }));
     }
     return res.status(200).json({ config, deploymentId });

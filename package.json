@@ -19,7 +19,8 @@
     "prisma:studio": "prisma studio",
     "seed": "node scripts/seed-from-csv.js",
     "seed:admin": "node scripts/seed-admin.js",
-    "seed:templates": "node scripts/seed-notification-templates.js"
+    "seed:templates": "node scripts/seed-notification-templates.js",
+    "seed:admin-groups": "node scripts/seed-admin-groups.js"
   },
   "keywords": [],
   "author": "",
