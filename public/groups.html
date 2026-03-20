@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Product Groups - Inventory</title>
+  <title>User/Admin Groups - Inventory</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/js/deployment-header.js"></script>
   <link rel="prefetch" href="/">
@@ -20,12 +20,14 @@
     </header>
     <main class="main-content">
       <div class="toolbar">
-        <h1>Product Groups</h1>
+        <h1>User/Admin Groups</h1>
         <button type="button" class="btn-create" id="btnCreate">Create Group</button>
       </div>
+      <p class="kit-modal-hint" style="margin-bottom:1rem">User groups filter which products customers see on the storefront. <a href="/admin-groups.html">Admin groups</a> control dashboard permissions. <a href="/dashboard.html">Switch deployment</a> to see groups for another company.</p>
       <div class="table-wrap">
         <div class="loading" id="status">Loading…</div>
         <div id="accessDenied" class="error" style="display:none">Admin access required.</div>
+        <div id="noGroupsHint" class="kit-modal-hint" style="display:none;margin-top:1rem">No groups yet. Create one below, or <a href="/dashboard.html">switch deployment</a> if you expect to see groups.</div>
         <table id="table" style="display:none">
           <thead>
             <tr>
@@ -42,11 +44,12 @@
 
   <div class="modal-overlay" id="groupModal">
     <div class="modal" style="min-width: 360px;">
-      <h3 id="groupModalTitle">Create Group</h3>
+      <h3 id="groupModalTitle">Create User Group</h3>
       <form id="groupForm">
         <div class="modal-row">
           <label>Group Name</label>
           <input type="text" id="groupName" required placeholder="e.g. Retail, Wholesale">
+        <p class="kit-modal-hint" style="margin:0.25rem 0 0">User groups filter which products users see on the storefront. <a href="/admin-groups.html">Admin groups</a> control dashboard access.</p>
         </div>
         <div class="modal-actions">
           <button type="submit" class="btn-apply">Save</button>
@@ -168,6 +171,7 @@
 
       status.style.display = "none";
       table.style.display = "table";
+      document.getElementById("noGroupsHint").style.display = groups.length === 0 ? "block" : "none";
     }
 
     function openCreate() {

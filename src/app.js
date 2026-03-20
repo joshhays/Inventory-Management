@@ -108,7 +108,7 @@ app.use("/api/users", requireAuth, requireAdmin, userRoutes);
 app.use("/api/products", optionalAuth, require("./middleware/deployment.middleware").setDeploymentContext, productRoutes);
 app.use("/api/pod", podRoutes);
 app.use("/api/product-files", requireAuth, requireDeployment, require("./routes/productFile.routes"));
-app.use("/api/user-groups", requireAuth, requireDeployment, require("./routes/userGroup.routes"));
+app.use("/api/user-groups", requireAuth, require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/userGroup.routes"));
 app.use("/api/logs", requireAuth, requireAdmin, requireDeployment, require("./routes/inventoryLog.routes"));
 app.use("/api/orders", requireAuth, requireAdmin, requireDeployment, require("./routes/order.routes"));
 app.use("/api/reports", requireAuth, requireAdmin, requireDeployment, require("./routes/report.routes"));
