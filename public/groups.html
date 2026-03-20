@@ -23,7 +23,7 @@
         <h1>User/Admin Groups</h1>
         <button type="button" class="btn-create" id="btnCreate">Create Group</button>
       </div>
-      <p class="kit-modal-hint" style="margin-bottom:1rem">User groups filter which products customers see on the storefront. <a href="/admin-groups.html">Admin groups</a> control dashboard permissions. <a href="/dashboard.html">Switch deployment</a> to see groups for another company.</p>
+      <p class="kit-modal-hint" style="margin-bottom:1rem">Create groups and choose their type. <strong>User groups</strong> filter which products customers see on the storefront. <strong>Admin groups</strong> control dashboard permissions and template recipients. <a href="/dashboard.html">Switch deployment</a> to see groups for another company.</p>
       <div class="table-wrap">
         <div class="loading" id="status">Loading…</div>
         <div id="accessDenied" class="error" style="display:none">Admin access required.</div>
@@ -32,7 +32,10 @@
           <thead>
             <tr>
               <th>Group Name</th>
+              <th>Type</th>
+              <th>Used For</th>
               <th class="num">Products</th>
+              <th class="num">Members</th>
               <th class="actions-col">Actions</th>
             </tr>
           </thead>
@@ -43,13 +46,20 @@
   </div>
 
   <div class="modal-overlay" id="groupModal">
-    <div class="modal" style="min-width: 360px;">
-      <h3 id="groupModalTitle">Create User Group</h3>
+    <div class="modal" style="min-width: 400px;">
+      <h3 id="groupModalTitle">Create Group</h3>
       <form id="groupForm">
         <div class="modal-row">
+          <label>Group Type</label>
+          <select id="groupType" required>
+            <option value="user">User Group</option>
+            <option value="admin">Admin Group</option>
+          </select>
+          <p class="kit-modal-hint" id="groupTypeHint" style="margin:0.25rem 0 0">User groups filter which products customers see on the storefront.</p>
+        </div>
+        <div class="modal-row">
           <label>Group Name</label>
-          <input type="text" id="groupName" required placeholder="e.g. Retail, Wholesale">
-        <p class="kit-modal-hint" style="margin:0.25rem 0 0">User groups filter which products users see on the storefront. <a href="/admin-groups.html">Admin groups</a> control dashboard access.</p>
+          <input type="text" id="groupName" required placeholder="e.g. Retail, Wholesale, Sales Team">
         </div>
         <div class="modal-actions">
           <button type="submit" class="btn-apply">Save</button>
@@ -97,8 +107,11 @@
     let groups = [];
     let products = [];
     let editingId = null;
+    let editingType = null;
     let tagGroupId = null;
+    let tagGroupType = "user";
     let deleteTargetId = null;
+    let deleteTargetType = null;
 
     const status = document.getElementById("status");
     const table = document.getElementById("table");
@@ -115,17 +128,33 @@
       return div.innerHTML;
     }
 
+    async function loadUserGroups() {
+      const res = await fetch("/api/user-groups", { credentials: "include" });
+      if (res.status === 403) return { groups: [], accessDenied: true };
+      if (!res.ok) return { groups: [] };
+      const list = await res.json();
+      return { groups: list.map((g) => ({ ...g, groupType: "user" })) };
+    }
+
+    async function loadAdminGroups() {
+      const res = await fetch("/api/admin-groups", { credentials: "include" });
+      if (res.status === 403) return { groups: [] };
+      if (!res.ok) return { groups: [] };
+      const list = await res.json();
+      return { groups: list.map((g) => ({ ...g, groupType: "admin" })) };
+    }
+
     async function loadGroups() {
       try {
-        const res = await fetch("/api/user-groups", { credentials: "include" });
-        if (res.status === 403) {
+        const [userResult, adminResult] = await Promise.all([loadUserGroups(), loadAdminGroups()]);
+        if (userResult.accessDenied) {
           status.style.display = "none";
           accessDenied.style.display = "block";
           document.getElementById("btnCreate").style.display = "none";
           return [];
         }
-        if (!res.ok) throw new Error("Failed to load groups");
-        return res.json();
+        const all = [...userResult.groups, ...adminResult.groups].sort((a, b) => a.name.localeCompare(b.name));
+        return all;
       } catch (e) {
         status.textContent = "Error: " + e.message;
         status.className = "error";
@@ -139,20 +168,33 @@
       return res.json();
     }
 
+    function getUsedFor(type) {
+      return type === "user" ? "Product filtering on storefront" : "Dashboard permissions & template recipients";
+    }
+
     async function render() {
       groups = await loadGroups();
       if (groups.length === 0 && accessDenied.style.display === "block") return;
 
       body.innerHTML = groups.map((g) => {
-        const count = g.products?.length ?? 0;
+        const type = g.groupType || "user";
+        const productCount = type === "user" ? (g.products?.length ?? 0) : "—";
+        const memberCount = type === "admin" ? (g.members?.length ?? 0) : "—";
+        const usedFor = getUsedFor(type);
+        const tagBtn = type === "user"
+          ? `<button type="button" class="btn-edit" data-id="${g.id}" data-type="${type}" data-action="tag">Tag Products</button>`
+          : "";
         return `
-          <tr data-id="${g.id}">
+          <tr data-id="${g.id}" data-type="${type}">
             <td>${escape(g.name)}</td>
-            <td class="num">${count}</td>
+            <td>${type === "user" ? "User Group" : "Admin Group"}</td>
+            <td>${escape(usedFor)}</td>
+            <td class="num">${productCount}</td>
+            <td class="num">${memberCount}</td>
             <td class="actions-col">
-              <button type="button" class="btn-edit" data-id="${g.id}">Edit</button>
-              <button type="button" class="btn-edit" data-id="${g.id}" data-action="tag">Tag Products</button>
-              <button type="button" class="btn-del-small" data-id="${g.id}">Delete</button>
+              <button type="button" class="btn-edit" data-id="${g.id}" data-type="${type}">Edit</button>
+              ${tagBtn}
+              <button type="button" class="btn-del-small" data-id="${g.id}" data-type="${type}">Delete</button>
             </td>
           </tr>
         `;
@@ -160,13 +202,13 @@
 
       body.querySelectorAll(".btn-edit").forEach((btn) => {
         if (btn.dataset.action === "tag") {
-          btn.addEventListener("click", () => openTagModal(Number(btn.dataset.id)));
+          btn.addEventListener("click", () => openTagModal(Number(btn.dataset.id), "user"));
         } else {
-          btn.addEventListener("click", () => openEdit(Number(btn.dataset.id)));
+          btn.addEventListener("click", () => openEdit(Number(btn.dataset.id), btn.dataset.type));
         }
       });
       body.querySelectorAll(".btn-del-small").forEach((btn) => {
-        btn.addEventListener("click", () => openDelete(Number(btn.dataset.id)));
+        btn.addEventListener("click", () => openDelete(Number(btn.dataset.id), btn.dataset.type));
       });
 
       status.style.display = "none";
@@ -176,28 +218,48 @@
 
     function openCreate() {
       editingId = null;
+      editingType = null;
       document.getElementById("groupModalTitle").textContent = "Create Group";
       document.getElementById("groupName").value = "";
+      document.getElementById("groupType").value = "user";
+      document.getElementById("groupType").disabled = false;
+      document.getElementById("groupType").closest(".modal-row").style.display = "";
+      updateGroupTypeHint();
       groupModal.classList.add("open");
     }
 
-    function openEdit(id) {
-      const g = groups.find((x) => x.id === id);
+    function openEdit(id, type) {
+      const g = groups.find((x) => x.id === id && (x.groupType || "user") === (type || "user"));
       if (!g) return;
       editingId = id;
+      editingType = type || g.groupType || "user";
       document.getElementById("groupModalTitle").textContent = "Edit Group";
       document.getElementById("groupName").value = g.name;
+      document.getElementById("groupType").value = editingType;
+      document.getElementById("groupType").disabled = true;
+      document.getElementById("groupType").closest(".modal-row").style.display = "";
+      updateGroupTypeHint();
       groupModal.classList.add("open");
+    }
+
+    function updateGroupTypeHint() {
+      const type = document.getElementById("groupType").value;
+      const hint = document.getElementById("groupTypeHint");
+      hint.textContent = type === "user"
+        ? "User groups filter which products customers see on the storefront."
+        : "Admin groups control dashboard permissions and notification template recipients.";
     }
 
     function closeGroupModal() {
       groupModal.classList.remove("open");
       editingId = null;
+      editingType = null;
     }
 
-    async function openTagModal(id) {
+    async function openTagModal(id, type) {
       tagGroupId = id;
-      const g = groups.find((x) => x.id === id);
+      tagGroupType = type || "user";
+      const g = groups.find((x) => x.id === id && (x.groupType || "user") === (type || "user"));
       document.getElementById("tagModalTitle").textContent = `Tag Products: ${g ? escape(g.name) : ""}`;
       await populateTagModal();
       tagModal.classList.add("open");
@@ -252,7 +314,7 @@
           const err = await res.json().catch(() => ({}));
           throw new Error(err.message || "Failed");
         }
-        const g = groups.find((x) => x.id === tagGroupId);
+        const g = groups.find((x) => x.id === tagGroupId && (x.groupType || "user") === tagGroupType);
         if (g) g.products = g.products || [];
         g.products.push(product);
         await populateTagModal();
@@ -285,7 +347,7 @@
           const err = await res.json().catch(() => ({}));
           throw new Error(err.message || "Failed");
         }
-        const g = groups.find((x) => x.id === tagGroupId);
+        const g = groups.find((x) => x.id === tagGroupId && (x.groupType || "user") === tagGroupType);
         if (g?.products) g.products = g.products.filter((p) => p.id !== productId);
         await populateTagModal();
         await render();
@@ -294,29 +356,34 @@
       }
     }
 
-    function openDelete(id) {
-      const g = groups.find((x) => x.id === id);
+    function openDelete(id, type) {
+      const g = groups.find((x) => x.id === id && (x.groupType || "user") === (type || "user"));
       deleteTargetId = id;
+      deleteTargetType = type || g?.groupType || "user";
       const count = g?.products?.length ?? 0;
-      document.getElementById("deleteConfirmText").textContent =
-        count > 0
-          ? `Delete "${escape(g?.name)}"? ${count} product(s) will be unassigned from this group.`
-          : `Delete "${escape(g?.name)}"?`;
+      const memberCount = g?.members?.length ?? 0;
+      let msg = `Delete "${escape(g?.name)}"?`;
+      if (count > 0) msg += ` ${count} product(s) will be unassigned.`;
+      if (memberCount > 0 && deleteTargetType === "admin") msg += ` ${memberCount} member(s) will be removed.`;
+      document.getElementById("deleteConfirmText").textContent = msg;
       deleteModal.classList.add("open");
     }
 
     function closeDeleteModal() {
       deleteModal.classList.remove("open");
       deleteTargetId = null;
+      deleteTargetType = null;
     }
 
     groupForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = document.getElementById("groupName").value.trim();
       if (!name) return;
+      const type = editingType ?? document.getElementById("groupType").value;
+      const base = type === "admin" ? "/api/admin-groups" : "/api/user-groups";
       try {
         if (editingId) {
-          const res = await fetch(`/api/user-groups/${editingId}`, {
+          const res = await fetch(`${base}/${editingId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -327,7 +394,7 @@
             throw new Error(err.message || "Update failed");
           }
         } else {
-          const res = await fetch("/api/user-groups", {
+          const res = await fetch(base, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -345,17 +412,21 @@
       }
     });
 
+    document.getElementById("groupType").addEventListener("change", updateGroupTypeHint);
+
     document.getElementById("btnCreate").addEventListener("click", openCreate);
     document.getElementById("btnGroupCancel").addEventListener("click", closeGroupModal);
     document.getElementById("btnAddToGroup").addEventListener("click", addToGroup);
     document.getElementById("btnTagClose").addEventListener("click", () => {
       tagModal.classList.remove("open");
       tagGroupId = null;
+      tagGroupType = "user";
     });
     document.getElementById("btnDeleteConfirm").addEventListener("click", async () => {
       if (!deleteTargetId) return;
+      const base = deleteTargetType === "admin" ? "/api/admin-groups" : "/api/user-groups";
       try {
-        const res = await fetch(`/api/user-groups/${deleteTargetId}`, {
+        const res = await fetch(`${base}/${deleteTargetId}`, {
           method: "DELETE",
           credentials: "include",
         });

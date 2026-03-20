@@ -1,6 +1,6 @@
 const userGroupService = require("../services/userGroup.service");
 
-const getUserGroups = async (_req, res, next) => {
+const getUserGroups = async (req, res, next) => {
   try {
     const groups = await userGroupService.findAll(req.deploymentId);
     return res.status(200).json(groups);
