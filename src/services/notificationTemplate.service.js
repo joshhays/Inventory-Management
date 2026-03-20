@@ -4,18 +4,46 @@
 
 const prisma = require("../lib/prisma");
 
-function findMany() {
-  return prisma.notificationTemplate.findMany({
-    orderBy: { name: "asc" },
-    include: { recipientGroups: { include: { adminGroup: true } } },
-  });
+async function findMany() {
+  try {
+    return await prisma.notificationTemplate.findMany({
+      orderBy: { name: "asc" },
+      include: { recipientGroups: { include: { adminGroup: true } } },
+    });
+  } catch (err) {
+    const msg = String(err.message || "");
+    if (
+      err.code === "P2010" ||
+      msg.includes("adminGroup") ||
+      msg.includes("does not exist") ||
+      msg.includes("column") ||
+      msg.includes("relation")
+    ) {
+      return prisma.notificationTemplate.findMany({ orderBy: { name: "asc" } });
+    }
+    throw err;
+  }
 }
 
-function findById(id) {
-  return prisma.notificationTemplate.findUnique({
-    where: { id: Number(id) },
-    include: { recipientGroups: { include: { adminGroup: true } } },
-  });
+async function findById(id) {
+  try {
+    return await prisma.notificationTemplate.findUnique({
+      where: { id: Number(id) },
+      include: { recipientGroups: { include: { adminGroup: true } } },
+    });
+  } catch (err) {
+    const msg = String(err.message || "");
+    if (
+      err.code === "P2010" ||
+      msg.includes("adminGroup") ||
+      msg.includes("does not exist") ||
+      msg.includes("column") ||
+      msg.includes("relation")
+    ) {
+      return prisma.notificationTemplate.findUnique({ where: { id: Number(id) } });
+    }
+    throw err;
+  }
 }
 
 function findByName(name) {
