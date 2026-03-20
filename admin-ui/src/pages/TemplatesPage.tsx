@@ -25,6 +25,7 @@ interface Template {
 const TRIGGER_OPTIONS = [
   { value: "ORDER_PLACED", label: "Order placed (customer confirmation)" },
   { value: "ORDER_APPROVAL_NEEDED", label: "Order approval needed (notify approvers)" },
+  { value: "ORDER_READY_FOR_PRINT", label: "Order approved & ready for printing (notify print team)" },
   { value: "ORDER_APPROVED", label: "Order approved (customer notification)" },
   { value: "ORDER_REJECTED", label: "Order rejected (customer notification)" },
 ];

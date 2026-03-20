@@ -30,6 +30,7 @@
             <option value="">— Select trigger —</option>
             <option value="ORDER_PLACED">Order placed (customer confirmation)</option>
             <option value="ORDER_APPROVAL_NEEDED">Order approval needed (notify approvers)</option>
+            <option value="ORDER_READY_FOR_PRINT">Order approved & ready for printing (notify print team)</option>
             <option value="ORDER_APPROVED">Order approved (customer notification)</option>
             <option value="ORDER_REJECTED">Order rejected (customer notification)</option>
           </select>
@@ -173,7 +174,7 @@
       subjectInput.value = t.subject;
       bodyInput.value = t.body;
       document.getElementById("displayNameInput").value = t.displayName || "";
-      const triggerLabels = { ORDER_PLACED: "Order placed (customer confirmation)", ORDER_APPROVAL_NEEDED: "Order approval needed (notify approvers)", ORDER_APPROVED: "Order approved (customer notification)", ORDER_REJECTED: "Order rejected (customer notification)" };
+      const triggerLabels = { ORDER_PLACED: "Order placed (customer confirmation)", ORDER_APPROVAL_NEEDED: "Order approval needed (notify approvers)", ORDER_READY_FOR_PRINT: "Order approved & ready for printing (notify print team)", ORDER_APPROVED: "Order approved (customer notification)", ORDER_REJECTED: "Order rejected (customer notification)" };
       document.getElementById("triggerDisplay").textContent = t.name + " — " + (triggerLabels[t.name] || "Custom trigger");
       const rt = t.recipientType || "customer";
       document.querySelectorAll("input[name=recipientType]").forEach((r) => { r.checked = r.value === rt; });

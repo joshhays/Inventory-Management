@@ -34,6 +34,12 @@ async function approveOrder(orderId, deploymentId = null) {
     data: { approvalStatus: "APPROVED" },
   });
 
+  try {
+    await mailService.triggerNotification(orderId, "ORDER_READY_FOR_PRINT");
+  } catch (mailErr) {
+    console.warn("ORDER_READY_FOR_PRINT email failed:", mailErr.message);
+  }
+
   return orderService.findById(orderId, deploymentId);
 }
 

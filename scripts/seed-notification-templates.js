@@ -32,14 +32,32 @@ const TEMPLATES = [
     body: "Hi,\n\nA new order #{{orderId}} from {{customerName}} needs your approval.\n\n<a href=\"{{approvalLink}}\">Review and approve</a>\n\nTotal: ${{total}}",
     recipientType: "admin_groups",
   },
+  {
+    name: "ORDER_READY_FOR_PRINT",
+    displayName: "Order ready for printing",
+    subject: "Order #{{orderId}} approved — ready for printing",
+    body: "Hi,\n\nOrder #{{orderId}} from {{customerName}} has been approved and is ready for printing.\n\nTotal: ${{total}}\n\n<a href=\"{{orderLink}}\">View order details</a>\n\nPlease start the print job when ready.",
+    recipientType: "custom_emails",
+  },
 ];
 
 async function main() {
   for (const t of TEMPLATES) {
     await prisma.notificationTemplate.upsert({
       where: { name: t.name },
-      create: { name: t.name, displayName: t.displayName || null, subject: t.subject, body: t.body, recipientType: t.recipientType || "customer" },
-      update: { displayName: t.displayName || null, subject: t.subject, body: t.body, recipientType: t.recipientType || "customer" },
+      create: {
+        name: t.name,
+        displayName: t.displayName || null,
+        subject: t.subject,
+        body: t.body,
+        recipientType: t.recipientType || "customer",
+      },
+      update: {
+        displayName: t.displayName || null,
+        subject: t.subject,
+        body: t.body,
+        recipientType: t.recipientType || "customer",
+      },
     });
     console.log(`Upserted template: ${t.name}`);
   }

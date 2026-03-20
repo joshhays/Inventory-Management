@@ -5,10 +5,12 @@
  *
  * Trigger mapping (template name → when it fires):
  * - ORDER_PLACED: when a customer places an order (customer.routes.js)
- * - ORDER_APPROVED: when an admin approves a POD order (approval.service.js)
+ * - ORDER_APPROVAL_NEEDED: when a POD order needs approval (customer.routes.js)
+ * - ORDER_READY_FOR_PRINT: when an order is approved and ready for printing (approval.service.js)
+ * - ORDER_APPROVED: when a shipping label is created (order.controller.js)
  * - ORDER_REJECTED: when an admin rejects a POD order (approval.service.js)
  *
- * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}, {{approvalLink}}
+ * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}, {{approvalLink}}, {{orderLink}}
  */
 
 const { Resend } = require("resend");
@@ -105,6 +107,7 @@ async function triggerNotification(orderId, templateName) {
   const baseFull = baseUrl ? (baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`) : "";
   // For admin_groups templates, link to storefront approval page; else backend
   let approvalLink = "";
+  const orderLink = baseFull ? `${baseFull}/orders.html?order=${order.id}` : "";
   if (baseFull) {
     if (template.recipientType === "admin_groups") {
       const deploymentService = require("./deployment.service");
@@ -126,6 +129,7 @@ async function triggerNotification(orderId, templateName) {
     trackingCode: order.trackingCode || "",
     shippingLabelUrl: order.shippingLabelUrl || "",
     approvalLink,
+    orderLink,
   };
 
   const subject = replacePlaceholders(template.subject, data);

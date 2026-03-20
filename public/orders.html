@@ -413,7 +413,10 @@
       if (e.key === "Escape" && orderDetailSidebar.classList.contains("open")) closeOrderDetail();
     });
 
-    loadOrders(1);
+    loadOrders(1).then(() => {
+      const orderId = new URLSearchParams(window.location.search).get("order");
+      if (orderId) openOrderDetail(Number(orderId));
+    }).catch(() => {});
   </script>
 </body>
 </html>
