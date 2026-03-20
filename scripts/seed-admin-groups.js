@@ -118,10 +118,14 @@ async function main() {
     }
   }
 
-  // Link Email Notifications group to ORDER_APPROVAL_NEEDED template (optional - for "In use?" to show)
+  // Link groups to notification templates
   const emailGroup = createdGroups.find((g) => g.name === "Email Notifications");
+  const orderAccess = createdGroups.find((g) => g.name === "Order Access");
   const approvalTemplate = await prisma.notificationTemplate.findFirst({
     where: { name: "ORDER_APPROVAL_NEEDED" },
+  });
+  const readyTemplate = await prisma.notificationTemplate.findFirst({
+    where: { name: "ORDER_READY_FOR_PRINT" },
   });
   if (emailGroup && approvalTemplate) {
     try {
@@ -135,6 +139,20 @@ async function main() {
       console.log("Linked Email Notifications to ORDER_APPROVAL_NEEDED template");
     } catch (e) {
       // May need to update template recipientType - ignore
+    }
+  }
+  if (orderAccess && readyTemplate) {
+    try {
+      await prisma.notificationTemplateRecipient.upsert({
+        where: {
+          templateId_adminGroupId: { templateId: readyTemplate.id, adminGroupId: orderAccess.id },
+        },
+        create: { templateId: readyTemplate.id, adminGroupId: orderAccess.id },
+        update: {},
+      });
+      console.log("Linked Order Access to ORDER_READY_FOR_PRINT template");
+    } catch (e) {
+      // Ignore
     }
   }
 

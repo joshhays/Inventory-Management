@@ -76,7 +76,7 @@ async function getRecipientEmails(template, order) {
     });
     const adminEmails = [...new Set(
       members
-        .filter((m) => m.user?.isAdmin && m.user?.email)
+        .filter((m) => m.user?.email)
         .map((m) => m.user.email.toLowerCase().trim())
     )];
     return adminEmails;

@@ -37,7 +37,7 @@ const TEMPLATES = [
     displayName: "Order ready for printing",
     subject: "Order #{{orderId}} approved — ready for printing",
     body: "Hi,\n\nOrder #{{orderId}} from {{customerName}} has been approved and is ready for printing.\n\nTotal: ${{total}}\n\n<a href=\"{{orderLink}}\">View order details</a>\n\nPlease start the print job when ready.",
-    recipientType: "custom_emails",
+    recipientType: "admin_groups",
   },
 ];
 
