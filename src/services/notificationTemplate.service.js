@@ -52,7 +52,7 @@ function findByName(name) {
   });
 }
 
-async function create({ name, subject, body, recipientType, groupIds, customEmails, displayName }) {
+async function create({ name, subject, body, recipientType, groupIds, customEmails, displayName, enabled }) {
   const rt = recipientType === "admin_groups" ? "admin_groups" : recipientType === "custom_emails" ? "custom_emails" : "customer";
   const data = {
     name: String(name).trim(),
@@ -61,6 +61,7 @@ async function create({ name, subject, body, recipientType, groupIds, customEmai
     body: String(body),
     recipientType: rt,
     customEmails: rt === "custom_emails" && customEmails ? String(customEmails).trim() : null,
+    enabled: enabled !== false,
   };
   return prisma.notificationTemplate.create({
     data: {
@@ -77,7 +78,7 @@ async function create({ name, subject, body, recipientType, groupIds, customEmai
   });
 }
 
-async function update(id, { name, subject, body, recipientType, groupIds, customEmails, displayName }) {
+async function update(id, { name, subject, body, recipientType, groupIds, customEmails, displayName, enabled }) {
   const data = {};
   if (name !== undefined) data.name = String(name).trim();
   if (displayName !== undefined) data.displayName = displayName ? String(displayName).trim() : null;
@@ -89,6 +90,7 @@ async function update(id, { name, subject, body, recipientType, groupIds, custom
   if (customEmails !== undefined) {
     data.customEmails = customEmails ? String(customEmails).trim() : null;
   }
+  if (enabled !== undefined) data.enabled = Boolean(enabled);
 
   const template = await prisma.notificationTemplate.findUnique({ where: { id: Number(id) } });
   if (!template) return null;

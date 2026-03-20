@@ -3,18 +3,18 @@ const notificationTemplateService = require("../services/notificationTemplate.se
 
 const router = express.Router();
 
-/** Available triggers - when each email fires */
+/** Available triggers - when each email fires. Section = Pageflex-style grouping. */
 const AVAILABLE_TRIGGERS = [
-  { value: "ORDER_PLACED", label: "Order placed (customer confirmation)" },
-  { value: "ORDER_APPROVAL_NEEDED", label: "Order approval needed (notify approvers)" },
-  { value: "ORDER_READY_FOR_PRINT", label: "Order approved & ready for printing (notify print team)" },
-  { value: "ORDER_APPROVED", label: "Order approved (customer notification)" },
-  { value: "ORDER_REJECTED", label: "Order rejected (customer notification)" },
+  { value: "ORDER_PLACED", label: "Order placed", section: "user" },
+  { value: "ORDER_APPROVED", label: "Order approved", section: "user" },
+  { value: "ORDER_REJECTED", label: "Order rejected", section: "user" },
+  { value: "ORDER_APPROVAL_NEEDED", label: "Approval required", section: "reviewer" },
+  { value: "ORDER_READY_FOR_PRINT", label: "Order ready for printing", section: "admin" },
 ];
 
 /**
  * GET /api/notification-templates/triggers
- * List available trigger options for templates.
+ * List available trigger options for templates (with section for Pageflex-style UI).
  */
 router.get("/triggers", (_req, res) => {
   return res.status(200).json(AVAILABLE_TRIGGERS);
@@ -53,11 +53,11 @@ router.get("/:id", async (req, res, next) => {
  */
 router.post("/", async (req, res, next) => {
   try {
-    const { name, subject, body, recipientType, groupIds, customEmails, displayName } = req.body;
+    const { name, subject, body, recipientType, groupIds, customEmails, displayName, enabled } = req.body;
     if (!name || !subject || body === undefined) {
       return res.status(400).json({ message: "Trigger, subject, and body are required" });
     }
-    const template = await notificationTemplateService.create({ name, subject, body, recipientType, groupIds, customEmails, displayName });
+    const template = await notificationTemplateService.create({ name, subject, body, recipientType, groupIds, customEmails, displayName, enabled });
     return res.status(201).json(template);
   } catch (err) {
     if (err.code === "P2002") {
@@ -73,8 +73,8 @@ router.post("/", async (req, res, next) => {
  */
 router.patch("/:id", async (req, res, next) => {
   try {
-    const { name, subject, body, recipientType, groupIds, customEmails, displayName } = req.body;
-    const template = await notificationTemplateService.update(req.params.id, { name, subject, body, recipientType, groupIds, customEmails, displayName });
+    const { name, subject, body, recipientType, groupIds, customEmails, displayName, enabled } = req.body;
+    const template = await notificationTemplateService.update(req.params.id, { name, subject, body, recipientType, groupIds, customEmails, displayName, enabled });
     return res.status(200).json(template);
   } catch (err) {
     if (err.code === "P2025") {

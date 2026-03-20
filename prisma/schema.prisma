@@ -215,6 +215,7 @@ model NotificationTemplate {
   body          String                        // Supports placeholders: {{name}}, {{email}}, {{trackingCode}}, etc.
   recipientType String                        @default("customer") // "customer" | "admin_groups" | "custom_emails"
   customEmails  String?                       // Comma-separated emails when recipientType = custom_emails
+  enabled       Boolean                       @default(true) // Toggle notification on/off (Pageflex-style)
   createdAt     DateTime                      @default(now())
   updatedAt     DateTime                      @updatedAt
   recipientGroups NotificationTemplateRecipient[]

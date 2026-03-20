@@ -20,6 +20,7 @@ interface Template {
   recipientType?: string;
   customEmails?: string;
   recipientGroups?: RecipientGroup[];
+  enabled?: boolean;
 }
 
 const TRIGGER_OPTIONS = [
@@ -39,6 +40,7 @@ export default function TemplatesPage() {
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   const [customEmails, setCustomEmails] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [enabled, setEnabled] = useState(true);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -88,6 +90,7 @@ export default function TemplatesPage() {
         (selected.recipientGroups || []).map((r) => r.adminGroupId ?? r.adminGroup?.id).filter(Boolean) as number[]
       );
       setCustomEmails((selected as Template & { customEmails?: string }).customEmails || "");
+      setEnabled(selected.enabled !== false);
     }
   }, [selected]);
 
@@ -119,6 +122,7 @@ export default function TemplatesPage() {
           recipientType,
           groupIds: recipientType === "admin_groups" ? selectedGroupIds : [],
           customEmails: recipientType === "custom_emails" ? customEmails : "",
+          enabled,
         }),
       });
       if (!res.ok) {
@@ -487,6 +491,16 @@ export default function TemplatesPage() {
                 )}
               </div>
             )}
+          </div>
+          <div style={{ marginBottom: "1rem" }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+              />{" "}
+              Enabled (send this notification)
+            </label>
           </div>
           <div style={{ marginBottom: "1rem" }}>
             <label htmlFor="subject" style={{ display: "block", marginBottom: "0.25rem" }}>

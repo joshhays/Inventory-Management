@@ -3,140 +3,170 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Notification Templates - Inventory</title>
+  <title>Email Notification Settings - Inventory</title>
   <link rel="stylesheet" href="/styles.css">
   <script src="/js/deployment-header.js"></script>
+  <style>
+    .notif-settings { max-width: 900px; }
+    .notif-section { margin-bottom: 2rem; }
+    .notif-section h2 { background: #e2e8f0; padding: 0.5rem 1rem; margin: 0 0 0; font-size: 1rem; border: 1px solid #cbd5e1; border-bottom: none; }
+    .notif-table { width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; }
+    .notif-table th, .notif-table td { padding: 0.5rem 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+    .notif-table th { background: #f1f5f9; font-weight: 600; }
+    .notif-table tr:last-child td { border-bottom: none; }
+    .status-cell { width: 48px; text-align: center; }
+    .status-enabled { color: #16a34a; font-size: 1.2rem; }
+    .status-disabled { color: #dc2626; font-size: 1.2rem; opacity: 0.8; }
+    .btn-set-msg { padding: 0.35rem 0.75rem; font-size: 0.9rem; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #fff; border-radius: 8px; padding: 1.5rem; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+    .modal h3 { margin-top: 0; }
+    .modal-actions { margin-top: 1rem; display: flex; gap: 0.5rem; }
+  </style>
 </head>
 <body>
   <div class="app-layout">
     <header class="top-nav top-nav-simple">
       <a href="/" class="top-nav-back">← Dashboard</a>
       <a href="/pending-approvals.html" class="top-nav-back">Pending Approvals</a>
-      <a href="/dashboard.html" class="top-nav-back" title="Switch deployment to change recipient groups">Switch</a>
+      <a href="/dashboard.html" class="top-nav-back" title="Switch deployment">Switch</a>
     </header>
     <main class="main-content">
-      <h1>Notification Templates</h1>
-      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}, {{orderId}}, {{total}}, {{approvalLink}}. <strong>Trigger</strong> = when the email sends. <strong>Template name</strong> = optional friendly label. <strong>Recipients:</strong> Customer = order email; Admin groups = admins; Custom emails = addresses you enter.</p>
-      <div class="form-group" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-        <label for="templateSelect">Template:</label>
-        <select id="templateSelect" class="form-control" style="max-width:300px"></select>
-        <button type="button" id="createBtn" class="btn-create">+ Create new</button>
-      </div>
-      <div id="createSection" style="display:none;margin:1rem 0;padding:1rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc">
-        <h3 style="margin-top:0">Create template</h3>
-        <div class="form-group">
-          <label for="newTrigger">Trigger (when this email sends)</label>
-          <select id="newTrigger" class="form-control" style="max-width:400px">
-            <option value="">— Select trigger —</option>
-            <option value="ORDER_PLACED">Order placed (customer confirmation)</option>
-            <option value="ORDER_APPROVAL_NEEDED">Order approval needed (notify approvers)</option>
-            <option value="ORDER_READY_FOR_PRINT">Order approved & ready for printing (notify print team)</option>
-            <option value="ORDER_APPROVED">Order approved (customer notification)</option>
-            <option value="ORDER_REJECTED">Order rejected (customer notification)</option>
-          </select>
+      <h1>Email Notification Settings</h1>
+      <p class="text-muted">Configure when notifications are sent and who receives them. Use placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{approvalLink}}, {{orderLink}}.</p>
+
+      <div class="notif-settings">
+        <div class="notif-section">
+          <h2>User Notifications</h2>
+          <table class="notif-table">
+            <thead><tr><th class="status-cell"></th><th>Notify Users When</th><th>Provide For</th><th></th></tr></thead>
+            <tbody id="userTable"></tbody>
+          </table>
         </div>
-        <div class="form-group">
-          <label for="newDisplayName">Template name (optional)</label>
-          <input type="text" id="newDisplayName" class="form-control" placeholder="e.g. Order Confirmation Email" style="max-width:300px">
-          <p class="text-muted" style="font-size:0.85rem;margin:0.25rem 0 0">A friendly name. If blank, the trigger name is shown.</p>
+        <div class="notif-section">
+          <h2>Notify Reviewers When</h2>
+          <table class="notif-table">
+            <thead><tr><th class="status-cell"></th><th>Notify Reviewers When</th><th>Provide For</th><th></th></tr></thead>
+            <tbody id="reviewerTable"></tbody>
+          </table>
         </div>
-        <div class="form-group">
-          <label>Recipients</label>
-          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem;flex-wrap:wrap">
-            <label><input type="radio" name="newRecipientType" value="customer" checked> Customer (order email)</label>
-            <label><input type="radio" name="newRecipientType" value="admin_groups"> Admin groups</label>
-            <label><input type="radio" name="newRecipientType" value="custom_emails"> Custom emails</label>
-          </div>
-          <div id="newCustomEmailsWrap" style="display:none;margin-top:0.5rem">
-            <input type="text" id="newCustomEmails" class="form-control" placeholder="email1@example.com, email2@example.com" style="max-width:400px">
-            <p class="text-muted" style="font-size:0.85rem;margin:0.25rem 0 0">Comma- or space-separated email addresses</p>
-          </div>
-          <div id="newGroupSelectWrap" style="display:none;margin-top:0.5rem">
-            <div id="newGroupCheckboxes"></div>
-          </div>
-        </div>
-        <div class="form-group">
-          <label for="newSubject">Subject</label>
-          <input type="text" id="newSubject" class="form-control" placeholder="Order confirmation - #{{orderId}}" style="max-width:500px">
-        </div>
-        <div class="form-group">
-          <label for="newBody">Body</label>
-          <textarea id="newBody" class="form-control" rows="6" placeholder="Hi {{name}},&#10;&#10;Thank you for your order..." style="max-width:600px;font-family:inherit"></textarea>
-        </div>
-        <button type="button" id="createSubmitBtn" class="btn-create">Create</button>
-        <button type="button" id="createCancelBtn" class="btn-secondary" style="margin-left:0.5rem">Cancel</button>
-      </div>
-      <div class="form-group" id="editorSection" style="display:none">
-        <div style="margin-bottom:1rem">
-          <label>Trigger</label>
-          <p class="text-muted" id="triggerDisplay" style="font-size:0.9rem;margin:0 0 0.5rem"></p>
-        </div>
-        <div style="margin-bottom:1rem">
-          <label for="displayNameInput">Template name</label>
-          <input type="text" id="displayNameInput" class="form-control" placeholder="e.g. Order Confirmation Email" style="max-width:400px">
-        </div>
-        <div style="margin-bottom:1rem">
-          <label>Recipients</label>
-          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem;flex-wrap:wrap">
-            <label><input type="radio" name="recipientType" value="customer"> Customer (order email)</label>
-            <label><input type="radio" name="recipientType" value="admin_groups"> Admin groups</label>
-            <label><input type="radio" name="recipientType" value="custom_emails"> Custom emails</label>
-          </div>
-          <div id="customEmailsWrap" style="display:none;margin-top:0.5rem">
-            <input type="text" id="customEmailsInput" class="form-control" placeholder="email1@example.com, email2@example.com" style="max-width:400px">
-            <p class="text-muted" style="font-size:0.85rem;margin:0.25rem 0 0">Comma- or space-separated email addresses</p>
-          </div>
-          <div id="groupSelectWrap" style="display:none;margin-top:0.5rem">
-            <p class="text-muted" style="font-size:0.9rem;margin:0 0 0.25rem">Admins in these groups receive the email. <a href="/dashboard.html">Switch deployment</a> to see other groups.</p>
-            <div id="groupCheckboxes"></div>
-          </div>
-        </div>
-        <label for="subject">Subject</label>
-        <input type="text" id="subject" class="form-control" style="max-width:500px">
-        <label for="body" style="margin-top:1rem">Body</label>
-        <textarea id="body" class="form-control" rows="12" style="max-width:600px;font-family:inherit"></textarea>
-        <div style="margin-top:1rem;display:flex;gap:0.5rem">
-          <button type="button" id="saveBtn" class="btn-create">Save</button>
-          <button type="button" id="deleteBtn" class="btn-secondary" style="background:#dc2626;color:#fff;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer">Delete</button>
+        <div class="notif-section">
+          <h2>Administrator Notifications</h2>
+          <table class="notif-table">
+            <thead><tr><th class="status-cell"></th><th>Notify Administrators When</th><th>Group to Notify</th><th></th></tr></thead>
+            <tbody id="adminTable"></tbody>
+          </table>
         </div>
       </div>
+
       <div id="message" style="margin-top:1rem;display:none"></div>
     </main>
   </div>
+
+  <!-- Set Message modal -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div class="modal">
+      <h3 id="modalTitle">Set Message</h3>
+      <input type="hidden" id="modalTemplateId">
+      <input type="hidden" id="modalTrigger">
+      <div class="form-group">
+        <label for="modalSubject">Subject</label>
+        <input type="text" id="modalSubject" class="form-control" style="width:100%">
+      </div>
+      <div class="form-group">
+        <label for="modalBody">Body</label>
+        <textarea id="modalBody" class="form-control" rows="8" style="width:100%;font-family:inherit"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Recipients</label>
+        <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem;flex-wrap:wrap">
+          <label><input type="radio" name="modalRecipientType" value="customer"> Customer (order email)</label>
+          <label><input type="radio" name="modalRecipientType" value="admin_groups"> Admin groups</label>
+          <label><input type="radio" name="modalRecipientType" value="custom_emails"> Custom emails</label>
+        </div>
+        <div id="modalGroupWrap" style="display:none;margin-top:0.5rem">
+          <p class="text-muted" style="font-size:0.85rem;margin:0 0 0.25rem">Admins in these groups receive the email. <a href="/dashboard.html">Switch deployment</a> to see other groups.</p>
+          <div id="modalGroupCheckboxes"></div>
+        </div>
+        <div id="modalCustomEmailsWrap" style="display:none;margin-top:0.5rem">
+          <input type="text" id="modalCustomEmails" class="form-control" placeholder="email1@example.com, email2@example.com" style="max-width:400px">
+        </div>
+      </div>
+      <div class="form-group">
+        <label><input type="checkbox" id="modalEnabled" checked> Enabled (send this notification)</label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="modalSave" class="btn-create">Save</button>
+        <button type="button" id="modalDelete" class="btn-secondary" style="background:#dc2626;color:#fff;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer">Delete</button>
+        <button type="button" id="modalCancel" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    const templateSelect = document.getElementById("templateSelect");
-    const editorSection = document.getElementById("editorSection");
-    const subjectInput = document.getElementById("subject");
-    const bodyInput = document.getElementById("body");
-    const saveBtn = document.getElementById("saveBtn");
-    const messageEl = document.getElementById("message");
+    const SECTION_IDS = { user: "userTable", reviewer: "reviewerTable", admin: "adminTable" };
+    const SECTION_LABELS = { user: "User Notifications", reviewer: "Notify Reviewers", admin: "Administrator Notifications" };
+    let triggers = [];
+    let templates = [];
+    let allGroups = [];
 
     function showMessage(text, isError) {
-      messageEl.textContent = text;
-      messageEl.style.display = "block";
-      messageEl.style.color = isError ? "#dc2626" : "#16a34a";
-      setTimeout(() => { messageEl.style.display = "none"; }, 3000);
+      const el = document.getElementById("message");
+      el.textContent = text;
+      el.style.display = "block";
+      el.style.color = isError ? "#dc2626" : "#16a34a";
+      setTimeout(() => { el.style.display = "none"; }, 3000);
     }
 
-    async function loadTemplates() {
-      const res = await fetch("/api/notification-templates", { credentials: "include" });
-      if (!res.ok) {
-        const msg = res.status === 401 ? "Please log in." : res.status === 403 ? "Admin access required." : "Failed to load templates.";
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || msg);
-      }
-      const templates = await res.json();
-      templateSelect.innerHTML = '<option value="">— Select —</option>' +
-        templates.map(t => `<option value="${t.id}">${escapeHtml(t.displayName || t.name)}</option>`).join("");
-      if (templates.length) {
-        templateSelect.value = templates[0].id;
-        loadTemplate(templates[0].id);
-      } else {
-        showMessage("No templates found. Run: npm run seed:templates", true);
-      }
+    function escapeHtml(s) {
+      const div = document.createElement("div");
+      div.textContent = s ?? "";
+      return div.innerHTML;
     }
 
-    let allGroups = [];
+    function getTargetLabel(template) {
+      if (!template) return "(disabled)";
+      if (template.recipientType === "customer") return "Customer";
+      if (template.recipientType === "custom_emails" && template.customEmails) return "Custom emails";
+      if (template.recipientType === "admin_groups" && template.recipientGroups?.length) {
+        const names = template.recipientGroups.map(r => r.adminGroup?.name).filter(Boolean);
+        return names.length ? names.join(", ") : "(no groups)";
+      }
+      return "(disabled)";
+    }
+
+    function renderRow(trigger, template, sectionId) {
+      const tr = document.createElement("tr");
+      const enabled = template?.enabled !== false;
+      const target = getTargetLabel(template);
+      tr.innerHTML = `
+        <td class="status-cell">
+          <span class="status-${enabled ? "enabled" : "disabled"}" title="${enabled ? "Enabled" : "Disabled"}">${enabled ? "✓" : "⊘"}</span>
+        </td>
+        <td>${escapeHtml(trigger.label)}</td>
+        <td>${escapeHtml(template ? target : "(no template)")}</td>
+        <td>
+          <button type="button" class="btn-set-msg btn-secondary" data-trigger="${escapeHtml(trigger.value)}" data-id="${template?.id || ""}">Set Message</button>
+        </td>
+      `;
+      const btn = tr.querySelector(".btn-set-msg");
+      btn.addEventListener("click", () => openModal(trigger, template));
+      return tr;
+    }
+
+    async function loadData() {
+      const [triggersRes, templatesRes] = await Promise.all([
+        fetch("/api/notification-templates/triggers", { credentials: "include" }),
+        fetch("/api/notification-templates", { credentials: "include" }),
+      ]);
+      if (!triggersRes.ok || !templatesRes.ok) {
+        const msg = triggersRes.status === 401 ? "Please log in." : templatesRes.status === 403 ? "Admin access required." : "Failed to load.";
+        throw new Error(msg);
+      }
+      triggers = await triggersRes.json();
+      templates = await templatesRes.json();
+    }
 
     async function loadGroups() {
       const res = await fetch("/api/admin-groups", { credentials: "include" });
@@ -146,221 +176,149 @@
       return allGroups;
     }
 
-    function renderGroupCheckboxes(selectedIds) {
-      const wrap = document.getElementById("groupCheckboxes");
+    function renderTables() {
+      const byName = Object.fromEntries(templates.map(t => [t.name, t]));
+      for (const [section, tableId] of Object.entries(SECTION_IDS)) {
+        const tbody = document.getElementById(tableId);
+        tbody.innerHTML = "";
+        const sectionTriggers = triggers.filter(t => t.section === section);
+        for (const trigger of sectionTriggers) {
+          const template = byName[trigger.value];
+          tbody.appendChild(renderRow(trigger, template, section));
+        }
+      }
+    }
+
+    function openModal(trigger, template) {
+      document.getElementById("modalTitle").textContent = `Set ${trigger.label}`;
+      document.getElementById("modalTemplateId").value = template?.id || "";
+      document.getElementById("modalTrigger").value = trigger.value;
+      document.getElementById("modalSubject").value = template?.subject || "";
+      document.getElementById("modalBody").value = template?.body || "";
+      document.getElementById("modalEnabled").checked = template?.enabled !== false;
+      const rt = template?.recipientType || "customer";
+      document.querySelectorAll("input[name=modalRecipientType]").forEach(r => { r.checked = r.value === rt; });
+      document.getElementById("modalCustomEmails").value = template?.customEmails || "";
+      document.getElementById("modalGroupWrap").style.display = rt === "admin_groups" ? "block" : "none";
+      document.getElementById("modalCustomEmailsWrap").style.display = rt === "custom_emails" ? "block" : "none";
+      if (rt === "admin_groups") {
+        if (allGroups.length === 0) loadGroups().then(() => renderModalGroupCheckboxes(template));
+        else renderModalGroupCheckboxes(template);
+      }
+      document.getElementById("modalOverlay").classList.add("open");
+    }
+
+    function renderModalGroupCheckboxes(template) {
+      const wrap = document.getElementById("modalGroupCheckboxes");
       wrap.innerHTML = "";
-      allGroups.forEach((g) => {
+      const selectedIds = (template?.recipientGroups || []).map(r => r.adminGroupId || r.adminGroup?.id).filter(Boolean);
+      allGroups.forEach(g => {
         const label = document.createElement("label");
         label.style.display = "block";
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.value = g.id;
-        cb.dataset.groupId = g.id;
-        if ((selectedIds || []).includes(g.id)) cb.checked = true;
+        if (selectedIds.includes(g.id)) cb.checked = true;
         label.appendChild(cb);
         label.appendChild(document.createTextNode(" " + (g.name || "Group " + g.id)));
         wrap.appendChild(label);
       });
-      if (allGroups.length === 0) {
-        wrap.innerHTML = "<p class=\"text-muted\" style=\"font-size:0.9rem\">No groups. <a href=\"/groups.html\">Create groups</a> and add admin users.</p>";
-      }
+      if (allGroups.length === 0) wrap.innerHTML = "<p class=\"text-muted\" style=\"font-size:0.9rem\">No groups. <a href=\"/groups.html\">Create groups</a>.</p>";
     }
 
-    function getSelectedGroupIds() {
-      return Array.from(document.querySelectorAll("#groupCheckboxes input:checked")).map((cb) => Number(cb.value));
-    }
-
-    async function loadTemplate(id) {
-      const res = await fetch(`/api/notification-templates/${id}`, { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load template");
-      const t = await res.json();
-      subjectInput.value = t.subject;
-      bodyInput.value = t.body;
-      document.getElementById("displayNameInput").value = t.displayName || "";
-      const triggerLabels = { ORDER_PLACED: "Order placed (customer confirmation)", ORDER_APPROVAL_NEEDED: "Order approval needed (notify approvers)", ORDER_READY_FOR_PRINT: "Order approved & ready for printing (notify print team)", ORDER_APPROVED: "Order approved (customer notification)", ORDER_REJECTED: "Order rejected (customer notification)" };
-      document.getElementById("triggerDisplay").textContent = t.name + " — " + (triggerLabels[t.name] || "Custom trigger");
-      const rt = t.recipientType || "customer";
-      document.querySelectorAll("input[name=recipientType]").forEach((r) => { r.checked = r.value === rt; });
-      const groupSelectWrap = document.getElementById("groupSelectWrap");
-      const customEmailsWrap = document.getElementById("customEmailsWrap");
-      const customEmailsInput = document.getElementById("customEmailsInput");
-      groupSelectWrap.style.display = rt === "admin_groups" ? "block" : "none";
-      customEmailsWrap.style.display = rt === "custom_emails" ? "block" : "none";
-      if (customEmailsInput) customEmailsInput.value = t.customEmails || "";
-      if (rt === "admin_groups") {
-        if (allGroups.length === 0) await loadGroups();
-        const selectedIds = (t.recipientGroups || []).map((r) => r.adminGroupId || r.adminGroup?.id).filter(Boolean);
-        renderGroupCheckboxes(selectedIds);
-      }
-      editorSection.style.display = "block";
-    }
-
-    function escapeHtml(s) {
-      const div = document.createElement("div");
-      div.textContent = s ?? "";
-      return div.innerHTML;
-    }
-
-    document.querySelectorAll("input[name=recipientType]").forEach((r) => {
+    document.querySelectorAll("input[name=modalRecipientType]").forEach(r => {
       r.addEventListener("change", () => {
-        document.getElementById("groupSelectWrap").style.display = r.value === "admin_groups" ? "block" : "none";
-        document.getElementById("customEmailsWrap").style.display = r.value === "custom_emails" ? "block" : "none";
-        if (r.value === "admin_groups" && allGroups.length === 0) loadGroups().then(() => renderGroupCheckboxes([]));
+        document.getElementById("modalGroupWrap").style.display = r.value === "admin_groups" ? "block" : "none";
+        document.getElementById("modalCustomEmailsWrap").style.display = r.value === "custom_emails" ? "block" : "none";
+        if (r.value === "admin_groups" && allGroups.length === 0) loadGroups().then(() => renderModalGroupCheckboxes(null));
       });
     });
 
-    templateSelect.addEventListener("change", () => {
-      const id = templateSelect.value;
-      if (id) loadTemplate(id);
-      else editorSection.style.display = "none";
-    });
+    async function saveModal() {
+      const id = document.getElementById("modalTemplateId").value;
+      const trigger = document.getElementById("modalTrigger").value;
+      const subject = document.getElementById("modalSubject").value.trim();
+      const body = document.getElementById("modalBody").value;
+      const enabled = document.getElementById("modalEnabled").checked;
+      const recipientType = document.querySelector("input[name=modalRecipientType]:checked")?.value || "customer";
+      const groupIds = recipientType === "admin_groups"
+        ? Array.from(document.querySelectorAll("#modalGroupCheckboxes input:checked")).map(cb => Number(cb.value))
+        : [];
+      const customEmails = recipientType === "custom_emails" ? document.getElementById("modalCustomEmails").value.trim() : "";
 
-    saveBtn.addEventListener("click", async () => {
-      const id = templateSelect.value;
-      if (!id) return;
-      saveBtn.disabled = true;
-      const recipientType = document.querySelector("input[name=recipientType]:checked")?.value || "customer";
-      const groupIds = recipientType === "admin_groups" ? getSelectedGroupIds() : [];
-      const customEmails = recipientType === "custom_emails" ? (document.getElementById("customEmailsInput")?.value || "").trim() : "";
-      const displayName = (document.getElementById("displayNameInput")?.value || "").trim();
+      if (!subject || body === undefined) {
+        showMessage("Subject and body are required", true);
+        return;
+      }
+
+      document.getElementById("modalSave").disabled = true;
       try {
-        const res = await fetch(`/api/notification-templates/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value, displayName: displayName || undefined, recipientType, groupIds, customEmails }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || "Save failed");
-        showMessage("Template saved.", false);
+        if (id) {
+          const res = await fetch(`/api/notification-templates/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ subject, body, recipientType, groupIds, customEmails, enabled }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || "Save failed");
+        } else {
+          const res = await fetch("/api/notification-templates", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ name: trigger, subject, body, recipientType, groupIds, customEmails, enabled }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || "Create failed");
+        }
+        showMessage("Saved.", false);
+        document.getElementById("modalOverlay").classList.remove("open");
+        const templatesRes = await fetch("/api/notification-templates", { credentials: "include" });
+        templates = await templatesRes.json();
+        renderTables();
       } catch (e) {
         showMessage(e.message || "Failed to save", true);
       } finally {
-        saveBtn.disabled = false;
+        document.getElementById("modalSave").disabled = false;
+      }
+    }
+
+    document.getElementById("modalSave").addEventListener("click", saveModal);
+
+    document.getElementById("modalCancel").addEventListener("click", () => {
+      document.getElementById("modalOverlay").classList.remove("open");
+    });
+
+    document.getElementById("modalOverlay").addEventListener("click", (e) => {
+      if (e.target === document.getElementById("modalOverlay")) {
+        document.getElementById("modalOverlay").classList.remove("open");
       }
     });
 
-    const deleteBtn = document.getElementById("deleteBtn");
-    deleteBtn.addEventListener("click", async () => {
-      const id = templateSelect.value;
+    document.getElementById("modalDelete").addEventListener("click", async () => {
+      const id = document.getElementById("modalTemplateId").value;
       if (!id) return;
-      let name = "this template";
-      try {
-        const tr = await fetch(`/api/notification-templates/${id}`, { credentials: "include" });
-        if (tr.ok) {
-          const t = await tr.json();
-          name = t.displayName || t.name;
-        }
-      } catch (_) {}
-      if (!confirm(`Delete template "${name}"? This cannot be undone.`)) return;
-      deleteBtn.disabled = true;
+      if (!confirm("Delete this template? This cannot be undone.")) return;
       try {
         const res = await fetch(`/api/notification-templates/${id}`, { method: "DELETE", credentials: "include" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || "Delete failed");
-        showMessage("Template deleted.", false);
-        await loadTemplates();
-        const opts = templateSelect.querySelectorAll("option");
-        if (opts.length > 1) {
-          templateSelect.value = opts[1].value;
-          loadTemplate(templateSelect.value);
-        } else {
-          editorSection.style.display = "none";
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.message || "Delete failed");
         }
+        showMessage("Template deleted.", false);
+        document.getElementById("modalOverlay").classList.remove("open");
+        const templatesRes = await fetch("/api/notification-templates", { credentials: "include" });
+        templates = await templatesRes.json();
+        renderTables();
       } catch (e) {
         showMessage(e.message || "Failed to delete", true);
-      } finally {
-        deleteBtn.disabled = false;
       }
     });
 
-    const createSection = document.getElementById("createSection");
-    const createBtn = document.getElementById("createBtn");
-    const createSubmitBtn = document.getElementById("createSubmitBtn");
-    const createCancelBtn = document.getElementById("createCancelBtn");
-    const newSubjectInput = document.getElementById("newSubject");
-    const newBodyInput = document.getElementById("newBody");
-
-    const newTriggerSelect = document.getElementById("newTrigger");
-    const newDisplayNameInput = document.getElementById("newDisplayName");
-    createBtn.addEventListener("click", () => {
-      createSection.style.display = "block";
-      newTriggerSelect.value = "";
-      newDisplayNameInput.value = "";
-      newSubjectInput.value = "";
-      newBodyInput.value = "";
-      document.getElementById("newCustomEmails").value = "";
-      document.querySelector("input[name=newRecipientType][value=customer]").checked = true;
-      document.getElementById("newGroupSelectWrap").style.display = "none";
-      document.getElementById("newCustomEmailsWrap").style.display = "none";
-    });
-    document.querySelectorAll("input[name=newRecipientType]").forEach((r) => {
-      r.addEventListener("change", () => {
-        document.getElementById("newGroupSelectWrap").style.display = r.value === "admin_groups" ? "block" : "none";
-        document.getElementById("newCustomEmailsWrap").style.display = r.value === "custom_emails" ? "block" : "none";
-        if (r.value === "admin_groups" && allGroups.length === 0) loadGroups().then(() => {
-          const wrap = document.getElementById("newGroupCheckboxes");
-          wrap.innerHTML = "";
-          allGroups.forEach((g) => {
-            const label = document.createElement("label");
-            label.style.display = "block";
-            const cb = document.createElement("input");
-            cb.type = "checkbox";
-            cb.value = g.id;
-            label.appendChild(cb);
-            label.appendChild(document.createTextNode(" " + (g.name || "Group " + g.id)));
-            wrap.appendChild(label);
-          });
-        });
-      });
-    });
-    createCancelBtn.addEventListener("click", () => { createSection.style.display = "none"; });
-
-    createSubmitBtn.addEventListener("click", async () => {
-      const trigger = (newTriggerSelect.value || "").trim();
-      const subject = (newSubjectInput.value || "").trim();
-      const body = (newBodyInput.value || "").trim();
-      if (!trigger || !subject || body === undefined) {
-        showMessage("Trigger, subject, and body are required", true);
-        return;
-      }
-      createSubmitBtn.disabled = true;
-      try {
-        const res = await fetch("/api/notification-templates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-          name: trigger,
-          displayName: (newDisplayNameInput.value || "").trim() || undefined,
-          subject,
-          body,
-          recipientType: document.querySelector("input[name=newRecipientType]:checked")?.value || "customer",
-          groupIds: document.querySelector("input[name=newRecipientType]:checked")?.value === "admin_groups"
-            ? Array.from(document.querySelectorAll("#newGroupCheckboxes input:checked")).map((cb) => Number(cb.value))
-            : [],
-          customEmails: document.querySelector("input[name=newRecipientType]:checked")?.value === "custom_emails"
-            ? (document.getElementById("newCustomEmails")?.value || "").trim()
-            : "",
-        }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || "Create failed");
-        showMessage("Template created.", false);
-        createSection.style.display = "none";
-        await loadTemplates();
-        if (data.id) {
-          templateSelect.value = data.id;
-          loadTemplate(data.id);
-        }
-      } catch (e) {
-        showMessage(e.message || "Failed to create", true);
-      } finally {
-        createSubmitBtn.disabled = false;
-      }
-    });
-
-    loadTemplates().catch(e => showMessage(e.message || "Could not load templates", true));
+    loadData().then(() => {
+      renderTables();
+    }).catch(e => showMessage(e.message || "Could not load", true));
   </script>
 </body>
 </html>

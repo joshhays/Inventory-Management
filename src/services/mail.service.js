@@ -94,6 +94,7 @@ async function triggerNotification(orderId, templateName) {
     include: { recipientGroups: { include: { adminGroup: true } } },
   });
   if (!template) throw new Error(`Notification template "${templateName}" not found`);
+  if (template.enabled === false) return { success: true, messageId: null, skipped: "disabled" };
 
   const recipients = await getRecipientEmails(template, order);
   if (recipients.length === 0) {
