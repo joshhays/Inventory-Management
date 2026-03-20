@@ -34,8 +34,36 @@ function getBentoItem(id) {
   return BENTO_ITEMS.find((b) => b.id === id);
 }
 
+/**
+ * Maps legacy/Pageflex category names to bento IDs so Admin Access config works
+ * when using seeded categories (e.g. "Order Management") vs bento ids ("orders").
+ */
+const CATEGORY_TO_BENTO_IDS = {
+  "Order Management": ["orders", "pending-approvals"],
+  "Admin Accounts Management": ["admin", "admin-groups"],
+  "Content Production": ["products", "products-manage", "categories"],
+  "User Accounts Management": ["users", "groups"],
+  Logs: ["logs"],
+  Notifications: ["templates"],
+  Finance: ["reports"],
+  Purchasing: ["shipping", "discounts"],
+  Downloads: [],
+};
+
+function getBentoIdsForConfigRow(row) {
+  const id = row.bentoId || BENTO_ITEMS.find((b) => b.title === row.category || b.id === row.category)?.id;
+  if (id && BENTO_ITEMS.some((b) => b.id === id)) {
+    return [id];
+  }
+  const mapped = CATEGORY_TO_BENTO_IDS[row.category];
+  if (mapped && mapped.length > 0) return mapped;
+  if (id) return [id];
+  return [];
+}
+
 module.exports = {
   BENTO_ITEMS,
   getDefaultAccessConfig,
   getBentoItem,
+  getBentoIdsForConfigRow,
 };

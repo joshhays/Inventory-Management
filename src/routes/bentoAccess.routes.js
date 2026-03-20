@@ -7,7 +7,7 @@ const express = require("express");
 const deploymentService = require("../services/deployment.service");
 const prisma = require("../lib/prisma");
 const { requireAuth } = require("../middleware/auth.middleware");
-const { BENTO_ITEMS } = require("../lib/bentoConfig");
+const { BENTO_ITEMS, getBentoIdsForConfigRow } = require("../lib/bentoConfig");
 
 const router = express.Router();
 
@@ -25,7 +25,9 @@ router.get("/", requireAuth, async (req, res, next) => {
       return res.status(200).json({ bentoAccess, items: BENTO_ITEMS });
     }
 
-    if (user.isAdmin) {
+    // Super-admins (isAdmin, no admin groups) get full access
+    const hasAdminGroups = (user.adminGroupIds?.length ?? 0) > 0;
+    if (user.isAdmin && !hasAdminGroups) {
       for (const item of BENTO_ITEMS) {
         bentoAccess[item.id] = "modify";
       }
@@ -57,14 +59,18 @@ router.get("/", requireAuth, async (req, res, next) => {
     }
 
     for (const row of config) {
-      const bentoId = row.bentoId || BENTO_ITEMS.find((b) => b.title === row.category)?.id || row.category;
+      const bentoIds = getBentoIdsForConfigRow(row);
       const modifyIds = row.viewModifyGroupIds || [];
       const viewIds = row.viewOnlyGroupIds || [];
 
-      if (modifyIds.some((gid) => userAdminGroupIds.includes(gid))) {
-        bentoAccess[bentoId] = "modify";
-      } else if (viewIds.some((gid) => userAdminGroupIds.includes(gid))) {
-        bentoAccess[bentoId] = bentoAccess[bentoId] === "modify" ? "modify" : "view";
+      const hasModify = modifyIds.some((gid) => userAdminGroupIds.includes(gid));
+      const hasView = viewIds.some((gid) => userAdminGroupIds.includes(gid));
+      for (const bentoId of bentoIds) {
+        if (hasModify) {
+          bentoAccess[bentoId] = "modify";
+        } else if (hasView && bentoAccess[bentoId] !== "modify") {
+          bentoAccess[bentoId] = "view";
+        }
       }
     }
 
