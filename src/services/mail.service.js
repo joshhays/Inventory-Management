@@ -45,20 +45,31 @@ function replacePlaceholders(str, data) {
  * @returns {Promise<{ success: boolean, messageId?: string }>}
  */
 /**
- * Get recipient emails for a template. Returns customer email or admin emails from configured groups.
- * @param {Object} template - NotificationTemplate with recipientGroups
+ * Get recipient emails for a template.
+ * - customer: order's customerEmail (the person who placed the order)
+ * - admin_groups: admin users in the selected AdminGroups
+ * - custom_emails: comma-separated emails from template.customEmails
+ * @param {Object} template - NotificationTemplate with recipientGroups, customEmails
  * @param {Object} order - Order with deploymentId, customerEmail
  * @returns {Promise<string[]>} Unique email addresses to send to
  */
 async function getRecipientEmails(template, order) {
+  if (template.recipientType === "custom_emails" && template.customEmails) {
+    const emails = template.customEmails
+      .split(/[,\s]+/)
+      .map((e) => e.trim().toLowerCase())
+      .filter((e) => e && e.includes("@"));
+    return [...new Set(emails)];
+  }
   if (template.recipientType === "admin_groups" && template.recipientGroups?.length) {
     const groupIds = template.recipientGroups
-      .filter((r) => r.group?.deploymentId === order.deploymentId)
-      .map((r) => r.groupId);
+      .filter((r) => r.adminGroup?.deploymentId === order.deploymentId)
+      .map((r) => r.adminGroupId)
+      .filter(Boolean);
     if (groupIds.length === 0) return [];
 
-    const members = await prisma.userGroupMember.findMany({
-      where: { groupId: { in: groupIds } },
+    const members = await prisma.adminGroupMember.findMany({
+      where: { adminGroupId: { in: groupIds } },
       include: { user: true },
     });
     const adminEmails = [...new Set(
@@ -68,6 +79,7 @@ async function getRecipientEmails(template, order) {
     )];
     return adminEmails;
   }
+  // customer: send to the order's customer (the user who placed the order)
   return order.customerEmail ? [order.customerEmail.toLowerCase().trim()] : [];
 }
 
@@ -77,7 +89,7 @@ async function triggerNotification(orderId, templateName) {
 
   const template = await prisma.notificationTemplate.findUnique({
     where: { name: String(templateName).trim() },
-    include: { recipientGroups: { include: { group: true } } },
+    include: { recipientGroups: { include: { adminGroup: true } } },
   });
   if (!template) throw new Error(`Notification template "${templateName}" not found`);
 

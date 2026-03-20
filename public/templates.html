@@ -16,7 +16,7 @@
     </header>
     <main class="main-content">
       <h1>Notification Templates</h1>
-      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}, {{orderId}}, {{total}}, {{approvalLink}}. <strong>Trigger names</strong> (e.g. ORDER_APPROVED, ORDER_PLACED) must match the code that sends the email.</p>
+      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}, {{orderId}}, {{total}}, {{approvalLink}}. <strong>Trigger names</strong> (e.g. ORDER_APPROVED, ORDER_PLACED) must match the code that sends the email. <strong>Recipients:</strong> Customer = the person who placed the order; Admin groups = admins in selected groups; Custom emails = specific addresses you enter.</p>
       <div class="form-group" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
         <label for="templateSelect">Template:</label>
         <select id="templateSelect" class="form-control" style="max-width:300px"></select>
@@ -31,9 +31,14 @@
         </div>
         <div class="form-group">
           <label>Recipients</label>
-          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem">
-            <label><input type="radio" name="newRecipientType" value="customer" checked> Customer</label>
+          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem;flex-wrap:wrap">
+            <label><input type="radio" name="newRecipientType" value="customer" checked> Customer (order email)</label>
             <label><input type="radio" name="newRecipientType" value="admin_groups"> Admin groups</label>
+            <label><input type="radio" name="newRecipientType" value="custom_emails"> Custom emails</label>
+          </div>
+          <div id="newCustomEmailsWrap" style="display:none;margin-top:0.5rem">
+            <input type="text" id="newCustomEmails" class="form-control" placeholder="email1@example.com, email2@example.com" style="max-width:400px">
+            <p class="text-muted" style="font-size:0.85rem;margin:0.25rem 0 0">Comma- or space-separated email addresses</p>
           </div>
           <div id="newGroupSelectWrap" style="display:none;margin-top:0.5rem">
             <div id="newGroupCheckboxes"></div>
@@ -53,9 +58,14 @@
       <div class="form-group" id="editorSection" style="display:none">
         <div style="margin-bottom:1rem">
           <label>Recipients</label>
-          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem">
+          <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem;flex-wrap:wrap">
             <label><input type="radio" name="recipientType" value="customer"> Customer (order email)</label>
             <label><input type="radio" name="recipientType" value="admin_groups"> Admin groups</label>
+            <label><input type="radio" name="recipientType" value="custom_emails"> Custom emails</label>
+          </div>
+          <div id="customEmailsWrap" style="display:none;margin-top:0.5rem">
+            <input type="text" id="customEmailsInput" class="form-control" placeholder="email1@example.com, email2@example.com" style="max-width:400px">
+            <p class="text-muted" style="font-size:0.85rem;margin:0.25rem 0 0">Comma- or space-separated email addresses</p>
           </div>
           <div id="groupSelectWrap" style="display:none;margin-top:0.5rem">
             <p class="text-muted" style="font-size:0.9rem;margin:0 0 0.25rem">Admins in these groups receive the email. <a href="/dashboard.html">Switch deployment</a> to see other groups.</p>
@@ -88,7 +98,11 @@
 
     async function loadTemplates() {
       const res = await fetch("/api/notification-templates", { credentials: "include" });
-      if (!res.ok) throw new Error("Failed to load templates");
+      if (!res.ok) {
+        const msg = res.status === 401 ? "Please log in." : res.status === 403 ? "Admin access required." : "Failed to load templates.";
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || msg);
+      }
       const templates = await res.json();
       templateSelect.innerHTML = '<option value="">— Select —</option>' +
         templates.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
@@ -103,7 +117,7 @@
     let allGroups = [];
 
     async function loadGroups() {
-      const res = await fetch("/api/user-groups", { credentials: "include" });
+      const res = await fetch("/api/admin-groups", { credentials: "include" });
       if (!res.ok) return [];
       const data = await res.json();
       allGroups = Array.isArray(data) ? data : (data.groups || data);
@@ -143,10 +157,14 @@
       const rt = t.recipientType || "customer";
       document.querySelectorAll("input[name=recipientType]").forEach((r) => { r.checked = r.value === rt; });
       const groupSelectWrap = document.getElementById("groupSelectWrap");
+      const customEmailsWrap = document.getElementById("customEmailsWrap");
+      const customEmailsInput = document.getElementById("customEmailsInput");
       groupSelectWrap.style.display = rt === "admin_groups" ? "block" : "none";
+      customEmailsWrap.style.display = rt === "custom_emails" ? "block" : "none";
+      if (customEmailsInput) customEmailsInput.value = t.customEmails || "";
       if (rt === "admin_groups") {
         if (allGroups.length === 0) await loadGroups();
-        const selectedIds = (t.recipientGroups || []).map((r) => r.groupId || r.group?.id).filter(Boolean);
+        const selectedIds = (t.recipientGroups || []).map((r) => r.adminGroupId || r.adminGroup?.id).filter(Boolean);
         renderGroupCheckboxes(selectedIds);
       }
       editorSection.style.display = "block";
@@ -161,6 +179,7 @@
     document.querySelectorAll("input[name=recipientType]").forEach((r) => {
       r.addEventListener("change", () => {
         document.getElementById("groupSelectWrap").style.display = r.value === "admin_groups" ? "block" : "none";
+        document.getElementById("customEmailsWrap").style.display = r.value === "custom_emails" ? "block" : "none";
         if (r.value === "admin_groups" && allGroups.length === 0) loadGroups().then(() => renderGroupCheckboxes([]));
       });
     });
@@ -177,12 +196,13 @@
       saveBtn.disabled = true;
       const recipientType = document.querySelector("input[name=recipientType]:checked")?.value || "customer";
       const groupIds = recipientType === "admin_groups" ? getSelectedGroupIds() : [];
+      const customEmails = recipientType === "custom_emails" ? (document.getElementById("customEmailsInput")?.value || "").trim() : "";
       try {
         const res = await fetch(`/api/notification-templates/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value, recipientType, groupIds }),
+          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value, recipientType, groupIds, customEmails }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || "Save failed");
@@ -207,12 +227,15 @@
       newNameInput.value = "";
       newSubjectInput.value = "";
       newBodyInput.value = "";
+      document.getElementById("newCustomEmails").value = "";
       document.querySelector("input[name=newRecipientType][value=customer]").checked = true;
       document.getElementById("newGroupSelectWrap").style.display = "none";
+      document.getElementById("newCustomEmailsWrap").style.display = "none";
     });
     document.querySelectorAll("input[name=newRecipientType]").forEach((r) => {
       r.addEventListener("change", () => {
         document.getElementById("newGroupSelectWrap").style.display = r.value === "admin_groups" ? "block" : "none";
+        document.getElementById("newCustomEmailsWrap").style.display = r.value === "custom_emails" ? "block" : "none";
         if (r.value === "admin_groups" && allGroups.length === 0) loadGroups().then(() => {
           const wrap = document.getElementById("newGroupCheckboxes");
           wrap.innerHTML = "";
@@ -253,6 +276,9 @@
           groupIds: document.querySelector("input[name=newRecipientType]:checked")?.value === "admin_groups"
             ? Array.from(document.querySelectorAll("#newGroupCheckboxes input:checked")).map((cb) => Number(cb.value))
             : [],
+          customEmails: document.querySelector("input[name=newRecipientType]:checked")?.value === "custom_emails"
+            ? (document.getElementById("newCustomEmails")?.value || "").trim()
+            : "",
         }),
         });
         const data = await res.json().catch(() => ({}));

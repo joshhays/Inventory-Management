@@ -36,11 +36,11 @@ router.get("/:id", async (req, res, next) => {
  */
 router.post("/", async (req, res, next) => {
   try {
-    const { name, subject, body, recipientType, groupIds } = req.body;
+    const { name, subject, body, recipientType, groupIds, customEmails } = req.body;
     if (!name || !subject || body === undefined) {
       return res.status(400).json({ message: "name, subject, and body are required" });
     }
-    const template = await notificationTemplateService.create({ name, subject, body, recipientType, groupIds });
+    const template = await notificationTemplateService.create({ name, subject, body, recipientType, groupIds, customEmails });
     return res.status(201).json(template);
   } catch (err) {
     if (err.code === "P2002") {
@@ -56,8 +56,8 @@ router.post("/", async (req, res, next) => {
  */
 router.patch("/:id", async (req, res, next) => {
   try {
-    const { name, subject, body, recipientType, groupIds } = req.body;
-    const template = await notificationTemplateService.update(req.params.id, { name, subject, body, recipientType, groupIds });
+    const { name, subject, body, recipientType, groupIds, customEmails } = req.body;
+    const template = await notificationTemplateService.update(req.params.id, { name, subject, body, recipientType, groupIds, customEmails });
     return res.status(200).json(template);
   } catch (err) {
     if (err.code === "P2025") {

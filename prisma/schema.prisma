@@ -14,18 +14,19 @@ datasource db {
 }
 
 model User {
-  id              Int              @id @default(autoincrement())
-  email           String           @unique
-  password        String
-  name            String?
-  phone           String?
-  isAdmin         Boolean          @default(false)
-  isUser          Boolean          @default(true)
-  groups          UserGroupMember[]
-  savedAddresses  SavedAddress[]
-  dashboardWidgets DashboardWidget[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  id                 Int               @id @default(autoincrement())
+  email              String            @unique
+  password           String
+  name               String?
+  phone              String?
+  isAdmin            Boolean           @default(false)
+  isUser             Boolean           @default(true)
+  groups             UserGroupMember[]
+  adminGroups        AdminGroupMember[]
+  savedAddresses     SavedAddress[]
+  dashboardWidgets   DashboardWidget[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }
 
 model DashboardWidget {
@@ -70,22 +71,23 @@ model UserGroupMember {
 }
 
 model Deployment {
-  id             Int         @id @default(autoincrement())
-  name           String      // e.g. "Acme Corp"
-  slug           String      @unique // e.g. "acme"
-  logoUrl        String?
-  brandColor1    String?     // PMS color 1 (hex) - header
-  brandColor2    String?     // PMS color 2 (hex) - background gradient
-  customerInfo   String?     // JSON: { address?, phone?, email?, ... }
-  shippingEnabled Boolean   @default(true) // false = no EasyPost rates/labels for this deployment
-  createdAt      DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  products     Product[]
-  orders       Order[]
-  groups       UserGroup[]
-  categories   DeploymentCategory[]
-  shippingTiers ShippingTier[]
-  discountRules OrderDiscountRule[]
+  id              Int           @id @default(autoincrement())
+  name            String        // e.g. "Acme Corp"
+  slug            String        @unique // e.g. "acme"
+  logoUrl         String?
+  brandColor1     String?       // PMS color 1 (hex) - header
+  brandColor2     String?      // PMS color 2 (hex) - background gradient
+  customerInfo    String?       // JSON: { address?, phone?, email?, ... }
+  shippingEnabled Boolean      @default(true) // false = no EasyPost rates/labels for this deployment
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  products        Product[]
+  orders          Order[]
+  groups          UserGroup[]
+  adminGroups     AdminGroup[]
+  categories      DeploymentCategory[]
+  shippingTiers   ShippingTier[]
+  discountRules   OrderDiscountRule[]
 }
 
 model ShippingTier {
@@ -116,15 +118,34 @@ model DeploymentCategory {
 }
 
 model UserGroup {
+  id           Int              @id @default(autoincrement())
+  name         String
+  deploymentId Int
+  deployment   Deployment      @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  products     Product[]
+  members      UserGroupMember[]
+
+  @@unique([name, deploymentId])
+}
+
+model AdminGroup {
   id                    Int                           @id @default(autoincrement())
   name                  String
   deploymentId          Int
   deployment            Deployment                    @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  products              Product[]
-  members               UserGroupMember[]
+  permissions           String                        @default("{}") // JSON: { products, orders, templates, users, adminGroups, userGroups, reports, deployments, categories, shipping, discounts }
+  members               AdminGroupMember[]
   templateRecipients    NotificationTemplateRecipient[]
 
   @@unique([name, deploymentId])
+}
+
+model AdminGroupMember {
+  userId      Int
+  adminGroupId Int
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminGroup  AdminGroup @relation(fields: [adminGroupId], references: [id], onDelete: Cascade)
+  @@id([userId, adminGroupId])
 }
 
 model Product {
@@ -191,21 +212,22 @@ model NotificationTemplate {
   name          String                        @unique // e.g. 'ORDER_APPROVED', 'ORDER_PLACED'
   subject       String
   body          String                        // Supports placeholders: {{name}}, {{email}}, {{trackingCode}}, etc.
-  recipientType String                        @default("customer") // "customer" | "admin_groups"
+  recipientType String                        @default("customer") // "customer" | "admin_groups" | "custom_emails"
+  customEmails  String?                       // Comma-separated emails when recipientType = custom_emails
   createdAt     DateTime                      @default(now())
   updatedAt     DateTime                      @updatedAt
   recipientGroups NotificationTemplateRecipient[]
 }
 
 model NotificationTemplateRecipient {
-  id         Int                 @id @default(autoincrement())
-  templateId Int
-  template   NotificationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  groupId    Int
-  group      UserGroup           @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  createdAt  DateTime            @default(now())
+  id           Int                  @id @default(autoincrement())
+  templateId   Int
+  template     NotificationTemplate  @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  adminGroupId Int?
+  adminGroup   AdminGroup?          @relation(fields: [adminGroupId], references: [id], onDelete: Cascade)
+  createdAt    DateTime             @default(now())
 
-  @@unique([templateId, groupId])
+  @@unique([templateId, adminGroupId])
 }
 
 enum ApprovalStatus {

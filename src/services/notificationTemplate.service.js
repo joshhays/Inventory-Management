@@ -7,14 +7,14 @@ const prisma = require("../lib/prisma");
 function findMany() {
   return prisma.notificationTemplate.findMany({
     orderBy: { name: "asc" },
-    include: { recipientGroups: { include: { group: true } } },
+    include: { recipientGroups: { include: { adminGroup: true } } },
   });
 }
 
 function findById(id) {
   return prisma.notificationTemplate.findUnique({
     where: { id: Number(id) },
-    include: { recipientGroups: { include: { group: true } } },
+    include: { recipientGroups: { include: { adminGroup: true } } },
   });
 }
 
@@ -24,44 +24,51 @@ function findByName(name) {
   });
 }
 
-async function create({ name, subject, body, recipientType, groupIds }) {
+async function create({ name, subject, body, recipientType, groupIds, customEmails }) {
+  const rt = recipientType === "admin_groups" ? "admin_groups" : recipientType === "custom_emails" ? "custom_emails" : "customer";
   const data = {
     name: String(name).trim(),
     subject: String(subject),
     body: String(body),
-    recipientType: recipientType === "admin_groups" ? "admin_groups" : "customer",
+    recipientType: rt,
+    customEmails: rt === "custom_emails" && customEmails ? String(customEmails).trim() : null,
   };
   return prisma.notificationTemplate.create({
     data: {
       ...data,
-      ...(data.recipientType === "admin_groups" && Array.isArray(groupIds) && groupIds.length
+      ...(rt === "admin_groups" && Array.isArray(groupIds) && groupIds.length
         ? {
             recipientGroups: {
-              create: groupIds.map((gid) => ({ groupId: Number(gid) })),
+              create: groupIds.map((gid) => ({ adminGroupId: Number(gid) })),
             },
           }
         : {}),
     },
-    include: { recipientGroups: { include: { group: true } } },
+    include: { recipientGroups: { include: { adminGroup: true } } },
   });
 }
 
-async function update(id, { name, subject, body, recipientType, groupIds }) {
+async function update(id, { name, subject, body, recipientType, groupIds, customEmails }) {
   const data = {};
   if (name !== undefined) data.name = String(name).trim();
   if (subject !== undefined) data.subject = String(subject);
   if (body !== undefined) data.body = String(body);
-  if (recipientType !== undefined) data.recipientType = recipientType === "admin_groups" ? "admin_groups" : "customer";
+  if (recipientType !== undefined) {
+    data.recipientType = recipientType === "admin_groups" ? "admin_groups" : recipientType === "custom_emails" ? "custom_emails" : "customer";
+  }
+  if (customEmails !== undefined) {
+    data.customEmails = customEmails ? String(customEmails).trim() : null;
+  }
 
   const template = await prisma.notificationTemplate.findUnique({ where: { id: Number(id) } });
   if (!template) return null;
 
   const effectiveRecipientType = data.recipientType ?? template.recipientType;
-  if (groupIds !== undefined || effectiveRecipientType === "customer") {
+  if (groupIds !== undefined || effectiveRecipientType !== "admin_groups") {
     await prisma.notificationTemplateRecipient.deleteMany({ where: { templateId: Number(id) } });
     if (effectiveRecipientType === "admin_groups" && Array.isArray(groupIds) && groupIds.length) {
       await prisma.notificationTemplateRecipient.createMany({
-        data: groupIds.map((gid) => ({ templateId: Number(id), groupId: Number(gid) })),
+        data: groupIds.map((gid) => ({ templateId: Number(id), adminGroupId: Number(gid) })),
       });
     }
   }
@@ -69,7 +76,7 @@ async function update(id, { name, subject, body, recipientType, groupIds }) {
   return prisma.notificationTemplate.update({
     where: { id: Number(id) },
     data,
-    include: { recipientGroups: { include: { group: true } } },
+    include: { recipientGroups: { include: { adminGroup: true } } },
   });
 }
 

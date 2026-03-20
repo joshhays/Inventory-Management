@@ -7,8 +7,8 @@ interface Group {
 }
 
 interface RecipientGroup {
-  groupId?: number;
-  group?: { id: number; name: string };
+  adminGroupId?: number;
+  adminGroup?: { id: number; name: string };
 }
 
 interface Template {
@@ -17,6 +17,7 @@ interface Template {
   subject: string;
   body: string;
   recipientType?: string;
+  customEmails?: string;
   recipientGroups?: RecipientGroup[];
 }
 
@@ -25,8 +26,9 @@ export default function TemplatesPage() {
   const [selected, setSelected] = useState<Template | null>(null);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const [recipientType, setRecipientType] = useState<"customer" | "admin_groups">("customer");
+  const [recipientType, setRecipientType] = useState<"customer" | "admin_groups" | "custom_emails">("customer");
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
+  const [customEmails, setCustomEmails] = useState("");
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,8 +36,9 @@ export default function TemplatesPage() {
   const [newName, setNewName] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newBody, setNewBody] = useState("");
-  const [newRecipientType, setNewRecipientType] = useState<"customer" | "admin_groups">("customer");
+  const [newRecipientType, setNewRecipientType] = useState<"customer" | "admin_groups" | "custom_emails">("customer");
   const [newGroupIds, setNewGroupIds] = useState<number[]>([]);
+  const [newCustomEmails, setNewCustomEmails] = useState("");
   const [creating, setCreating] = useState(false);
 
   async function fetchTemplates() {
@@ -67,16 +70,17 @@ export default function TemplatesPage() {
     if (selected) {
       setSubject(selected.subject);
       setBody(selected.body);
-      setRecipientType((selected.recipientType as "customer" | "admin_groups") || "customer");
+      setRecipientType((selected.recipientType as "customer" | "admin_groups" | "custom_emails") || "customer");
       setSelectedGroupIds(
-        (selected.recipientGroups || []).map((r) => r.groupId ?? r.group?.id).filter(Boolean) as number[]
+        (selected.recipientGroups || []).map((r) => r.adminGroupId ?? r.adminGroup?.id).filter(Boolean) as number[]
       );
+      setCustomEmails((selected as Template & { customEmails?: string }).customEmails || "");
     }
   }, [selected]);
 
   async function fetchGroups() {
     try {
-      const res = await fetch("/api/user-groups", { credentials: "include" });
+      const res = await fetch("/api/admin-groups", { credentials: "include" });
       if (!res.ok) return;
       const data = await res.json();
       setGroups(Array.isArray(data) ? data : data.groups || []);
@@ -100,6 +104,7 @@ export default function TemplatesPage() {
           body,
           recipientType,
           groupIds: recipientType === "admin_groups" ? selectedGroupIds : [],
+          customEmails: recipientType === "custom_emails" ? customEmails : "",
         }),
       });
       if (!res.ok) {
@@ -186,14 +191,14 @@ export default function TemplatesPage() {
           </div>
           <div style={{ marginBottom: "0.75rem" }}>
             <label style={{ display: "block", marginBottom: "0.25rem" }}>Recipients</label>
-            <div style={{ display: "flex", gap: "1rem", marginBottom: "0.25rem" }}>
+            <div style={{ display: "flex", gap: "1rem", marginBottom: "0.25rem", flexWrap: "wrap" }}>
               <label>
                 <input
                   type="radio"
                   checked={newRecipientType === "customer"}
                   onChange={() => setNewRecipientType("customer")}
                 />{" "}
-                Customer
+                Customer (order email)
               </label>
               <label>
                 <input
@@ -206,7 +211,29 @@ export default function TemplatesPage() {
                 />{" "}
                 Admin groups
               </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={newRecipientType === "custom_emails"}
+                  onChange={() => setNewRecipientType("custom_emails")}
+                />{" "}
+                Custom emails
+              </label>
             </div>
+            {newRecipientType === "custom_emails" && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <input
+                  type="text"
+                  value={newCustomEmails}
+                  onChange={(e) => setNewCustomEmails(e.target.value)}
+                  placeholder="email1@example.com, email2@example.com"
+                  style={{ width: "100%", maxWidth: 400, padding: "0.5rem" }}
+                />
+                <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
+                  Comma- or space-separated email addresses
+                </p>
+              </div>
+            )}
             {newRecipientType === "admin_groups" &&
               groups.map((g) => (
                 <label key={g.id} style={{ display: "block" }}>
@@ -262,6 +289,7 @@ export default function TemplatesPage() {
                   body: b,
                   recipientType: newRecipientType,
                   groupIds: newRecipientType === "admin_groups" ? newGroupIds : [],
+                  customEmails: newRecipientType === "custom_emails" ? newCustomEmails : "",
                 }),
                 });
                 const data = await res.json().catch(() => ({}));
@@ -271,6 +299,7 @@ export default function TemplatesPage() {
                 setNewName("");
                 setNewSubject("");
                 setNewBody("");
+                setNewCustomEmails("");
                 await fetchTemplates();
                 const created = data as Template;
                 if (created?.id) {
@@ -317,7 +346,7 @@ export default function TemplatesPage() {
         <>
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", marginBottom: "0.25rem" }}>Recipients</label>
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "0.5rem" }}>
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap" }}>
               <label>
                 <input
                   type="radio"
@@ -334,7 +363,29 @@ export default function TemplatesPage() {
                 />{" "}
                 Admin groups
               </label>
+              <label>
+                <input
+                  type="radio"
+                  checked={recipientType === "custom_emails"}
+                  onChange={() => setRecipientType("custom_emails")}
+                />{" "}
+                Custom emails
+              </label>
             </div>
+            {recipientType === "custom_emails" && (
+              <div style={{ marginTop: "0.5rem" }}>
+                <input
+                  type="text"
+                  value={customEmails}
+                  onChange={(e) => setCustomEmails(e.target.value)}
+                  placeholder="email1@example.com, email2@example.com"
+                  style={{ width: "100%", maxWidth: 400, padding: "0.5rem" }}
+                />
+                <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
+                  Comma- or space-separated email addresses
+                </p>
+              </div>
+            )}
             {recipientType === "admin_groups" && (
               <div style={{ marginTop: "0.5rem" }}>
                 <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 0.25rem" }}>
