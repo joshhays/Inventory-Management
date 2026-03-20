@@ -1,6 +1,6 @@
 const adminGroupService = require("../services/adminGroup.service");
 
-const getAdminGroups = async (_req, res, next) => {
+const getAdminGroups = async (req, res, next) => {
   try {
     const groups = await adminGroupService.findAll(req.deploymentId);
     return res.status(200).json(groups);

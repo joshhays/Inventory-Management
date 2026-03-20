@@ -1,0 +1,17 @@
+---
+description: Include git push instructions after making code changes
+alwaysApply: true
+---
+
+# Push Instructions
+
+After making any code changes to this project, **always** end your response with git push instructions in this format:
+
+```bash
+# Stage, commit, and push
+git add .
+git commit -m "Brief description of changes"
+git push origin main
+```
+
+Use `master` instead of `main` if that's the project's default branch. Keep the commit message concise but descriptive of what was changed.

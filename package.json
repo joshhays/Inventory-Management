@@ -6,6 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "nodemon src/server.js",
     "dev:admin": "cd admin-ui && npm run dev",
     "build": "prisma generate && npm run build:admin",
