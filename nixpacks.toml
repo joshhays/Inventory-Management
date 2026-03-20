@@ -5,6 +5,6 @@ cmds = ['npm install --omit=optional']
 [phases.build]
 cmds = ['npx prisma generate', 'npm run build']
 
-# prisma migrate deploy applies migrations without prompts (production-ready)
+# prisma migrate deploy applies migrations (including AdminGroup); db push for schema-only sync
 [start]
 cmd = "prisma migrate deploy && node src/server.js"

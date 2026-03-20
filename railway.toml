@@ -8,6 +8,6 @@ buildCommand = "npm install && npx prisma generate && npm run build"
 [deploy]
 # No-op so pre-deploy succeeds; actual migration runs in container ENTRYPOINT
 preDeployCommand = "true"
-startCommand = "prisma db push && node src/server.js"
+startCommand = "prisma migrate deploy && node src/server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
