@@ -23,25 +23,33 @@ async function findAllRaw(deploymentId) {
   return rows.map((r) => ({ ...r, members: [] }));
 }
 
-function create({ deploymentId, name, permissions = {} }) {
+function create({ deploymentId, name, permissions = {}, canApproveOrders, canManageInventory, canEditUsers }) {
   if (!deploymentId) throw new Error("Deployment is required.");
   if (!hasAdminGroup()) {
-    return createRaw({ deploymentId, name, permissions });
+    return createRaw({ deploymentId, name, permissions, canApproveOrders, canManageInventory, canEditUsers });
   }
+  const data = {
+    deploymentId: Number(deploymentId),
+    name: String(name).trim(),
+    permissions: JSON.stringify(permissions || {}),
+    canApproveOrders: canApproveOrders === true,
+    canManageInventory: canManageInventory === true,
+    canEditUsers: canEditUsers === true,
+  };
   return prisma.adminGroup.create({
-    data: {
-      deploymentId: Number(deploymentId),
-      name: String(name).trim(),
-      permissions: JSON.stringify(permissions),
-    },
+    data,
+    include: { members: { include: { user: true } } },
   });
 }
 
-async function createRaw({ deploymentId, name, permissions = {} }) {
+async function createRaw({ deploymentId, name, permissions = {}, canApproveOrders, canManageInventory, canEditUsers }) {
   const perms = JSON.stringify(permissions);
+  const approve = canApproveOrders === true;
+  const inventory = canManageInventory === true;
+  const users = canEditUsers === true;
   const [row] = await prisma.$queryRaw(Prisma.sql`
-    INSERT INTO "AdminGroup" (name, "deploymentId", permissions)
-    VALUES (${String(name).trim()}, ${Number(deploymentId)}, ${perms})
+    INSERT INTO "AdminGroup" (name, "deploymentId", permissions, "canApproveOrders", "canManageInventory", "canEditUsers")
+    VALUES (${String(name).trim()}, ${Number(deploymentId)}, ${perms}, ${approve}, ${inventory}, ${users})
     RETURNING *
   `);
   return row ? { ...row, members: [] } : null;
@@ -68,9 +76,9 @@ async function findByIdRaw(id, deploymentId) {
   return row ? { ...row, members: [] } : null;
 }
 
-async function update(id, { name, permissions }, deploymentId) {
+async function update(id, { name, permissions, canApproveOrders, canManageInventory, canEditUsers }, deploymentId) {
   if (!hasAdminGroup()) {
-    return updateRaw(id, { name, permissions }, deploymentId);
+    return updateRaw(id, { name, permissions, canApproveOrders, canManageInventory, canEditUsers }, deploymentId);
   }
   const where = { id: Number(id) };
   if (deploymentId != null) where.deploymentId = Number(deploymentId);
@@ -79,6 +87,9 @@ async function update(id, { name, permissions }, deploymentId) {
   const data = {};
   if (name !== undefined) data.name = String(name).trim();
   if (permissions !== undefined) data.permissions = JSON.stringify(permissions);
+  if (canApproveOrders !== undefined) data.canApproveOrders = Boolean(canApproveOrders);
+  if (canManageInventory !== undefined) data.canManageInventory = Boolean(canManageInventory);
+  if (canEditUsers !== undefined) data.canEditUsers = Boolean(canEditUsers);
   return prisma.adminGroup.update({
     where: { id: Number(id) },
     data,
@@ -86,7 +97,7 @@ async function update(id, { name, permissions }, deploymentId) {
   });
 }
 
-async function updateRaw(id, { name, permissions }, deploymentId) {
+async function updateRaw(id, { name, permissions, canApproveOrders, canManageInventory, canEditUsers }, deploymentId) {
   const g = await findByIdRaw(id, deploymentId);
   if (!g) return null;
   const updates = [];
@@ -99,6 +110,18 @@ async function updateRaw(id, { name, permissions }, deploymentId) {
   if (permissions !== undefined) {
     updates.push(`permissions = $${i++}`);
     values.push(JSON.stringify(permissions));
+  }
+  if (canApproveOrders !== undefined) {
+    updates.push(`"canApproveOrders" = $${i++}`);
+    values.push(Boolean(canApproveOrders));
+  }
+  if (canManageInventory !== undefined) {
+    updates.push(`"canManageInventory" = $${i++}`);
+    values.push(Boolean(canManageInventory));
+  }
+  if (canEditUsers !== undefined) {
+    updates.push(`"canEditUsers" = $${i++}`);
+    values.push(Boolean(canEditUsers));
   }
   if (updates.length === 0) return g;
   const idParam = `$${i}`;

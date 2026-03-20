@@ -8,6 +8,7 @@ async function findByEmail(email) {
     where: { email: String(email).toLowerCase().trim() },
     include: {
       groups: { include: { group: true } },
+      adminGroups: { include: { adminGroup: true } },
     },
   });
 }
@@ -17,6 +18,7 @@ async function findById(id) {
     where: { id: Number(id) },
     include: {
       groups: { include: { group: true } },
+      adminGroups: { include: { adminGroup: true } },
     },
   });
 }
@@ -32,10 +34,19 @@ async function hashPassword(plainPassword) {
 function toSafeUser(user) {
   if (!user) return null;
   const { password, ...rest } = user;
+  const groupIds = (user.groups || []).map((m) => m.groupId);
+  const adminGroups = (user.adminGroups || []).map((m) => m.adminGroup).filter(Boolean);
+  const permissions = {
+    canApproveOrders: user.isAdmin || adminGroups.some((g) => g?.canApproveOrders === true),
+    canManageInventory: user.isAdmin || adminGroups.some((g) => g?.canManageInventory === true),
+    canEditUsers: user.isAdmin || adminGroups.some((g) => g?.canEditUsers === true),
+  };
   return {
     ...rest,
-    groupIds: (user.groups || []).map((m) => m.groupId),
+    groupIds,
     groups: (user.groups || []).map((m) => m.group),
+    adminGroupIds: adminGroups.map((g) => g.id),
+    permissions,
   };
 }
 

@@ -1,0 +1,36 @@
+---
+description: Pageflex multi-tenant architecture - Schema-First refactor blueprint
+globs: prisma/schema.prisma, **/auth*.js, **/adminGroup*
+---
+
+# Pageflex Architecture
+
+When refactoring User, Group, or Permission logic, follow this Schema-First approach:
+
+## 1. Schema Separation
+- **UserGroups** = Storefront access (which products can this user see?)
+- **AdminGroups** = Dashboard access (what buttons can this user click?)
+- User has many-to-many with both via UserGroupMember and AdminGroupMember
+
+## 2. AdminGroup Permission Flags
+AdminGroup must have explicit boolean flags:
+- `canApproveOrders`
+- `canManageInventory`
+- `canEditUsers`
+
+Keep `permissions` JSON for flexible extras.
+
+## 3. Middleware
+- `requireAdmin`: User is admin if `isAdmin=true` OR has any AdminGroup
+- Attach `req.user.permissions` from AdminGroup flags (union across all groups)
+- Use `requirePermission('canApproveOrders')` for route-level checks
+
+## 4. Product Filtering (Catalog Restriction)
+- If user logged in: filter products by their UserGroup (groupId in allowedGroupIds)
+- If no group: show "Public" (groupId null) only
+- Admins see all
+
+## 5. Permission Manager UI
+- Left: list of AdminGroups (click to select)
+- Right: Permission Matrix with toggles (Approvals, Inventory, Users)
+- Below: list of Users in group with Add/Remove search bar

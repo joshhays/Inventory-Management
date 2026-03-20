@@ -134,7 +134,10 @@ model AdminGroup {
   name                  String
   deploymentId          Int
   deployment            Deployment                    @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
-  permissions           String                        @default("{}") // JSON: { products, orders, templates, users, adminGroups, userGroups, reports, deployments, categories, shipping, discounts }
+  permissions           String                        @default("{}") // JSON for flexible extras
+  canApproveOrders      Boolean                       @default(false) // Pageflex-style explicit flags
+  canManageInventory    Boolean                       @default(false)
+  canEditUsers          Boolean                       @default(false)
   members               AdminGroupMember[]
   templateRecipients    NotificationTemplateRecipient[]
 

@@ -50,7 +50,14 @@ async function main() {
       createdGroups.push(existing);
     } else {
       const g = await prisma.adminGroup.create({
-        data: { deploymentId, name, permissions: "{}" },
+        data: {
+          deploymentId,
+          name,
+          permissions: "{}",
+          canApproveOrders: name === "Order Access",
+          canManageInventory: /inventory|admin/i.test(name),
+          canEditUsers: /user|yorke/i.test(name),
+        },
       });
       console.log(`Created admin group: ${name}`);
       createdGroups.push(g);

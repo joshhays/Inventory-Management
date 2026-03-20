@@ -11,7 +11,7 @@ const getAdminGroups = async (req, res, next) => {
 
 const createAdminGroup = async (req, res, next) => {
   try {
-    const { name, permissions } = req.body;
+    const { name, permissions, canApproveOrders, canManageInventory, canEditUsers } = req.body;
     if (!name || typeof name !== "string" || !name.trim()) {
       return res.status(400).json({ message: "name is required." });
     }
@@ -19,6 +19,9 @@ const createAdminGroup = async (req, res, next) => {
       deploymentId: req.deploymentId,
       name: name.trim(),
       permissions: permissions || {},
+      canApproveOrders,
+      canManageInventory,
+      canEditUsers,
     });
     return res.status(201).json(group);
   } catch (error) {
@@ -32,8 +35,14 @@ const createAdminGroup = async (req, res, next) => {
 const updateAdminGroup = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { name, permissions } = req.body;
-    const group = await adminGroupService.update(id, { name, permissions }, req.deploymentId);
+    const { name, permissions, canApproveOrders, canManageInventory, canEditUsers } = req.body;
+    const group = await adminGroupService.update(id, {
+      name,
+      permissions,
+      canApproveOrders,
+      canManageInventory,
+      canEditUsers,
+    }, req.deploymentId);
     if (!group) return res.status(404).json({ message: "Group not found." });
     return res.status(200).json(group);
   } catch (error) {
