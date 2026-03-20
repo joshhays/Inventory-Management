@@ -209,7 +209,8 @@ model InventoryLog {
 
 model NotificationTemplate {
   id            Int                           @id @default(autoincrement())
-  name          String                        @unique // e.g. 'ORDER_APPROVED', 'ORDER_PLACED'
+  name          String                        @unique // Trigger: ORDER_PLACED, ORDER_APPROVAL_NEEDED, etc.
+  displayName   String?                       // Human-readable name (e.g. "Order Confirmation")
   subject       String
   body          String                        // Supports placeholders: {{name}}, {{email}}, {{trackingCode}}, etc.
   recipientType String                        @default("customer") // "customer" | "admin_groups" | "custom_emails"

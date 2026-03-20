@@ -16,7 +16,7 @@
     </header>
     <main class="main-content">
       <h1>Notification Templates</h1>
-      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}, {{orderId}}, {{total}}, {{approvalLink}}. <strong>Trigger names</strong> (e.g. ORDER_APPROVED, ORDER_PLACED) must match the code that sends the email. <strong>Recipients:</strong> Customer = the person who placed the order; Admin groups = admins in selected groups; Custom emails = specific addresses you enter.</p>
+      <p class="text-muted">Select a template, edit the subject and body, then save. Use placeholders like {{name}}, {{email}}, {{trackingCode}}, {{orderId}}, {{total}}, {{approvalLink}}. <strong>Trigger</strong> = when the email sends. <strong>Template name</strong> = optional friendly label. <strong>Recipients:</strong> Customer = order email; Admin groups = admins; Custom emails = addresses you enter.</p>
       <div class="form-group" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
         <label for="templateSelect">Template:</label>
         <select id="templateSelect" class="form-control" style="max-width:300px"></select>
@@ -24,10 +24,20 @@
       </div>
       <div id="createSection" style="display:none;margin:1rem 0;padding:1rem;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc">
         <h3 style="margin-top:0">Create template</h3>
-        <p class="text-muted" style="font-size:0.9rem">Name must match a trigger (e.g. ORDER_APPROVED, ORDER_PLACED, ORDER_REJECTED).</p>
         <div class="form-group">
-          <label for="newName">Name (trigger)</label>
-          <input type="text" id="newName" class="form-control" placeholder="ORDER_PLACED" style="max-width:300px">
+          <label for="newTrigger">Trigger (when this email sends)</label>
+          <select id="newTrigger" class="form-control" style="max-width:400px">
+            <option value="">— Select trigger —</option>
+            <option value="ORDER_PLACED">Order placed (customer confirmation)</option>
+            <option value="ORDER_APPROVAL_NEEDED">Order approval needed (notify approvers)</option>
+            <option value="ORDER_APPROVED">Order approved (customer notification)</option>
+            <option value="ORDER_REJECTED">Order rejected (customer notification)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="newDisplayName">Template name (optional)</label>
+          <input type="text" id="newDisplayName" class="form-control" placeholder="e.g. Order Confirmation Email" style="max-width:300px">
+          <p class="text-muted" style="font-size:0.85rem;margin:0.25rem 0 0">A friendly name. If blank, the trigger name is shown.</p>
         </div>
         <div class="form-group">
           <label>Recipients</label>
@@ -56,6 +66,14 @@
         <button type="button" id="createCancelBtn" class="btn-secondary" style="margin-left:0.5rem">Cancel</button>
       </div>
       <div class="form-group" id="editorSection" style="display:none">
+        <div style="margin-bottom:1rem">
+          <label>Trigger</label>
+          <p class="text-muted" id="triggerDisplay" style="font-size:0.9rem;margin:0 0 0.5rem"></p>
+        </div>
+        <div style="margin-bottom:1rem">
+          <label for="displayNameInput">Template name</label>
+          <input type="text" id="displayNameInput" class="form-control" placeholder="e.g. Order Confirmation Email" style="max-width:400px">
+        </div>
         <div style="margin-bottom:1rem">
           <label>Recipients</label>
           <div style="display:flex;gap:1rem;align-items:center;margin-top:0.25rem;flex-wrap:wrap">
@@ -105,7 +123,7 @@
       }
       const templates = await res.json();
       templateSelect.innerHTML = '<option value="">— Select —</option>' +
-        templates.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join("");
+        templates.map(t => `<option value="${t.id}">${escapeHtml(t.displayName || t.name)}</option>`).join("");
       if (templates.length) {
         templateSelect.value = templates[0].id;
         loadTemplate(templates[0].id);
@@ -154,6 +172,9 @@
       const t = await res.json();
       subjectInput.value = t.subject;
       bodyInput.value = t.body;
+      document.getElementById("displayNameInput").value = t.displayName || "";
+      const triggerLabels = { ORDER_PLACED: "Order placed (customer confirmation)", ORDER_APPROVAL_NEEDED: "Order approval needed (notify approvers)", ORDER_APPROVED: "Order approved (customer notification)", ORDER_REJECTED: "Order rejected (customer notification)" };
+      document.getElementById("triggerDisplay").textContent = t.name + " — " + (triggerLabels[t.name] || "Custom trigger");
       const rt = t.recipientType || "customer";
       document.querySelectorAll("input[name=recipientType]").forEach((r) => { r.checked = r.value === rt; });
       const groupSelectWrap = document.getElementById("groupSelectWrap");
@@ -197,12 +218,13 @@
       const recipientType = document.querySelector("input[name=recipientType]:checked")?.value || "customer";
       const groupIds = recipientType === "admin_groups" ? getSelectedGroupIds() : [];
       const customEmails = recipientType === "custom_emails" ? (document.getElementById("customEmailsInput")?.value || "").trim() : "";
+      const displayName = (document.getElementById("displayNameInput")?.value || "").trim();
       try {
         const res = await fetch(`/api/notification-templates/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value, recipientType, groupIds, customEmails }),
+          body: JSON.stringify({ subject: subjectInput.value, body: bodyInput.value, displayName: displayName || undefined, recipientType, groupIds, customEmails }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || "Save failed");
@@ -218,13 +240,15 @@
     const createBtn = document.getElementById("createBtn");
     const createSubmitBtn = document.getElementById("createSubmitBtn");
     const createCancelBtn = document.getElementById("createCancelBtn");
-    const newNameInput = document.getElementById("newName");
     const newSubjectInput = document.getElementById("newSubject");
     const newBodyInput = document.getElementById("newBody");
 
+    const newTriggerSelect = document.getElementById("newTrigger");
+    const newDisplayNameInput = document.getElementById("newDisplayName");
     createBtn.addEventListener("click", () => {
       createSection.style.display = "block";
-      newNameInput.value = "";
+      newTriggerSelect.value = "";
+      newDisplayNameInput.value = "";
       newSubjectInput.value = "";
       newBodyInput.value = "";
       document.getElementById("newCustomEmails").value = "";
@@ -255,11 +279,11 @@
     createCancelBtn.addEventListener("click", () => { createSection.style.display = "none"; });
 
     createSubmitBtn.addEventListener("click", async () => {
-      const name = (newNameInput.value || "").trim();
+      const trigger = (newTriggerSelect.value || "").trim();
       const subject = (newSubjectInput.value || "").trim();
       const body = (newBodyInput.value || "").trim();
-      if (!name || !subject || body === undefined) {
-        showMessage("Name, subject, and body are required", true);
+      if (!trigger || !subject || body === undefined) {
+        showMessage("Trigger, subject, and body are required", true);
         return;
       }
       createSubmitBtn.disabled = true;
@@ -269,7 +293,8 @@
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-          name,
+          name: trigger,
+          displayName: (newDisplayNameInput.value || "").trim() || undefined,
           subject,
           body,
           recipientType: document.querySelector("input[name=newRecipientType]:checked")?.value || "customer",

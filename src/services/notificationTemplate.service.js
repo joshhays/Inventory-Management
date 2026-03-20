@@ -52,10 +52,11 @@ function findByName(name) {
   });
 }
 
-async function create({ name, subject, body, recipientType, groupIds, customEmails }) {
+async function create({ name, subject, body, recipientType, groupIds, customEmails, displayName }) {
   const rt = recipientType === "admin_groups" ? "admin_groups" : recipientType === "custom_emails" ? "custom_emails" : "customer";
   const data = {
     name: String(name).trim(),
+    displayName: displayName ? String(displayName).trim() : null,
     subject: String(subject),
     body: String(body),
     recipientType: rt,
@@ -76,9 +77,10 @@ async function create({ name, subject, body, recipientType, groupIds, customEmai
   });
 }
 
-async function update(id, { name, subject, body, recipientType, groupIds, customEmails }) {
+async function update(id, { name, subject, body, recipientType, groupIds, customEmails, displayName }) {
   const data = {};
   if (name !== undefined) data.name = String(name).trim();
+  if (displayName !== undefined) data.displayName = displayName ? String(displayName).trim() : null;
   if (subject !== undefined) data.subject = String(subject);
   if (body !== undefined) data.body = String(body);
   if (recipientType !== undefined) {

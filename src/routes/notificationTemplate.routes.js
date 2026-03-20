@@ -3,6 +3,22 @@ const notificationTemplateService = require("../services/notificationTemplate.se
 
 const router = express.Router();
 
+/** Available triggers - when each email fires */
+const AVAILABLE_TRIGGERS = [
+  { value: "ORDER_PLACED", label: "Order placed (customer confirmation)" },
+  { value: "ORDER_APPROVAL_NEEDED", label: "Order approval needed (notify approvers)" },
+  { value: "ORDER_APPROVED", label: "Order approved (customer notification)" },
+  { value: "ORDER_REJECTED", label: "Order rejected (customer notification)" },
+];
+
+/**
+ * GET /api/notification-templates/triggers
+ * List available trigger options for templates.
+ */
+router.get("/triggers", (_req, res) => {
+  return res.status(200).json(AVAILABLE_TRIGGERS);
+});
+
 /**
  * GET /api/notification-templates
  * List all notification templates.
@@ -36,11 +52,11 @@ router.get("/:id", async (req, res, next) => {
  */
 router.post("/", async (req, res, next) => {
   try {
-    const { name, subject, body, recipientType, groupIds, customEmails } = req.body;
+    const { name, subject, body, recipientType, groupIds, customEmails, displayName } = req.body;
     if (!name || !subject || body === undefined) {
-      return res.status(400).json({ message: "name, subject, and body are required" });
+      return res.status(400).json({ message: "Trigger, subject, and body are required" });
     }
-    const template = await notificationTemplateService.create({ name, subject, body, recipientType, groupIds, customEmails });
+    const template = await notificationTemplateService.create({ name, subject, body, recipientType, groupIds, customEmails, displayName });
     return res.status(201).json(template);
   } catch (err) {
     if (err.code === "P2002") {
@@ -56,8 +72,8 @@ router.post("/", async (req, res, next) => {
  */
 router.patch("/:id", async (req, res, next) => {
   try {
-    const { name, subject, body, recipientType, groupIds, customEmails } = req.body;
-    const template = await notificationTemplateService.update(req.params.id, { name, subject, body, recipientType, groupIds, customEmails });
+    const { name, subject, body, recipientType, groupIds, customEmails, displayName } = req.body;
+    const template = await notificationTemplateService.update(req.params.id, { name, subject, body, recipientType, groupIds, customEmails, displayName });
     return res.status(200).json(template);
   } catch (err) {
     if (err.code === "P2025") {

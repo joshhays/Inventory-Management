@@ -14,12 +14,20 @@ interface RecipientGroup {
 interface Template {
   id: number;
   name: string;
+  displayName?: string;
   subject: string;
   body: string;
   recipientType?: string;
   customEmails?: string;
   recipientGroups?: RecipientGroup[];
 }
+
+const TRIGGER_OPTIONS = [
+  { value: "ORDER_PLACED", label: "Order placed (customer confirmation)" },
+  { value: "ORDER_APPROVAL_NEEDED", label: "Order approval needed (notify approvers)" },
+  { value: "ORDER_APPROVED", label: "Order approved (customer notification)" },
+  { value: "ORDER_REJECTED", label: "Order rejected (customer notification)" },
+];
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -29,11 +37,13 @@ export default function TemplatesPage() {
   const [recipientType, setRecipientType] = useState<"customer" | "admin_groups" | "custom_emails">("customer");
   const [selectedGroupIds, setSelectedGroupIds] = useState<number[]>([]);
   const [customEmails, setCustomEmails] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState("");
+  const [newTrigger, setNewTrigger] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
   const [newSubject, setNewSubject] = useState("");
   const [newBody, setNewBody] = useState("");
   const [newRecipientType, setNewRecipientType] = useState<"customer" | "admin_groups" | "custom_emails">("customer");
@@ -70,6 +80,7 @@ export default function TemplatesPage() {
     if (selected) {
       setSubject(selected.subject);
       setBody(selected.body);
+      setDisplayName(selected.displayName || "");
       setRecipientType((selected.recipientType as "customer" | "admin_groups" | "custom_emails") || "customer");
       setSelectedGroupIds(
         (selected.recipientGroups || []).map((r) => r.adminGroupId ?? r.adminGroup?.id).filter(Boolean) as number[]
@@ -102,6 +113,7 @@ export default function TemplatesPage() {
         body: JSON.stringify({
           subject,
           body,
+          displayName: displayName.trim() || undefined,
           recipientType,
           groupIds: recipientType === "admin_groups" ? selectedGroupIds : [],
           customEmails: recipientType === "custom_emails" ? customEmails : "",
@@ -142,12 +154,12 @@ export default function TemplatesPage() {
             const t = templates.find((x) => x.id === id);
             setSelected(t ?? null);
           }}
-          style={{ padding: "0.5rem", minWidth: 200 }}
+          style={{ padding: "0.5rem", minWidth: 280 }}
         >
           <option value="">— Select —</option>
           {templates.map((t) => (
             <option key={t.id} value={t.id}>
-              {t.name}
+              {t.displayName || t.name}
             </option>
           ))}
         </select>
@@ -177,17 +189,32 @@ export default function TemplatesPage() {
           }}
         >
           <h3 style={{ marginTop: 0 }}>Create template</h3>
-          <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
-            Name must match a trigger (e.g. ORDER_APPROVED, ORDER_PLACED, ORDER_REJECTED).
-          </p>
           <div style={{ marginBottom: "0.75rem" }}>
-            <label style={{ display: "block", marginBottom: "0.25rem" }}>Name (trigger)</label>
+            <label style={{ display: "block", marginBottom: "0.25rem" }}>Trigger (when this email sends)</label>
+            <select
+              value={newTrigger}
+              onChange={(e) => setNewTrigger(e.target.value)}
+              style={{ width: "100%", maxWidth: 400, padding: "0.5rem" }}
+            >
+              <option value="">— Select trigger —</option>
+              {TRIGGER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ marginBottom: "0.75rem" }}>
+            <label style={{ display: "block", marginBottom: "0.25rem" }}>Template name (optional)</label>
             <input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="ORDER_PLACED"
+              value={newDisplayName}
+              onChange={(e) => setNewDisplayName(e.target.value)}
+              placeholder="e.g. Order Confirmation Email"
               style={{ width: "100%", maxWidth: 300, padding: "0.5rem" }}
             />
+            <p style={{ color: "#64748b", fontSize: "0.85rem", margin: "0.25rem 0 0" }}>
+              A friendly name for this template. If blank, the trigger name is shown.
+            </p>
           </div>
           <div style={{ marginBottom: "0.75rem" }}>
             <label style={{ display: "block", marginBottom: "0.25rem" }}>Recipients</label>
@@ -270,11 +297,11 @@ export default function TemplatesPage() {
           </div>
           <button
             onClick={async () => {
-              const name = newName.trim();
+              const trigger = newTrigger.trim();
               const subj = newSubject.trim();
               const b = newBody;
-              if (!name || !subj || b === undefined) {
-                toast.error("Name, subject, and body are required");
+              if (!trigger || !subj || b === undefined) {
+                toast.error("Trigger, subject, and body are required");
                 return;
               }
               setCreating(true);
@@ -284,7 +311,8 @@ export default function TemplatesPage() {
                   headers: { "Content-Type": "application/json" },
                   credentials: "include",
                   body: JSON.stringify({
-                  name,
+                  name: trigger,
+                  displayName: newDisplayName.trim() || undefined,
                   subject: subj,
                   body: b,
                   recipientType: newRecipientType,
@@ -296,7 +324,8 @@ export default function TemplatesPage() {
                 if (!res.ok) throw new Error(data.message || "Create failed");
                 toast.success("Template created");
                 setShowCreate(false);
-                setNewName("");
+                setNewTrigger("");
+                setNewDisplayName("");
                 setNewSubject("");
                 setNewBody("");
                 setNewCustomEmails("");
@@ -344,6 +373,22 @@ export default function TemplatesPage() {
       )}
       {selected && (
         <>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.25rem" }}>Trigger</label>
+            <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0 0 0.5rem" }}>
+              {selected.name} — {TRIGGER_OPTIONS.find((o) => o.value === selected.name)?.label || "Custom trigger"}
+            </p>
+          </div>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", marginBottom: "0.25rem" }}>Template name</label>
+            <input
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="e.g. Order Confirmation Email"
+              style={{ width: "100%", maxWidth: 400, padding: "0.5rem" }}
+            />
+          </div>
           <div style={{ marginBottom: "1rem" }}>
             <label style={{ display: "block", marginBottom: "0.25rem" }}>Recipients</label>
             <div style={{ display: "flex", gap: "1rem", alignItems: "center", marginBottom: "0.5rem", flexWrap: "wrap" }}>
