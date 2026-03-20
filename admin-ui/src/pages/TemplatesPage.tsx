@@ -42,6 +42,7 @@ export default function TemplatesPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newTrigger, setNewTrigger] = useState("");
   const [newDisplayName, setNewDisplayName] = useState("");
@@ -132,6 +133,35 @@ export default function TemplatesPage() {
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!selected) return;
+    if (!confirm(`Delete template "${selected.displayName || selected.name}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/notification-templates/${selected.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Delete failed");
+      }
+      toast.success("Template deleted");
+      const remaining = templates.filter((t) => t.id !== selected.id);
+      setTemplates(remaining);
+      setSelected(remaining[0] ?? null);
+      if (remaining[0]) {
+        setSubject(remaining[0].subject);
+        setBody(remaining[0].body);
+        setDisplayName(remaining[0].displayName || "");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -481,20 +511,37 @@ export default function TemplatesPage() {
               style={{ width: "100%", maxWidth: 600, padding: "0.5rem", fontFamily: "inherit" }}
             />
           </div>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              padding: "0.5rem 1.25rem",
-              background: "#2563eb",
-              color: "#fff",
-              border: "none",
-              borderRadius: 6,
-              cursor: saving ? "not-allowed" : "pointer",
-            }}
-          >
-            {saving ? "Saving…" : "Save"}
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "1rem" }}>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                padding: "0.5rem 1.25rem",
+                background: "#2563eb",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{
+                padding: "0.5rem 1.25rem",
+                background: "#dc2626",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                cursor: deleting ? "not-allowed" : "pointer",
+              }}
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          </div>
         </>
       )}
       {!loading && templates.length === 0 && (

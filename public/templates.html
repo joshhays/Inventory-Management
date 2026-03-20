@@ -95,7 +95,10 @@
         <input type="text" id="subject" class="form-control" style="max-width:500px">
         <label for="body" style="margin-top:1rem">Body</label>
         <textarea id="body" class="form-control" rows="12" style="max-width:600px;font-family:inherit"></textarea>
-        <button type="button" id="saveBtn" class="btn-create" style="margin-top:1rem">Save</button>
+        <div style="margin-top:1rem;display:flex;gap:0.5rem">
+          <button type="button" id="saveBtn" class="btn-create">Save</button>
+          <button type="button" id="deleteBtn" class="btn-secondary" style="background:#dc2626;color:#fff;border:none;padding:0.5rem 1rem;border-radius:6px;cursor:pointer">Delete</button>
+        </div>
       </div>
       <div id="message" style="margin-top:1rem;display:none"></div>
     </main>
@@ -234,6 +237,40 @@
         showMessage(e.message || "Failed to save", true);
       } finally {
         saveBtn.disabled = false;
+      }
+    });
+
+    const deleteBtn = document.getElementById("deleteBtn");
+    deleteBtn.addEventListener("click", async () => {
+      const id = templateSelect.value;
+      if (!id) return;
+      let name = "this template";
+      try {
+        const tr = await fetch(`/api/notification-templates/${id}`, { credentials: "include" });
+        if (tr.ok) {
+          const t = await tr.json();
+          name = t.displayName || t.name;
+        }
+      } catch (_) {}
+      if (!confirm(`Delete template "${name}"? This cannot be undone.`)) return;
+      deleteBtn.disabled = true;
+      try {
+        const res = await fetch(`/api/notification-templates/${id}`, { method: "DELETE", credentials: "include" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Delete failed");
+        showMessage("Template deleted.", false);
+        await loadTemplates();
+        const opts = templateSelect.querySelectorAll("option");
+        if (opts.length > 1) {
+          templateSelect.value = opts[1].value;
+          loadTemplate(templateSelect.value);
+        } else {
+          editorSection.style.display = "none";
+        }
+      } catch (e) {
+        showMessage(e.message || "Failed to delete", true);
+      } finally {
+        deleteBtn.disabled = false;
       }
     });
 
