@@ -3,7 +3,7 @@
  * Each item maps to a dashboard bento box. Admin Access controls view vs modify per admin group.
  */
 const BENTO_ITEMS = [
-  { id: "admin", href: "/admin", icon: "⚙️", title: "Admin", desc: "Approvals, templates, admin groups, permission manager", large: true },
+  { id: "admin", href: "/admin", icon: "⚙️", title: "Admin", desc: "Approvals, templates, admin groups, admin access", large: true },
   { id: "products", href: "/products.html", icon: "📦", title: "Products", desc: "View inventory, adjust quantities, scan barcodes", large: false },
   { id: "products-manage", href: "/products-manage.html", icon: "✏️", title: "Manage Products", desc: "Create, edit, and organize products", large: false },
   { id: "orders", href: "/orders.html", icon: "🛒", title: "Orders", desc: "View and manage orders", large: false },

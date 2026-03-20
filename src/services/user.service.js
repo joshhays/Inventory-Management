@@ -5,6 +5,7 @@ async function findAll() {
   const users = await prisma.user.findMany({
     include: {
       groups: { include: { group: true } },
+      adminGroups: { include: { adminGroup: true } },
     },
     orderBy: { email: "asc" },
   });
@@ -16,12 +17,13 @@ async function findById(id) {
     where: { id: Number(id) },
     include: {
       groups: { include: { group: true } },
+      adminGroups: { include: { adminGroup: true } },
     },
   });
   return user ? authService.toSafeUser(user) : null;
 }
 
-async function create({ email, password, name, isAdmin, isUser, groupIds }) {
+async function create({ email, password, name, isAdmin, isUser, groupIds, adminGroupIds }) {
   const hashed = await authService.hashPassword(password);
   const emailNorm = String(email).toLowerCase().trim();
   const user = await prisma.user.create({
@@ -41,12 +43,30 @@ async function create({ email, password, name, isAdmin, isUser, groupIds }) {
     },
     include: {
       groups: { include: { group: true } },
+      adminGroups: { include: { adminGroup: true } },
     },
   });
+  if (adminGroupIds?.length) {
+    await prisma.adminGroupMember.createMany({
+      data: adminGroupIds.map((gid) => ({
+        userId: user.id,
+        adminGroupId: Number(gid),
+      })),
+      skipDuplicates: true,
+    });
+    const updated = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: {
+        groups: { include: { group: true } },
+        adminGroups: { include: { adminGroup: true } },
+      },
+    });
+    return authService.toSafeUser(updated);
+  }
   return authService.toSafeUser(user);
 }
 
-async function update(id, { email, password, name, isAdmin, isUser, groupIds }) {
+async function update(id, { email, password, name, isAdmin, isUser, groupIds, adminGroupIds }) {
   const existing = await prisma.user.findUnique({
     where: { id: Number(id) },
     include: { groups: true },
@@ -76,11 +96,27 @@ async function update(id, { email, password, name, isAdmin, isUser, groupIds }) 
     }
   }
 
+  if (adminGroupIds !== undefined) {
+    await prisma.adminGroupMember.deleteMany({
+      where: { userId: Number(id) },
+    });
+    if (adminGroupIds?.length) {
+      await prisma.adminGroupMember.createMany({
+        data: adminGroupIds.map((gid) => ({
+          userId: Number(id),
+          adminGroupId: Number(gid),
+        })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
   const user = await prisma.user.update({
     where: { id: Number(id) },
     data,
     include: {
       groups: { include: { group: true } },
+      adminGroups: { include: { adminGroup: true } },
     },
   });
   return authService.toSafeUser(user);

@@ -4,8 +4,6 @@ import TemplatesPage from "./pages/TemplatesPage";
 import AdminGroupsPage from "./pages/AdminGroupsPage";
 import AdminGroupDetailPage from "./pages/AdminGroupDetailPage";
 import AdminAccessPage from "./pages/AdminAccessPage";
-import PermissionManagerPage from "./pages/PermissionManagerPage";
-
 export default function App() {
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -22,9 +20,6 @@ export default function App() {
         <Link to="/admin-access" style={{ color: "#94a3b8", marginRight: "1.5rem" }}>
           Admin Access
         </Link>
-        <Link to="/permission-manager" style={{ color: "#94a3b8", marginRight: "1.5rem" }}>
-          Permission Manager
-        </Link>
         <a href="/dashboard.html" style={{ color: "#94a3b8", marginLeft: "auto" }} title="Switch deployment for groups & access">
           Switch
         </a>
@@ -36,7 +31,6 @@ export default function App() {
           <Route path="/groups" element={<AdminGroupsPage />} />
           <Route path="/groups/:id" element={<AdminGroupDetailPage />} />
           <Route path="/admin-access" element={<AdminAccessPage />} />
-          <Route path="/permission-manager" element={<PermissionManagerPage />} />
         </Routes>
       </main>
     </div>

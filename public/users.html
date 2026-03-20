@@ -35,7 +35,8 @@
               <th>Admin</th>
               <th>User</th>
               <th>Approver</th>
-              <th>Groups</th>
+              <th>Admin Groups</th>
+              <th>User Groups</th>
               <th class="actions-col">Actions</th>
             </tr>
           </thead>
@@ -73,18 +74,25 @@
           </label>
           <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Can access user frontend (when available).</p>
         </div>
+        <div class="modal-row" id="adminGroupsRow" style="display:none">
+          <label>Admin Group <span class="required" style="color: var(--danger);">*</span></label>
+          <select id="adminGroups" multiple size="4" style="min-height: 80px;" required>
+            <option value="">— Select at least one —</option>
+          </select>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Required for admin users. Access is determined by the <a href="/admin/admin-access" target="_blank">Admin Access</a> tab. Hold Ctrl/Cmd to select multiple groups. <a href="/admin/groups">Manage admin groups</a>.</p>
+        </div>
         <div class="modal-row">
           <label>
             <input type="checkbox" id="userIsApprover"> Approver
           </label>
-          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Can approve orders on the storefront. Adds user to the Order Approvers group. <a href="/dashboard.html">Select a deployment</a> first.</p>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Can approve orders on the storefront. Adds user to the Order Approvers admin group. Only applies to admins. <a href="/dashboard.html">Select a deployment</a> first.</p>
         </div>
         <div class="modal-row">
-          <label>Product Groups</label>
+          <label>User Groups (product filtering)</label>
           <select id="userGroups" multiple size="4" style="min-height: 80px;">
             <option value="">No groups</option>
           </select>
-          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Hold Ctrl/Cmd to select multiple. Non-admins only see products in their groups.</p>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Hold Ctrl/Cmd to select multiple. Non-admins only see products in their user groups on the storefront.</p>
         </div>
         <div class="modal-actions">
           <button type="submit" class="btn-apply" id="btnUserSave">Save</button>
@@ -108,6 +116,7 @@
   <script>
     let users = [];
     let groups = [];
+    let adminGroups = [];
     let approverGroupId = null;
     let editingId = null;
     let deleteTargetId = null;
@@ -132,8 +141,14 @@
       return res.json();
     }
 
+    async function loadAdminGroups() {
+      const res = await fetch("/api/admin-groups", { credentials: "include" });
+      if (!res.ok) return [];
+      return res.json();
+    }
+
     async function loadApproverGroup() {
-      const res = await fetch("/api/user-groups/approver-group", { credentials: "include" });
+      const res = await fetch("/api/admin-groups/approver-group", { credentials: "include" });
       if (!res.ok) return null;
       const g = await res.json();
       approverGroupId = g?.id || null;
@@ -167,7 +182,8 @@
           <td>${escape(u.name) || "—"}</td>
           <td>${u.isAdmin ? "✓" : "—"}</td>
           <td>${u.isUser ? "✓" : "—"}</td>
-          <td>${(u.groups || []).some((g) => g.name === "Order Approvers") ? "✓" : "—"}</td>
+          <td>${(u.adminGroups || []).some((g) => g.name === "Order Approvers") ? "✓" : "—"}</td>
+          <td>${(u.adminGroups || []).map((g) => escape(g.name)).join(", ") || "—"}</td>
           <td>${(u.groups || []).map((g) => escape(g.name)).join(", ") || "—"}</td>
           <td class="actions-col">
             <button type="button" class="btn-edit" data-id="${u.id}">Edit</button>
@@ -183,12 +199,23 @@
       });
     }
 
-    function populateGroupsSelect(selectedIds = []) {
+    function populateUserGroupsSelect(selectedIds = []) {
       const sel = document.getElementById("userGroups");
       if (groups.length === 0) {
-        sel.innerHTML = '<option value="" disabled>No groups yet</option>';
+        sel.innerHTML = '<option value="" disabled>No user groups yet</option>';
       } else {
         sel.innerHTML = groups.map((g) =>
+          `<option value="${g.id}" ${selectedIds.includes(g.id) ? "selected" : ""}>${escape(g.name)}</option>`
+        ).join("");
+      }
+    }
+
+    function populateAdminGroupsSelect(selectedIds = []) {
+      const sel = document.getElementById("adminGroups");
+      if (adminGroups.length === 0) {
+        sel.innerHTML = '<option value="">— Create admin groups first —</option>';
+      } else {
+        sel.innerHTML = adminGroups.map((g) =>
           `<option value="${g.id}" ${selectedIds.includes(g.id) ? "selected" : ""}>${escape(g.name)}</option>`
         ).join("");
       }
@@ -206,7 +233,9 @@
       document.getElementById("userIsAdmin").checked = false;
       document.getElementById("userIsUser").checked = true;
       document.getElementById("userIsApprover").checked = false;
-      populateGroupsSelect([]);
+      populateUserGroupsSelect([]);
+      populateAdminGroupsSelect([]);
+      document.getElementById("adminGroupsRow").style.display = "none";
       userModal.classList.add("open");
     }
 
@@ -223,8 +252,10 @@
       document.getElementById("userName").value = u.name || "";
       document.getElementById("userIsAdmin").checked = u.isAdmin;
       document.getElementById("userIsUser").checked = u.isUser;
-      document.getElementById("userIsApprover").checked = (u.groups || []).some((g) => g.name === "Order Approvers");
-      populateGroupsSelect(u.groupIds || []);
+      document.getElementById("userIsApprover").checked = (u.adminGroups || []).some((g) => g.name === "Order Approvers");
+      populateUserGroupsSelect(u.groupIds || []);
+      populateAdminGroupsSelect(u.adminGroupIds || []);
+      document.getElementById("adminGroupsRow").style.display = u.isAdmin ? "block" : "none";
       userModal.classList.add("open");
     }
 
@@ -246,6 +277,11 @@
       deleteTargetId = null;
     }
 
+    document.getElementById("userIsAdmin").addEventListener("change", () => {
+      const isAdmin = document.getElementById("userIsAdmin").checked;
+      document.getElementById("adminGroupsRow").style.display = isAdmin ? "block" : "none";
+    });
+
     userForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const email = document.getElementById("userEmail").value.trim();
@@ -254,16 +290,24 @@
       const isAdmin = document.getElementById("userIsAdmin").checked;
       const isUser = document.getElementById("userIsUser").checked;
       const isApprover = document.getElementById("userIsApprover").checked;
-      let groupIds = Array.from(document.getElementById("userGroups").selectedOptions)
+      const groupIds = Array.from(document.getElementById("userGroups").selectedOptions)
+        .map((o) => Number(o.value))
+        .filter((id) => !isNaN(id) && id > 0);
+      let adminGroupIds = Array.from(document.getElementById("adminGroups").selectedOptions)
         .map((o) => Number(o.value))
         .filter((id) => !isNaN(id) && id > 0);
 
-      if (approverGroupId) {
-        if (isApprover && !groupIds.includes(approverGroupId)) {
-          groupIds = [...groupIds, approverGroupId];
+      if (approverGroupId && isAdmin) {
+        if (isApprover && !adminGroupIds.includes(approverGroupId)) {
+          adminGroupIds = [...adminGroupIds, approverGroupId];
         } else if (!isApprover) {
-          groupIds = groupIds.filter((id) => id !== approverGroupId);
+          adminGroupIds = adminGroupIds.filter((id) => id !== approverGroupId);
         }
+      }
+
+      if (isAdmin && adminGroupIds.length === 0) {
+        alert("Admin users must be assigned at least one admin group. Their access is determined by the Admin Access tab.");
+        return;
       }
 
       if (!editingId && !password) {
@@ -273,7 +317,7 @@
 
       try {
         if (editingId) {
-          const body = { email, name, isAdmin, isUser, groupIds };
+          const body = { email, name, isAdmin, isUser, groupIds, adminGroupIds };
           if (password) body.password = password;
           const res = await fetch(`/api/users/${editingId}`, {
             method: "PATCH",
@@ -290,7 +334,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ email, password, name, isAdmin, isUser, groupIds }),
+            body: JSON.stringify({ email, password, name, isAdmin, isUser, groupIds, adminGroupIds }),
           });
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
@@ -336,6 +380,7 @@
 
     (async () => {
       groups = await loadGroups();
+      adminGroups = await loadAdminGroups();
       await loadApproverGroup();
       await loadUsers();
     })();

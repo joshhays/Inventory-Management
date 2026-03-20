@@ -23,17 +23,27 @@ const getUser = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
   try {
-    const { email, password, name, isAdmin, isUser, groupIds } = req.body;
+    const { email, password, name, isAdmin, isUser, groupIds, adminGroupIds } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required." });
+    }
+    const isAdminUser = isAdmin ?? false;
+    const adminGroupIdList = Array.isArray(adminGroupIds)
+      ? adminGroupIds.filter((id) => Number(id) > 0).map(Number)
+      : [];
+    if (isAdminUser && adminGroupIdList.length === 0) {
+      return res.status(400).json({
+        message: "Admin users must be assigned at least one admin group. Select an admin group to determine their access from the Admin Access tab.",
+      });
     }
     const user = await userService.create({
       email,
       password,
       name,
-      isAdmin: isAdmin ?? false,
+      isAdmin: isAdminUser,
       isUser: isUser !== false,
       groupIds: groupIds || [],
+      adminGroupIds: adminGroupIdList,
     });
     return res.status(201).json(user);
   } catch (error) {
@@ -47,7 +57,7 @@ const createUser = async (req, res, next) => {
 const updateUser = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { email, password, name, isAdmin, isUser, groupIds } = req.body;
+    const { email, password, name, isAdmin, isUser, groupIds, adminGroupIds } = req.body;
 
     if (Number(id) === req.user.id) {
       if (isAdmin === false && req.user.isAdmin) {
@@ -57,6 +67,16 @@ const updateUser = async (req, res, next) => {
       }
     }
 
+    const adminGroupIdList =
+      adminGroupIds !== undefined
+        ? (Array.isArray(adminGroupIds) ? adminGroupIds : []).filter((id) => Number(id) > 0).map(Number)
+        : undefined;
+    if (adminGroupIds !== undefined && isAdmin && adminGroupIdList.length === 0) {
+      return res.status(400).json({
+        message: "Admin users must be assigned at least one admin group.",
+      });
+    }
+
     const user = await userService.update(id, {
       email,
       password,
@@ -64,6 +84,7 @@ const updateUser = async (req, res, next) => {
       isAdmin,
       isUser,
       groupIds,
+      adminGroupIds: adminGroupIdList,
     });
     if (!user) {
       return res.status(404).json({ message: "User not found." });

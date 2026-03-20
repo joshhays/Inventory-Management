@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import toast from "react-hot-toast";
 
 interface Member {
@@ -10,6 +10,9 @@ interface Member {
 interface AdminGroup {
   id: number;
   name: string;
+  canApproveOrders?: boolean;
+  canManageInventory?: boolean;
+  canEditUsers?: boolean;
   members?: Member[];
 }
 
@@ -20,13 +23,16 @@ interface Usage {
 
 export default function AdminGroupDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [group, setGroup] = useState<AdminGroup | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingPerms, setSavingPerms] = useState(false);
+  const [canApproveOrders, setCanApproveOrders] = useState(false);
+  const [canManageInventory, setCanManageInventory] = useState(false);
+  const [canEditUsers, setCanEditUsers] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [users, setUsers] = useState<{ id: number; email: string; name?: string; isAdmin?: boolean }[]>([]);
   const [addingUser, setAddingUser] = useState<number | null>(null);
@@ -41,6 +47,9 @@ export default function AdminGroupDetailPage() {
       const data = await res.json();
       setGroup(data);
       setNewName(data.name || "");
+      setCanApproveOrders(data.canApproveOrders ?? false);
+      setCanManageInventory(data.canManageInventory ?? false);
+      setCanEditUsers(data.canEditUsers ?? false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not load group");
       setGroup(null);
@@ -65,7 +74,7 @@ export default function AdminGroupDetailPage() {
       const res = await fetch("/api/users", { credentials: "include" });
       if (!res.ok) return;
       const data = await res.json();
-      setUsers(Array.isArray(data) ? data.filter((u: { isAdmin?: boolean }) => u.isAdmin) : []);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (_) {}
   }
 
@@ -97,6 +106,34 @@ export default function AdminGroupDetailPage() {
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSavePermissions() {
+    if (!id) return;
+    setSavingPerms(true);
+    try {
+      const res = await fetch(`/api/admin-groups/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          canApproveOrders,
+          canManageInventory,
+          canEditUsers,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || "Save failed");
+      }
+      toast.success("Permissions saved");
+      const data = await res.json();
+      setGroup((prev) => (prev ? { ...prev, ...data } : null));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save");
+    } finally {
+      setSavingPerms(false);
     }
   }
 
@@ -190,10 +227,50 @@ export default function AdminGroupDetailPage() {
             </>
           )}
         </div>
-        <div style={{ color: "#64748b", fontSize: "0.9rem" }}>
+        <div style={{ color: "#64748b", fontSize: "0.9rem", marginBottom: "1rem" }}>
           <strong>Approval Workflow:</strong> (No Workflow){" "}
           <button type="button" disabled style={{ marginLeft: "0.5rem", opacity: 0.6 }}>
             Change Workflow...
+          </button>
+        </div>
+        <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid #e2e8f0" }}>
+          <strong>Permissions</strong> (API access)
+          <p style={{ color: "#64748b", fontSize: "0.9rem", margin: "0.5rem 0" }}>
+            Dashboard visibility is set in <Link to="/admin-access">Admin Access</Link>.
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "0.5rem" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                checked={canApproveOrders}
+                onChange={(e) => setCanApproveOrders(e.target.checked)}
+              />
+              Approve orders
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                checked={canManageInventory}
+                onChange={(e) => setCanManageInventory(e.target.checked)}
+              />
+              Manage inventory
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="checkbox"
+                checked={canEditUsers}
+                onChange={(e) => setCanEditUsers(e.target.checked)}
+              />
+              Edit users
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={handleSavePermissions}
+            disabled={savingPerms}
+            style={{ padding: "0.25rem 0.5rem" }}
+          >
+            {savingPerms ? "Saving..." : "Save Permissions"}
           </button>
         </div>
       </div>
