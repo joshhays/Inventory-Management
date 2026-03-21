@@ -140,26 +140,28 @@
       return opts.length ? opts : [min];
     }
 
-    function updateQty(productId, deltaOrValue, isSet = false) {
+    function updateCartItemByIdx(idx, deltaOrValue, isSet = false) {
       const cart = getCart();
-      const item = cart.find((i) => i.productId === productId);
+      const item = cart[idx];
       if (!item) return;
-      let newQty = isSet ? Math.max(1, parseInt(deltaOrValue, 10) || 1) : Math.max(0, (item.quantity || 1) + deltaOrValue);
+      let newQty = isSet ? Math.max(0, parseInt(deltaOrValue, 10) || 0) : Math.max(0, (item.quantity || 1) + deltaOrValue);
+      if (newQty <= 0) {
+        cart.splice(idx, 1);
+        setCart(cart);
+        render();
+        return;
+      }
       const allowed = parseAllowedQuantities(item.allowedQuantities);
       const minQty = item.minOrderQty != null ? Number(item.minOrderQty) : 1;
       const maxQty = item.maxOrderQty != null ? Number(item.maxOrderQty) : null;
       let finalQty = allowed && allowed.length
-        ? (allowed.includes(newQty) ? newQty : allowed[0])
+        ? (allowed.includes(newQty) ? newQty : allowed.reduce((best, a) => (Math.abs(a - newQty) < Math.abs(best - newQty) ? a : best)))
         : newQty;
       if (!allowed || !allowed.length) {
         finalQty = Math.max(minQty, finalQty);
         if (maxQty != null) finalQty = Math.min(maxQty, finalQty);
       }
-      if (finalQty <= 0) {
-        cart.splice(cart.indexOf(item), 1);
-      } else {
-        item.quantity = finalQty;
-      }
+      item.quantity = finalQty;
       setCart(cart);
       render();
     }
@@ -238,7 +240,7 @@
           ${cart
             .map(
               (i, idx) => `
-            <div class="store-cart-card ${i.printData && Object.keys(i.printData).length ? "store-cart-card-has-pod" : ""}" data-id="${i.productId}">
+            <div class="store-cart-card ${i.printData && Object.keys(i.printData).length ? "store-cart-card-has-pod" : ""}" data-idx="${idx}">
               <div class="store-cart-card-img">
                 ${i.imageUrl
                   ? '<img src="' + (i.imageUrl || '').replace(/"/g, '&quot;') + '" alt="" loading="lazy">'
@@ -263,12 +265,12 @@
                       const maxQty = i.maxOrderQty != null ? Number(i.maxOrderQty) : null;
                       const options = allowed && allowed.length ? allowed : getQtyDropdownOptions(minQty, maxQty);
                       const displayQty = options.includes(qty) ? qty : options[0];
-                      return '<select class="store-cart-qty-select" data-id="' + i.productId + '">' +
+                      return '<select class="store-cart-qty-select" data-idx="' + idx + '">' +
                         options.map((n) => '<option value="' + n + '"' + (n === displayQty ? ' selected' : '') + '>' + n + '</option>').join("") +
                         '</select>';
                     })()}
                   </div>
-                  <button type="button" class="store-cart-delete" data-id="${i.productId}">Delete</button>
+                  <button type="button" class="store-cart-delete" data-idx="${idx}">Delete</button>
                 </div>
               </div>
               <div class="store-cart-card-total">
@@ -310,13 +312,13 @@
       loadSavedAddresses();
 
       content.querySelectorAll(".store-cart-qty-btn").forEach((btn) => {
-        btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), Number(btn.dataset.delta)));
+        btn.addEventListener("click", () => updateCartItemByIdx(Number(btn.dataset.idx), Number(btn.dataset.delta)));
       });
       content.querySelectorAll(".store-cart-qty-select").forEach((sel) => {
-        sel.addEventListener("change", () => updateQty(Number(sel.dataset.id), Number(sel.value), true));
+        sel.addEventListener("change", () => updateCartItemByIdx(Number(sel.dataset.idx), Number(sel.value), true));
       });
       content.querySelectorAll(".store-cart-delete").forEach((btn) => {
-        btn.addEventListener("click", () => updateQty(Number(btn.dataset.id), -999));
+        btn.addEventListener("click", () => updateCartItemByIdx(Number(btn.dataset.idx), 0, true));
       });
 
       loadCartPODPreviews(cart, content);
