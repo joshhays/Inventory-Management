@@ -140,7 +140,7 @@
       return opts.length ? opts : [min];
     }
 
-    function updateCartItemByIdx(idx, deltaOrValue, isSet = false) {
+    async function updateCartItemByIdx(idx, deltaOrValue, isSet = false) {
       const cart = getCart();
       const item = cart[idx];
       if (!item) return;
@@ -148,7 +148,7 @@
       if (newQty <= 0) {
         cart.splice(idx, 1);
         setCart(cart);
-        render();
+        await render();
         return;
       }
       const allowed = parseAllowedQuantities(item.allowedQuantities);
@@ -163,7 +163,7 @@
       }
       item.quantity = finalQty;
       setCart(cart);
-      render();
+      await render();
     }
 
     async function render() {
@@ -295,13 +295,13 @@
       loadSavedAddresses();
 
       content.querySelectorAll(".store-cart-qty-btn").forEach((btn) => {
-        btn.addEventListener("click", () => updateCartItemByIdx(Number(btn.dataset.idx), Number(btn.dataset.delta)));
+        btn.addEventListener("click", async () => { await updateCartItemByIdx(Number(btn.dataset.idx), Number(btn.dataset.delta)); });
       });
       content.querySelectorAll(".store-cart-qty-select").forEach((sel) => {
-        sel.addEventListener("change", () => updateCartItemByIdx(Number(sel.dataset.idx), Number(sel.value), true));
+        sel.addEventListener("change", async () => { await updateCartItemByIdx(Number(sel.dataset.idx), Number(sel.value), true); });
       });
       content.querySelectorAll(".store-cart-delete").forEach((btn) => {
-        btn.addEventListener("click", () => updateCartItemByIdx(Number(btn.dataset.idx), 0, true));
+        btn.addEventListener("click", async () => { await updateCartItemByIdx(Number(btn.dataset.idx), 0, true); });
       });
 
       loadCartPODPreviews(cart, content);

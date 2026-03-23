@@ -108,6 +108,11 @@
               <textarea id="productPrintTemplateConfig" style="display:none"></textarea>
               <p class="form-hint">Key must match PDF field name. Use <strong>=</strong> to separate value, label, and description. For a literal <strong>=</strong>, type <strong>\=</strong>.</p>
             </div>
+            <div class="form-row" id="pricingMatrixRow" style="display: none;">
+              <label>POD Pricing Matrix</label>
+              <textarea id="productPricingMatrix" rows="6" placeholder='{"100":{"1":134.32,"2":159.92,"4":213.21},"150":{"1":136.10,"2":167.10,"4":227.65},"250":{"1":141.20,"2":177.54,"4":251.01}}' style="font-family:monospace;font-size:0.85rem;width:100%"></textarea>
+              <p class="form-hint">JSON: quantity per design → number of designs → total price. Example: 250 each of 4 designs = $251.01 total. Leave empty to use product price.</p>
+            </div>
           </section>
 
           <section class="product-edit-section" id="kitSection" style="display: none;">
@@ -300,6 +305,10 @@
       const row = document.getElementById("printTemplateRow");
       row.style.display = document.getElementById("productPrintOnDemand").checked ? "block" : "none";
     }
+    function togglePricingMatrixRow() {
+      const row = document.getElementById("pricingMatrixRow");
+      row.style.display = document.getElementById("productPrintOnDemand").checked ? "block" : "none";
+    }
 
     function toggleQuantityAndKit() {
       const isKit = document.getElementById("productType").value === "kit";
@@ -359,8 +368,10 @@
         categorySelect.innerHTML = '<option value="">No category</option>' + categories.map((c) => `<option value="${escape(c)}">${escape(c)}</option>`).join("");
         categorySelect.value = productCat;
         document.getElementById("productPrintOnDemand").checked = !!product.isPrintOnDemand;
+        document.getElementById("productPricingMatrix").value = (typeof product.pricingMatrix === "string" ? product.pricingMatrix : (product.pricingMatrix ? JSON.stringify(product.pricingMatrix, null, 2) : "")) || "";
         loadPODConfigFromJson(product.printTemplateConfig || "");
         togglePrintTemplateRow();
+        togglePricingMatrixRow();
         toggleQuantityAndKit();
 
         document.getElementById("podAddFieldBtn").addEventListener("click", () => {
@@ -395,7 +406,7 @@
           body.appendChild(row);
         });
 
-        document.getElementById("productPrintOnDemand").addEventListener("change", togglePrintTemplateRow);
+        document.getElementById("productPrintOnDemand").addEventListener("change", () => { togglePrintTemplateRow(); togglePricingMatrixRow(); });
         document.getElementById("productType").addEventListener("change", toggleQuantityAndKit);
 
         document.getElementById("loading").style.display = "none";
@@ -470,6 +481,7 @@
         productType: isKit ? "kit" : "regular",
         isPrintOnDemand: document.getElementById("productPrintOnDemand").checked,
         printTemplateConfig: document.getElementById("productPrintTemplateConfig").value.trim() || null,
+        pricingMatrix: document.getElementById("productPricingMatrix").value.trim() || null,
         allowedQuantities: document.getElementById("productAllowedQuantities").value.trim() || null,
         minOrderQty: document.getElementById("productMinOrderQty").value.trim() || null,
         maxOrderQty: document.getElementById("productMaxOrderQty").value.trim() || null,
