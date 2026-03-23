@@ -3,7 +3,7 @@ const fs = require("fs");
 const orderService = require("../services/order.service");
 const shippingService = require("../services/shipping.service");
 const approvalService = require("../services/approval.service");
-const { generateBusinessCardPdf } = require("../services/podPdf.service");
+const { generateImprintOnlyPdf } = require("../services/podPdf.service");
 const { businessCardTemplate } = require("../podTemplates");
 
 const approveOrder = async (req, res, next) => {
@@ -210,12 +210,7 @@ const getOrderItemPrintPdf = async (req, res, next) => {
       return res.status(400).json({ message: "No print data for this item." });
     }
 
-    const basePdfPath = path.join(__dirname, "../../product-files/business-card-base.pdf");
-    if (!fs.existsSync(basePdfPath)) {
-      return res.status(503).json({ message: "Print template not available." });
-    }
-    const basePdfBytes = fs.readFileSync(basePdfPath);
-    const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, userData, businessCardTemplate);
+    const pdfBuffer = await generateImprintOnlyPdf(userData, businessCardTemplate);
 
     const filename = `order-${orderId}-item-${item.id}-print.pdf`;
     res.setHeader("Content-Type", "application/pdf");

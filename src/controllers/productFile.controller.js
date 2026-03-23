@@ -5,6 +5,7 @@ const prisma = require("../lib/prisma");
 const productFileService = require("../services/productFile.service");
 const productService = require("../services/product.service");
 const { canAccessProduct } = require("../lib/auth-helpers");
+const { cropPdfToTrim } = require("../services/podPdf.service");
 
 const UPLOAD_DIR = path.join(__dirname, "../../uploads");
 const PRODUCT_FILES_DIR = path.join(__dirname, "../../product-files");
@@ -78,7 +79,8 @@ const getPreview = async (req, res, next) => {
       const { generateBusinessCardPdf } = require("../services/podPdf.service");
       const { businessCardTemplate } = require("../podTemplates");
       const basePdfBytes = fs.readFileSync(POD_BASE_PDF);
-      const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, {}, businessCardTemplate);
+      let pdfBuffer = await generateBusinessCardPdf(basePdfBytes, {}, businessCardTemplate);
+      pdfBuffer = await cropPdfToTrim(pdfBuffer);
       try {
         const { pdf } = await import("pdf-to-img");
         const tmpPath = path.join(os.tmpdir(), `pod-preview-${Date.now()}.pdf`);
@@ -110,17 +112,25 @@ const getPreview = async (req, res, next) => {
     }
 
     try {
-      const { pdf } = await import("pdf-to-img");
-      const document = await pdf(fullPath, { scale: 2 });
-      let firstPage = null;
-      for await (const image of document) {
-        firstPage = image;
-        break;
-      }
-      if (firstPage) {
-        res.setHeader("Content-Type", "image/png");
-        res.setHeader("Cache-Control", "public, max-age=3600");
-        return res.send(firstPage);
+      let pdfBuf = fs.readFileSync(fullPath);
+      pdfBuf = await cropPdfToTrim(pdfBuf);
+      const tmpPath = path.join(os.tmpdir(), `product-preview-${Date.now()}.pdf`);
+      try {
+        fs.writeFileSync(tmpPath, pdfBuf);
+        const { pdf } = await import("pdf-to-img");
+        const document = await pdf(tmpPath, { scale: 2 });
+        let firstPage = null;
+        for await (const image of document) {
+          firstPage = image;
+          break;
+        }
+        if (firstPage) {
+          res.setHeader("Content-Type", "image/png");
+          res.setHeader("Cache-Control", "public, max-age=3600");
+          return res.send(firstPage);
+        }
+      } finally {
+        try { fs.unlinkSync(tmpPath); } catch (_) {}
       }
     } catch (_) {
       res.setHeader("Content-Type", "image/svg+xml");
