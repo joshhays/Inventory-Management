@@ -157,9 +157,10 @@
       }
       const imageFile = getFirstImageFile(p.files);
       const pdfFile = getFirstFile(p.files);
+      const previewBase = "/api/products/" + p.id + "/preview" + (window.STORE_SLUG ? "?deployment=" + encodeURIComponent(window.STORE_SLUG) : "");
       const imgUrl = imageFile
         ? getImageUrl(imageFile)
-        : pdfFile ? "/api/products/" + p.id + "/preview" : null;
+        : pdfFile ? previewBase : null;
       if (existing) {
         existing.quantity = (existing.quantity || 1) + qty;
         if (!existing.imageUrl && imgUrl) existing.imageUrl = imgUrl;
@@ -203,12 +204,13 @@
           const imageFile = getFirstImageFile(p.files);
           const pdfFile = getFirstFile(p.files);
           const isPOD = !!(p.isPrintOnDemand && p.printTemplateConfig);
+          const previewBase = "/api/products/" + p.id + "/preview" + (window.STORE_SLUG ? "?deployment=" + encodeURIComponent(window.STORE_SLUG) : "");
           const imgUrl = imageFile
             ? getImageUrl(imageFile)
             : pdfFile
-              ? "/api/products/" + p.id + "/preview"
+              ? previewBase
               : isPOD
-                ? "/api/products/" + p.id + "/preview"
+                ? previewBase
                 : null;
           const isPdfOnly = pdfFile && !imageFile;
           const thumb = imgUrl

@@ -12,7 +12,7 @@ const POD_BASE_PDF = path.join(__dirname, "../../product-files/business-card-bas
 
 // Placeholder image when PDF-to-image conversion fails (avoids server crash)
 const PLACEHOLDER_SVG = Buffer.from(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120"><rect fill="#f1f5f9" width="200" height="120"/><text x="100" y="65" text-anchor="middle" fill="#64748b" font-family="sans-serif" font-size="14">Processing...</text></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120"><rect fill="#f1f5f9" width="200" height="120"/><text x="100" y="65" text-anchor="middle" fill="#64748b" font-family="sans-serif" font-size="12">Preview unavailable</text></svg>',
   "utf8"
 );
 

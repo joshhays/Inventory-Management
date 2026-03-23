@@ -11,7 +11,7 @@
  * - ORDER_REJECTED: when an admin rejects a POD order (approval.service.js)
  * - ORDER_SHIPPED: when order status is changed to shipped (order.controller.js)
  *
- * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}, {{approvalLink}}, {{orderLink}}
+ * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}, {{approvalLink}}, {{orderLink}}, {{itemsList}}
  */
 
 const { Resend } = require("resend");
@@ -121,6 +121,12 @@ async function triggerNotification(orderId, templateName) {
     }
   }
 
+  const items = order.items || [];
+  const itemsList = items
+    .map((i) => `• ${i.quantity}× ${i.productName || "Item"}${i.printData ? " (POD)" : ""}`)
+    .join("\n");
+  const itemsListHtml = itemsList ? itemsList.replace(/\n/g, "<br>") : "(no items)";
+
   const data = {
     name: order.customerName,
     email: order.customerEmail,
@@ -132,21 +138,43 @@ async function triggerNotification(orderId, templateName) {
     shippingLabelUrl: order.shippingLabelUrl || "",
     approvalLink,
     orderLink,
+    itemsList: itemsList || "(no items)",
+    itemsListHtml,
   };
 
   const subject = replacePlaceholders(template.subject, data);
   const body = replacePlaceholders(template.body, data);
   const html = body.replace(/\n/g, "<br>");
 
+  let attachments = [];
+  if (templateName === "ORDER_READY_FOR_PRINT" && items.length > 0) {
+    const orderPrintPdfService = require("./orderPrintPdf.service");
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+      const pdfBuffer = await orderPrintPdfService.generatePrintPdfForItem(item);
+      if (pdfBuffer && pdfBuffer.length > 0) {
+        const safeName = (item.productName || "item").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
+        attachments.push({
+          filename: `order-${order.id}-proof-${idx + 1}-${safeName}.pdf`,
+          content: pdfBuffer,
+        });
+      }
+    }
+  }
+
   const resend = getClient();
   const results = [];
   for (const to of recipients) {
-    const { data: result, error } = await resend.emails.send({
+    const sendOpts = {
       from: `${fromName} <${fromEmail}>`,
       to,
       subject,
       html,
-    });
+    };
+    if (attachments.length > 0) {
+      sendOpts.attachments = attachments;
+    }
+    const { data: result, error } = await resend.emails.send(sendOpts);
     if (error) throw new Error(`Resend error: ${error.message}`);
     results.push(result?.id);
   }

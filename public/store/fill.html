@@ -459,7 +459,8 @@
             }
             const imageFile = getFirstImageFile(product.files);
             const pdfFile = getFirstFile(product.files);
-            const imgUrl = imageFile ? getImageUrl(imageFile) : pdfFile ? "/api/products/" + product.id + "/preview" : null;
+            const previewBase = "/api/products/" + product.id + "/preview" + (window.STORE_SLUG ? "?deployment=" + encodeURIComponent(window.STORE_SLUG) : "");
+            const imgUrl = imageFile ? getImageUrl(imageFile) : pdfFile ? previewBase : null;
             if (existing) {
               existing.quantity = (existing.quantity || 1) + qty;
             } else {

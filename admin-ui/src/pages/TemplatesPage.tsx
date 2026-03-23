@@ -176,7 +176,7 @@ export default function TemplatesPage() {
     <div>
       <h1>Notification Templates</h1>
       <p style={{ color: "#64748b", marginBottom: "1rem" }}>
-        Select a template, edit the subject and body, then save. Use placeholders like {"{{name}}"}, {"{{email}}"}, {"{{trackingCode}}"}, {"{{orderId}}"}, {"{{total}}"}, {"{{approvalLink}}"}. Trigger names (e.g. ORDER_APPROVED, ORDER_PLACED) must match the code that sends the email.
+        Select a template, edit the subject and body, then save. Use placeholders like {"{{name}}"}, {"{{email}}"}, {"{{trackingCode}}"}, {"{{orderId}}"}, {"{{total}}"}, {"{{approvalLink}}"}, {"{{itemsList}}"}. Trigger names (e.g. ORDER_APPROVED, ORDER_PLACED) must match the code that sends the email.
       </p>
       <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
         <label htmlFor="template-select" style={{ marginRight: "0.5rem" }}>
