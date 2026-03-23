@@ -21,7 +21,7 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
 
     function findBestPriceForTotalCards(matrix, totalCards) {
       if (!matrix || typeof matrix !== "object" || totalCards <= 0) return null;
-      let bestUnitPrice = null;
+      const tiers = [];
       for (const qtyStr of Object.keys(matrix)) {
         const row = matrix[qtyStr];
         if (!row || typeof row !== "object") continue;
@@ -32,13 +32,18 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
           if (total == null || typeof total !== "number") continue;
           const num = parseInt(numStr, 10);
           if (isNaN(num) || num <= 0) continue;
-          if (qty * num === totalCards) {
-            const unit = total / totalCards;
-            if (bestUnitPrice == null || unit < bestUnitPrice) bestUnitPrice = unit;
-          }
+          const tierCards = qty * num;
+          const unit = total / tierCards;
+          tiers.push({ tierCards, unit });
         }
       }
-      return bestUnitPrice;
+      const exact = tiers.filter((t) => t.tierCards === totalCards);
+      if (exact.length) return Math.min(...exact.map((t) => t.unit));
+      const roundDown = tiers.filter((t) => t.tierCards <= totalCards);
+      if (!roundDown.length) return null;
+      const closest = Math.max(...roundDown.map((t) => t.tierCards));
+      const matches = tiers.filter((t) => t.tierCards === closest);
+      return Math.min(...matches.map((t) => t.unit));
     }
 
     for (let i = 0; i < items.length; i++) {
