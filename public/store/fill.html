@@ -544,6 +544,7 @@
               const existing = cart.find((it) => it.productId === product.id && JSON.stringify(it.printData || {}) === JSON.stringify(printData));
               if (existing) {
                 existing.quantity = (existing.quantity || 1) + qtyPerDesign;
+                existing.pricingMatrix = product.pricingMatrix || existing.pricingMatrix;
               } else {
                 const qtyOpts = matrix ? Object.keys(matrix).map((k) => parseInt(k, 10)).filter((n) => !isNaN(n) && n > 0).sort((a, b) => a - b) : null;
                 cart.push({
@@ -554,6 +555,7 @@
                   price: unitPrice,
                   imageUrl: imgUrl || null,
                   printData: printData,
+                  pricingMatrix: product.pricingMatrix || null,
                   allowedQuantities: qtyOpts && qtyOpts.length ? JSON.stringify(qtyOpts) : null,
                   minOrderQty: 1,
                   maxOrderQty: null,

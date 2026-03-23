@@ -140,6 +140,61 @@
       return opts.length ? opts : [min];
     }
 
+    function getPriceFromMatrix(matrix, qtyPerDesign, numDesigns) {
+      if (!matrix || typeof matrix !== "object") return null;
+      const row = matrix[String(qtyPerDesign)];
+      if (!row || typeof row !== "object") return null;
+      const total = row[String(numDesigns)];
+      if (total == null || typeof total !== "number") return null;
+      const totalCards = qtyPerDesign * numDesigns;
+      return totalCards > 0 ? total / totalCards : null;
+    }
+
+    function findBestPriceForTotalCards(matrix, totalCards, fallbackUnitPrice) {
+      if (!matrix || typeof matrix !== "object" || totalCards <= 0) return fallbackUnitPrice;
+      let bestUnitPrice = null;
+      for (const qtyStr of Object.keys(matrix)) {
+        const row = matrix[qtyStr];
+        if (!row || typeof row !== "object") continue;
+        const qty = parseInt(qtyStr, 10);
+        if (isNaN(qty) || qty <= 0) continue;
+        for (const numStr of Object.keys(row)) {
+          const total = row[numStr];
+          if (total == null || typeof total !== "number") continue;
+          const num = parseInt(numStr, 10);
+          if (isNaN(num) || num <= 0) continue;
+          if (qty * num === totalCards) {
+            const unit = total / totalCards;
+            if (bestUnitPrice == null || unit < bestUnitPrice) bestUnitPrice = unit;
+          }
+        }
+      }
+      return bestUnitPrice != null ? bestUnitPrice : fallbackUnitPrice;
+    }
+
+    function computePODPrices(cart) {
+      const podByProduct = new Map();
+      cart.forEach((item, idx) => {
+        if (item.printData && Object.keys(item.printData || {}).length && item.pricingMatrix) {
+          const pid = item.productId;
+          if (!podByProduct.has(pid)) podByProduct.set(pid, []);
+          podByProduct.get(pid).push({ item, idx });
+        }
+      });
+      const effectivePrice = new Map();
+      podByProduct.forEach((entries, productId) => {
+        const totalCards = entries.reduce((s, { item }) => s + (item.quantity || 1), 0);
+        const item = entries[0].item;
+        try {
+          const matrix = typeof item.pricingMatrix === "string" ? JSON.parse(item.pricingMatrix) : item.pricingMatrix;
+          const fallback = item.price || 0;
+          const unitPrice = findBestPriceForTotalCards(matrix, totalCards, fallback);
+          entries.forEach(({ idx }) => effectivePrice.set(idx, unitPrice));
+        } catch (_) {}
+      });
+      return effectivePrice;
+    }
+
     async function updateCartItemByIdx(idx, deltaOrValue, isSet = false) {
       const cart = getCart();
       const item = cart[idx];
@@ -210,7 +265,30 @@
       });
       setCart(cart);
 
-      const subtotal = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
+      const podWithoutMatrix = cart
+        .map((i, idx) => ({ i, idx }))
+        .filter(({ i }) => i.printData && Object.keys(i.printData || {}).length && !i.pricingMatrix && i.productId);
+      if (podWithoutMatrix.length > 0) {
+        const productIds = [...new Set(podWithoutMatrix.map(({ i }) => i.productId))];
+        const params = new URLSearchParams();
+        if (window.STORE_SLUG) params.set("deployment", window.STORE_SLUG);
+        try {
+          const products = await Promise.all(productIds.map((id) =>
+            fetch("/api/products/" + id + (params.toString() ? "?" + params.toString() : ""), { credentials: "include" }).then((r) => r.ok ? r.json() : null)
+          ));
+          products.forEach((p) => {
+            if (p && p.pricingMatrix) {
+              cart.filter((i) => i.productId === p.id && i.printData).forEach((i) => { i.pricingMatrix = p.pricingMatrix; });
+            }
+          });
+          if (products.some((p) => p && p.pricingMatrix)) setCart(cart);
+        } catch (_) {}
+      }
+
+      const effectivePrices = computePODPrices(cart);
+      const getItemPrice = (i, idx) => effectivePrices.has(idx) ? effectivePrices.get(idx) : (i.price || 0);
+
+      const subtotal = cart.reduce((s, i, idx) => s + getItemPrice(i, idx) * (i.quantity || 1), 0);
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
       const shippingCost = window.selectedShipping?.totalCharges ?? 0;
       const total = Math.round((subtotal + shippingCost) * 100) / 100;
@@ -221,7 +299,9 @@
         <div class="store-cart-items">
           ${cart
             .map(
-              (i, idx) => `
+              (i, idx) => {
+                const itemPrice = getItemPrice(i, idx);
+                return `
             <div class="store-cart-card ${i.printData && Object.keys(i.printData).length ? "store-cart-card-has-pod" : ""}" data-idx="${idx}">
               <div class="store-cart-card-img">
                 ${i.printData && Object.keys(i.printData).length
@@ -234,7 +314,7 @@
                 <h3 class="store-cart-card-title">${escape(i.name)}</h3>
                 ${i.printData && Object.keys(i.printData).length ? "<p class=\"store-cart-card-print\">Custom print: " + escape(Object.values(i.printData).filter(Boolean).join(", ") || "—") + "</p>" : ""}
                 <p class="store-cart-card-sku">SKU: ${escape(i.sku)}</p>
-                <p class="store-cart-card-price">$${formatPrice(i.price)}</p>
+                <p class="store-cart-card-price">$${formatPrice(itemPrice)}</p>
                 <div class="store-cart-card-actions">
                   <div class="store-cart-qty-wrap">
                     ${(function() {
@@ -258,11 +338,12 @@
                 </div>
               </div>
               <div class="store-cart-card-total">
-                $${formatPrice((i.price || 0) * (i.quantity || 1))}
+                $${formatPrice(itemPrice * (i.quantity || 1))}
               </div>
               ${i.printData && Object.keys(i.printData).length ? `<div class="store-cart-pod-preview" data-cart-index="${idx}" aria-live="polite"><div class="store-cart-pod-preview-loading">Loading final preview…</div></div>` : ""}
             </div>
-          `
+          `;
+              }
             )
             .join("")}
         </div>

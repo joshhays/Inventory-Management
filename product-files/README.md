@@ -33,4 +33,6 @@ product-files/
 3. Go to **Manage Products** → click **Files** on a product.
 4. Select a file from the dropdown and click **Attach**.
 
+**Tip:** For products to show images on the store product list, attach a JPG or PNG. PDF-only products use server-side conversion which may show a placeholder in some environments. Images display directly and reliably.
+
 Files are referenced by path (e.g. `manual.pdf` or `guides/quick-start.pdf`). The same file can be attached to multiple products.

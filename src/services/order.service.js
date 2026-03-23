@@ -8,17 +8,38 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
     const orderItems = [];
     const outOfStock = [];
 
-    // Group POD items by (productId, quantity) for pricing matrix lookup
-    const podGroups = new Map();
+    // Group POD items by productId and sum total cards for smart pricing (e.g. 500×1 + 100×1 = 600 total)
+    const podTotalsByProduct = new Map();
     items.forEach((item, idx) => {
       const hasPrintData = item.printData != null && (typeof item.printData === "object" ? Object.keys(item.printData).length : String(item.printData || "").trim());
       if (hasPrintData && item.productId) {
         const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
-        const key = `${item.productId}:${qty}`;
-        if (!podGroups.has(key)) podGroups.set(key, []);
-        podGroups.get(key).push({ item, idx });
+        const pid = item.productId;
+        podTotalsByProduct.set(pid, (podTotalsByProduct.get(pid) || 0) + qty);
       }
     });
+
+    function findBestPriceForTotalCards(matrix, totalCards) {
+      if (!matrix || typeof matrix !== "object" || totalCards <= 0) return null;
+      let bestUnitPrice = null;
+      for (const qtyStr of Object.keys(matrix)) {
+        const row = matrix[qtyStr];
+        if (!row || typeof row !== "object") continue;
+        const qty = parseInt(qtyStr, 10);
+        if (isNaN(qty) || qty <= 0) continue;
+        for (const numStr of Object.keys(row)) {
+          const total = row[numStr];
+          if (total == null || typeof total !== "number") continue;
+          const num = parseInt(numStr, 10);
+          if (isNaN(num) || num <= 0) continue;
+          if (qty * num === totalCards) {
+            const unit = total / totalCards;
+            if (bestUnitPrice == null || unit < bestUnitPrice) bestUnitPrice = unit;
+          }
+        }
+      }
+      return bestUnitPrice;
+    }
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -78,18 +99,10 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
       const hasPrintData = item.printData != null && (typeof item.printData === "object" ? Object.keys(item.printData).length : String(item.printData || "").trim());
       if (hasPrintData && product.pricingMatrix) {
         try {
+          const totalCards = podTotalsByProduct.get(product.id) || quantity;
           const matrix = typeof product.pricingMatrix === "string" ? JSON.parse(product.pricingMatrix) : product.pricingMatrix;
-          const key = `${product.id}:${quantity}`;
-          const group = podGroups.get(key);
-          if (matrix && group && group.length > 0) {
-            const row = matrix[String(quantity)];
-            const numDesigns = group.length;
-            const totalForBundle = row?.[String(numDesigns)];
-            if (totalForBundle != null && typeof totalForBundle === "number") {
-              const totalCards = quantity * numDesigns;
-              unitPrice = totalCards > 0 ? totalForBundle / totalCards : product.price;
-            }
-          }
+          const smartPrice = findBestPriceForTotalCards(matrix, totalCards);
+          unitPrice = smartPrice != null ? smartPrice : product.price;
         } catch (_) {}
       }
       const lineTotal = Math.round(unitPrice * quantity * 100) / 100;

@@ -10,9 +10,9 @@ const UPLOAD_DIR = path.join(__dirname, "../../uploads");
 const PRODUCT_FILES_DIR = path.join(__dirname, "../../product-files");
 const POD_BASE_PDF = path.join(__dirname, "../../product-files/business-card-base.pdf");
 
-// Placeholder image when PDF-to-image conversion fails (avoids server crash)
+// Placeholder when PDF-to-image conversion fails. Shows a neutral card icon so the product list looks intentional.
 const PLACEHOLDER_SVG = Buffer.from(
-  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120"><rect fill="#f1f5f9" width="200" height="120"/><text x="100" y="65" text-anchor="middle" fill="#64748b" font-family="sans-serif" font-size="12">Preview unavailable</text></svg>',
+  '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="120" viewBox="0 0 200 120"><rect fill="#f1f5f9" width="200" height="120"/><rect x="40" y="25" width="120" height="70" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2"/><line x1="50" y1="45" x2="150" y2="45" stroke="#e2e8f0" stroke-width="1"/><line x1="50" y1="60" x2="120" y2="60" stroke="#e2e8f0" stroke-width="1"/><line x1="50" y1="75" x2="140" y2="75" stroke="#e2e8f0" stroke-width="1"/></svg>',
   "utf8"
 );
 
