@@ -157,6 +157,23 @@ const updateQuantity = async (req, res, next) => {
   }
 };
 
+const deleteProduct = async (req, res, next) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
+    const { id } = req.params;
+    const existing = await productService.getProductWithFiles(id);
+    if (!existing) return res.status(404).json({ message: "Product not found." });
+    if (!canAccessProduct(req.user, existing)) {
+      return res.status(403).json({ message: "You do not have access to this product." });
+    }
+    const deleted = await productService.deleteProduct(id);
+    if (!deleted) return res.status(404).json({ message: "Product not found." });
+    return res.status(200).json({ message: "Product deleted.", id: deleted.id });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 const updateProduct = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Authentication required." });
@@ -296,8 +313,9 @@ module.exports = {
   getCategories,
   getProduct,
   createProduct,
-  updateQuantity,
   updateProduct,
+  deleteProduct,
+  updateQuantity,
   exportCsv,
   importCsv,
   getLabel,

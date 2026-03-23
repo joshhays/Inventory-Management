@@ -190,6 +190,18 @@ const updateProduct = async (id, productData) => {
   });
 };
 
+const deleteProduct = async (id) => {
+  const product = await prisma.product.findUnique({
+    where: { id: Number(id) },
+    include: { kitItems: { include: { kit: true } } },
+  });
+  if (!product) return null;
+  await prisma.product.delete({
+    where: { id: Number(id) },
+  });
+  return product;
+};
+
 const updateQuantity = async (id, { quantity, adjust }, source = "manual") => {
   const product = await prisma.product.findUnique({
     where: { id: Number(id) },
@@ -402,6 +414,7 @@ module.exports = {
   getCategories,
   createProduct,
   updateProduct,
+  deleteProduct,
   updateQuantity,
   getProductWithFiles,
   importFromCsv,

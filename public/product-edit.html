@@ -126,6 +126,7 @@
           <div class="form-actions product-edit-actions">
             <button type="submit" class="btn-apply">Save changes</button>
             <a href="/products-manage.html" class="btn-cancel">Cancel</a>
+            <button type="button" class="btn-delete" id="btnDelete">Delete product</button>
           </div>
         </form>
       </div>
@@ -487,6 +488,19 @@
         window.location.href = "/products-manage.html";
       } catch (err) {
         alert("Error: " + err.message);
+      }
+    });
+
+    document.getElementById("btnDelete").addEventListener("click", async () => {
+      const name = document.getElementById("productName")?.value?.trim() || "this product";
+      if (!confirm("Delete \"" + name + "\"? This cannot be undone.")) return;
+      try {
+        const res = await fetch("/api/products/" + productId, { method: "DELETE", credentials: "include" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.message || "Delete failed");
+        window.location.href = "/products-manage.html";
+      } catch (err) {
+        alert("Error: " + (err.message || "Could not delete"));
       }
     });
 

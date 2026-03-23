@@ -19,6 +19,7 @@ router.post("/import", (req, res, next) => {
 router.post("/", productController.createProduct);
 router.patch("/:id", productController.updateQuantity);
 router.put("/:id", productController.updateProduct);
+router.delete("/:id", productController.deleteProduct);
 
 router.get("/:id/preview", productFileController.getPreview);
 router.get("/:id/label", productController.getLabel);

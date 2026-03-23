@@ -360,6 +360,7 @@
             <a href="/product-edit.html?id=${p.id}" class="btn-edit">Edit</a>
             <button class="btn-files${filesClass}" data-id="${p.id}">Files${fileCount > 0 ? ` (${fileCount})` : ""}</button>
             <a href="/api/products/${p.id}/label" class="btn-label" target="_blank" download>Print Label</a>
+            <button class="btn-delete" data-id="${p.id}" title="Delete product">Delete</button>
           </td>
         </tr>
       `}).join("");
@@ -369,6 +370,9 @@
       });
       body.querySelectorAll(".btn-files").forEach(btn => {
         btn.addEventListener("click", () => openFilesModal(Number(btn.dataset.id)));
+      });
+      body.querySelectorAll(".btn-delete").forEach(btn => {
+        btn.addEventListener("click", () => deleteProduct(Number(btn.dataset.id), btn.closest("tr").querySelector("td:nth-child(2)")?.textContent?.trim() || "this product"));
       });
       body.querySelectorAll(".product-thumb-wrap .product-thumb").forEach(thumb => {
         thumb.addEventListener("click", (e) => { e.preventDefault(); openPreview(thumb.src); });
@@ -665,6 +669,19 @@
       }
     }
     document.getElementById("productType").addEventListener("change", toggleQuantityRow);
+
+    async function deleteProduct(id, displayName) {
+      if (!confirm("Delete \"" + (displayName || "this product") + "\"? This cannot be undone.")) return;
+      try {
+        const res = await fetch("/api/products/" + id, { method: "DELETE", credentials: "include" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.message || "Delete failed");
+        data = data.filter((p) => p.id !== id);
+        render(data);
+      } catch (err) {
+        alert("Error: " + (err.message || "Could not delete"));
+      }
+    }
 
     function closeForm() {
       formSidebar.classList.remove("open");

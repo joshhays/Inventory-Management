@@ -589,6 +589,21 @@ h1 {
   background: var(--accent-hover);
 }
 
+.btn-delete {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #b91c1c;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+  margin-right: 0.25rem;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background: #b91c1c;
+  color: white;
+}
+
 /* Scanner bar - Glass */
 .scanner-bar {
   display: flex;
