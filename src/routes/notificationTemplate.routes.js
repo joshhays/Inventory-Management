@@ -8,6 +8,7 @@ const AVAILABLE_TRIGGERS = [
   { value: "ORDER_PLACED", label: "Order placed", section: "user" },
   { value: "ORDER_APPROVED", label: "Order approved", section: "user" },
   { value: "ORDER_REJECTED", label: "Order rejected", section: "user" },
+  { value: "ORDER_SHIPPED", label: "Order shipped", section: "user" },
   { value: "ORDER_APPROVAL_NEEDED", label: "Approval required", section: "reviewer" },
   { value: "ORDER_READY_FOR_PRINT", label: "Order ready for printing", section: "admin" },
 ];

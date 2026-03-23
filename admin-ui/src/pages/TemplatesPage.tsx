@@ -29,6 +29,7 @@ const TRIGGER_OPTIONS = [
   { value: "ORDER_READY_FOR_PRINT", label: "Order approved & ready for printing (notify print team)" },
   { value: "ORDER_APPROVED", label: "Order approved (customer notification)" },
   { value: "ORDER_REJECTED", label: "Order rejected (customer notification)" },
+  { value: "ORDER_SHIPPED", label: "Order shipped (customer notification with tracking)" },
 ];
 
 export default function TemplatesPage() {

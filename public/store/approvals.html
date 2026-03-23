@@ -81,16 +81,17 @@
               </thead>
               <tbody>
                 ${orders.map((o) => {
-                  const proofLinks = (o.proofUrls || []).map((p) =>
-                    `<a href="${escape(p.proofPdfUrl)}" target="_blank" rel="noopener" class="btn-small btn-apply">View ${escape(p.productName)} PDF</a>`
-                  ).join(" ");
+                  const firstProof = (o.proofUrls || [])[0];
+                  const proofHtml = firstProof
+                    ? `<iframe src="${escape(firstProof.proofPdfUrl)}" title="Proof for ${escape(o.customerName)}" class="approval-pdf-iframe"></iframe>`
+                    : "—";
                   return `
                     <tr data-id="${o.id}">
                       <td>${new Date(o.createdAt).toLocaleString()}</td>
                       <td>#${o.id}</td>
                       <td>${escape(o.customerName)}<br><small>${escape(o.customerEmail)}</small></td>
                       <td class="num">${formatPrice(o.total)}</td>
-                      <td>${proofLinks || "—"}</td>
+                      <td>${proofHtml}</td>
                       <td>
                         <button type="button" class="btn-create btn-approve" data-id="${o.id}">Approve</button>
                         <button type="button" class="btn-secondary btn-reject" data-id="${o.id}" style="margin-left:0.5rem">Reject</button>
@@ -161,6 +162,7 @@
     .approvals-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
     .btn-approve { font-size: 0.9rem; padding: 0.4rem 0.75rem; }
     .btn-reject { font-size: 0.9rem; padding: 0.4rem 0.75rem; }
+    .approval-pdf-iframe { width: 100%; min-width: 200px; height: 220px; border: 1px solid #e2e8f0; border-radius: 6px; }
   </style>
 </body>
 </html>

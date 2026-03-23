@@ -92,6 +92,14 @@
       <button type="button" class="btn-create" id="btnCreateLabel">Create shipping label</button>
       <p class="label-hint">Creates an EasyPost label and saves tracking to the order. Requires EASYPOST_API_KEY.</p>
     </div>
+    <div class="detail-section" id="orderDetailTrackingWrap" style="display:none">
+      <label>Tracking (offline shipping)</label>
+      <p class="label-hint">Enter tracking number if you shipped via another carrier.</p>
+      <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+        <input type="text" id="orderDetailTrackingInput" class="form-control" placeholder="Tracking number" style="max-width:240px">
+        <button type="button" class="btn-create" id="btnSaveTracking">Save</button>
+      </div>
+    </div>
     <div class="detail-section" id="orderDetailPickTimeWrap" style="display:none">
       <label>Pick time</label>
       <p id="orderDetailPickTime"></p>
@@ -230,6 +238,9 @@
           labelActions.querySelector("#btnCreateLabel").textContent = "Create shipping label";
         }
         labelActions.style.display = order.shippingAddress && order.status !== "pending_approval" ? "block" : "none";
+        const trackingWrap = document.getElementById("orderDetailTrackingWrap");
+        trackingWrap.style.display = order.shippingAddress && order.status !== "pending_approval" ? "block" : "none";
+        document.getElementById("orderDetailTrackingInput").value = order.trackingCode || "";
         const approveWrap = document.getElementById("orderDetailApproveWrap");
         approveWrap.style.display = order.status === "pending_approval" && order.shippingAddress ? "block" : "none";
         document.getElementById("orderDetailTotal").textContent = formatPrice(order.total);
@@ -307,6 +318,30 @@
       } finally {
         btn.disabled = false;
         btn.textContent = "Approve & Create Label";
+      }
+    });
+
+    document.getElementById("btnSaveTracking").addEventListener("click", async () => {
+      if (!selectedOrderId) return;
+      const input = document.getElementById("orderDetailTrackingInput");
+      const btn = document.getElementById("btnSaveTracking");
+      btn.disabled = true;
+      btn.textContent = "Saving…";
+      try {
+        const res = await fetch(`/api/orders/${selectedOrderId}/tracking`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ trackingCode: input.value.trim() }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || "Failed to save");
+        openOrderDetail(selectedOrderId);
+      } catch (e) {
+        alert("Error: " + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Save";
       }
     });
 

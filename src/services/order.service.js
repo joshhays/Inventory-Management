@@ -242,13 +242,13 @@ async function updateItemQuantity(orderId, itemId, quantity, deploymentId) {
 async function updateLabelInfo(orderId, { shippingLabelUrl, trackingCode, easypostShipmentId }, deploymentId) {
   const where = { id: Number(orderId) };
   if (deploymentId != null) where.deploymentId = Number(deploymentId);
+  const data = {};
+  if (shippingLabelUrl !== undefined) data.shippingLabelUrl = shippingLabelUrl || null;
+  if (trackingCode !== undefined) data.trackingCode = trackingCode === "" || trackingCode === null ? null : String(trackingCode).trim();
+  if (easypostShipmentId !== undefined) data.easypostShipmentId = easypostShipmentId || null;
   return prisma.order.update({
     where,
-    data: {
-      shippingLabelUrl: shippingLabelUrl || undefined,
-      trackingCode: trackingCode || undefined,
-      easypostShipmentId: easypostShipmentId || undefined,
-    },
+    data,
     include: { items: true },
   });
 }

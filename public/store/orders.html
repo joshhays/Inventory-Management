@@ -67,7 +67,7 @@
         const html = `
           <table class="store-orders-table">
             <thead>
-              <tr><th>Date</th><th>Order #</th><th>Items</th><th class="num">Total</th><th>Status</th><th></th></tr>
+              <tr><th>Date</th><th>Order #</th><th>Items</th><th class="num">Total</th><th>Status</th><th>Tracking</th><th></th></tr>
             </thead>
             <tbody>
               ${orders
@@ -79,6 +79,7 @@
                   <td>${(o.items || []).map((i) => `${i.quantity}× ${escape(i.productName)}`).join(", ")}</td>
                   <td class="num">$${formatPrice(o.total)}</td>
                   <td><span class="store-status store-status-${escape(String(o.status).replace(/\s+/g, "-"))}">${escape(o.status)}</span></td>
+                  <td>${o.trackingCode ? escape(o.trackingCode) : "—"}</td>
                   <td><button type="button" class="btn-reorder" data-order-id="${o.id}">Re-order</button></td>
                 </tr>
               `

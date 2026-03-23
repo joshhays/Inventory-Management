@@ -9,6 +9,7 @@ router.post("/", orderController.createOrder);
 router.get("/", orderController.getOrders);
 router.get("/:id", orderController.getOrder);
 router.patch("/:id/status", orderController.updateOrderStatus);
+router.patch("/:id/tracking", orderController.updateOrderTracking);
 router.patch("/:id/items/:itemId/pick", orderController.updateOrderItemPicked);
 router.patch("/:id/items/:itemId/quantity", orderController.updateOrderItemQuantity);
 router.post("/:id/create-label", orderController.createLabel);

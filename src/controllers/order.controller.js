@@ -122,7 +122,35 @@ const updateOrderStatus = async (req, res, next) => {
     }
     const order = await orderService.updateStatus(id, status.trim(), req.deploymentId);
 
+    if (status.trim().toLowerCase() === "shipped") {
+      const mailService = require("../services/mail.service");
+      try {
+        await mailService.triggerNotification(Number(id), "ORDER_SHIPPED");
+      } catch (mailErr) {
+        console.warn("ORDER_SHIPPED email failed:", mailErr.message);
+      }
+    }
+
     return res.status(200).json(order);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const updateOrderTracking = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { trackingCode } = req.body;
+    const value = trackingCode === undefined ? undefined : (String(trackingCode).trim() || null);
+    const updated = await orderService.updateLabelInfo(
+      id,
+      { trackingCode: value },
+      req.deploymentId
+    );
+    if (!updated) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+    return res.status(200).json(updated);
   } catch (error) {
     return next(error);
   }
@@ -191,7 +219,7 @@ const getOrderItemPrintPdf = async (req, res, next) => {
 
     const filename = `order-${orderId}-item-${item.id}-print.pdf`;
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
     res.send(pdfBuffer);
   } catch (error) {
     return next(error);
@@ -243,6 +271,7 @@ module.exports = {
   getOrders,
   getOrder,
   updateOrderStatus,
+  updateOrderTracking,
   updateOrderItemPicked,
   updateOrderItemQuantity,
   getOrderItemPrintPdf,

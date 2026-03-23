@@ -9,6 +9,7 @@
  * - ORDER_READY_FOR_PRINT: when an order is approved and ready for printing (approval.service.js)
  * - ORDER_APPROVED: when a shipping label is created (order.controller.js)
  * - ORDER_REJECTED: when an admin rejects a POD order (approval.service.js)
+ * - ORDER_SHIPPED: when order status is changed to shipped (order.controller.js)
  *
  * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}, {{approvalLink}}, {{orderLink}}
  */

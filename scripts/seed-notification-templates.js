@@ -39,6 +39,12 @@ const TEMPLATES = [
     body: "Hi,\n\nOrder #{{orderId}} from {{customerName}} has been approved and is ready for printing.\n\nTotal: ${{total}}\n\n<a href=\"{{orderLink}}\">View order details</a>\n\nPlease start the print job when ready.",
     recipientType: "admin_groups",
   },
+  {
+    name: "ORDER_SHIPPED",
+    displayName: "Order shipped",
+    subject: "Your order #{{orderId}} has shipped",
+    body: "Hi {{name}},\n\nYour order #{{orderId}} has shipped!\n\nTracking number: {{trackingCode}}\n\nThank you for your order.",
+  },
 ];
 
 async function main() {
