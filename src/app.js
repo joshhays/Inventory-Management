@@ -122,11 +122,9 @@ app.use("/api/reports", requireAuth, requireAdmin, requireDeployment, require(".
 app.use("/api/dashboard-widgets", requireAuth, requireAdmin, requireDeployment, require("./routes/dashboardWidget.routes"));
 app.use("/api/deployments/:id/categories", requireAuth, require("./routes/deploymentCategory.routes"));
 app.use("/api/deployments/:id/shipping-tiers", requireAuth, require("./routes/shippingTier.routes"));
-app.use("/api/deployments/:id/discount-rules", requireAuth, require("./routes/discountRule.routes"));
 app.use("/api/deployments", requireAuth, require("./routes/deployment.routes"));
 app.use("/api/customer", requireAuth, require("./routes/customer.routes"));
 app.use("/api/shipping", require("./routes/shipping.routes"));
-app.use("/api/discount", require("./routes/discount.routes"));
 app.use("/api/admin", require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/admin.routes"));
 app.use("/api/notification-templates", requireAuth, requireAdmin, require("./routes/notificationTemplate.routes"));
 app.use("/api/admin-access", require("./middleware/deployment.middleware").setDeploymentContext, require("./routes/adminAccess.routes"));

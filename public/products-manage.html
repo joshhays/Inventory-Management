@@ -118,6 +118,11 @@
           <input type="checkbox" id="productPrintOnDemand"> Print on demand (customer customizes; e.g. business cards)
         </label>
       </div>
+      <div class="form-row" id="pricingMatrixRow" style="display: none;">
+        <label>POD Pricing Matrix</label>
+        <textarea id="productPricingMatrix" rows="6" placeholder='{"100":{"1":134.32,"2":159.92,"4":213.21},"150":{"1":136.10,"2":167.10,"4":227.65},"250":{"1":141.20,"2":177.54,"4":251.01}}' style="font-family:monospace;font-size:0.85rem;width:100%"></textarea>
+        <p class="form-hint">JSON: quantity per design → number of designs → total price. Example: 250 each of 4 designs = $251.01 total. Leave empty to use product price.</p>
+      </div>
       <div class="form-row" id="printTemplateRow" style="display: none;">
         <label>Print-on-demand template</label>
         <div class="pod-admin-layout-row">
@@ -607,9 +612,11 @@
       document.getElementById("productGroup").value = p.groupId ?? "";
       document.getElementById("productType").value = p.productType || "regular";
       document.getElementById("productPrintOnDemand").checked = !!p.isPrintOnDemand;
+      document.getElementById("productPricingMatrix").value = (typeof p.pricingMatrix === "string" ? p.pricingMatrix : (p.pricingMatrix ? JSON.stringify(p.pricingMatrix, null, 2) : "")) || "";
       loadPODConfigFromJson(p.printTemplateConfig || "");
       toggleQuantityRow();
       togglePrintTemplateRow();
+      togglePricingMatrixRow();
       loadCategories(p.category || "");
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
@@ -627,9 +634,11 @@
       document.getElementById("productGroup").value = "";
       document.getElementById("productType").value = "regular";
       document.getElementById("productPrintOnDemand").checked = false;
+      document.getElementById("productPricingMatrix").value = "";
       loadPODConfigFromJson("");
       toggleQuantityRow();
       togglePrintTemplateRow();
+      togglePricingMatrixRow();
       loadCategories("");
       formSidebar.classList.add("open");
       formSidebarOverlay.classList.add("open");
@@ -639,7 +648,11 @@
       const row = document.getElementById("printTemplateRow");
       row.style.display = document.getElementById("productPrintOnDemand").checked ? "block" : "none";
     }
-    document.getElementById("productPrintOnDemand").addEventListener("change", togglePrintTemplateRow);
+    function togglePricingMatrixRow() {
+      const row = document.getElementById("pricingMatrixRow");
+      row.style.display = document.getElementById("productPrintOnDemand").checked ? "block" : "none";
+    }
+    document.getElementById("productPrintOnDemand").addEventListener("change", () => { togglePrintTemplateRow(); togglePricingMatrixRow(); });
 
     function toggleQuantityRow() {
       const isKit = document.getElementById("productType").value === "kit";
@@ -678,6 +691,7 @@
         productType: isKit ? "kit" : "regular",
         isPrintOnDemand: document.getElementById("productPrintOnDemand").checked,
         printTemplateConfig: document.getElementById("productPrintTemplateConfig").value.trim() || null,
+        pricingMatrix: document.getElementById("productPricingMatrix").value.trim() || null,
         allowedQuantities: document.getElementById("productAllowedQuantities").value.trim() || null,
         minOrderQty: document.getElementById("productMinOrderQty").value.trim() || null,
         maxOrderQty: document.getElementById("productMaxOrderQty").value.trim() || null,

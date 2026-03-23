@@ -104,6 +104,10 @@ const createProduct = (productData) => {
         productData.printTemplateConfig != null && String(productData.printTemplateConfig).trim()
           ? String(productData.printTemplateConfig).trim()
           : null,
+      pricingMatrix:
+        productData.pricingMatrix != null && String(productData.pricingMatrix).trim()
+          ? String(productData.pricingMatrix).trim()
+          : null,
       allowedQuantities: parseAllowedQuantities(productData.allowedQuantities),
       minOrderQty: parseOptionalInt(productData.minOrderQty),
       maxOrderQty: parseOptionalInt(productData.maxOrderQty),
@@ -149,6 +153,12 @@ const updateProduct = async (id, productData) => {
           productData.printTemplateConfig == null || String(productData.printTemplateConfig).trim() === ""
             ? null
             : String(productData.printTemplateConfig).trim(),
+      }),
+      ...(productData.pricingMatrix !== undefined && {
+        pricingMatrix:
+          productData.pricingMatrix == null || String(productData.pricingMatrix).trim() === ""
+            ? null
+            : String(productData.pricingMatrix).trim(),
       }),
       ...(productData.allowedQuantities !== undefined && {
         allowedQuantities: parseAllowedQuantities(productData.allowedQuantities),

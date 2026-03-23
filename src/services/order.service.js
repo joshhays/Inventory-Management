@@ -1,5 +1,4 @@
 const prisma = require("../lib/prisma");
-const discountRuleService = require("./discountRule.service");
 
 function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, discountAmount: passedDiscountAmount, items, status: initialStatus }) {
   if (!deploymentId) throw new Error("Deployment is required.");
@@ -9,7 +8,20 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
     const orderItems = [];
     const outOfStock = [];
 
-    for (const item of items) {
+    // Group POD items by (productId, quantity) for pricing matrix lookup
+    const podGroups = new Map();
+    items.forEach((item, idx) => {
+      const hasPrintData = item.printData != null && (typeof item.printData === "object" ? Object.keys(item.printData).length : String(item.printData || "").trim());
+      if (hasPrintData && item.productId) {
+        const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+        const key = `${item.productId}:${qty}`;
+        if (!podGroups.has(key)) podGroups.set(key, []);
+        podGroups.get(key).push({ item, idx });
+      }
+    });
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
       const product = item.productId
         ? await tx.product.findFirst({
             where: { id: Number(item.productId), deploymentId: depId },
@@ -62,7 +74,24 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
         outOfStock.push(`${product.name} (need ${quantity}, only ${available} in stock)`);
       }
 
-      const unitPrice = product.price;
+      let unitPrice = product.price;
+      const hasPrintData = item.printData != null && (typeof item.printData === "object" ? Object.keys(item.printData).length : String(item.printData || "").trim());
+      if (hasPrintData && product.pricingMatrix) {
+        try {
+          const matrix = typeof product.pricingMatrix === "string" ? JSON.parse(product.pricingMatrix) : product.pricingMatrix;
+          const key = `${product.id}:${quantity}`;
+          const group = podGroups.get(key);
+          if (matrix && group && group.length > 0) {
+            const row = matrix[String(quantity)];
+            const numDesigns = group.length;
+            const totalForBundle = row?.[String(numDesigns)];
+            if (totalForBundle != null && typeof totalForBundle === "number") {
+              const totalCards = quantity * numDesigns;
+              unitPrice = totalCards > 0 ? totalForBundle / totalCards : product.price;
+            }
+          }
+        } catch (_) {}
+      }
       const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
 
       const printDataStr =
@@ -90,22 +119,9 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
     }
 
     const subtotal = total;
-    let discountAmount = 0;
-    if (passedDiscountAmount != null && Number(passedDiscountAmount) > 0) {
-      discountAmount = Math.min(Number(passedDiscountAmount), subtotal);
-    } else {
-      const discountItems = orderItems.map((i) => ({
-        productId: i.productId,
-        quantity: i.quantity,
-        price: i.unitPrice,
-      }));
-      const discountResult = await discountRuleService.findBestDiscount(depId, discountItems, subtotal);
-      if (discountResult) discountAmount = discountResult.discountAmount;
-    }
-
     const shippingCostNum = Math.max(0, Number(shippingCost) || 0);
     const shippingMethodStr = shippingMethod ? String(shippingMethod).trim() : null;
-    total = Math.round((subtotal + shippingCostNum - discountAmount) * 100) / 100;
+    total = Math.round((subtotal + shippingCostNum) * 100) / 100;
 
     const order = await tx.order.create({
       data: {
@@ -116,7 +132,7 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
         shippingAddress: shippingAddress ? String(shippingAddress) : null,
         shippingCost: shippingCostNum,
         shippingMethod: shippingMethodStr,
-        discountAmount,
+        discountAmount: 0,
         status: initialStatus && String(initialStatus).trim() ? String(initialStatus).trim().toLowerCase() : "pending",
         total,
         items: {

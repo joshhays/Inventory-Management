@@ -213,25 +213,7 @@
       const subtotal = cart.reduce((s, i) => s + (i.price || 0) * (i.quantity || 1), 0);
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
       const shippingCost = window.selectedShipping?.totalCharges ?? 0;
-      let discountAmount = 0;
-      let discountRuleName = null;
-      try {
-        const discountRes = await fetch("/api/discount/calculate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            deploymentSlug: window.STORE_SLUG,
-            items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity || 1, price: i.price })),
-          }),
-        });
-        const discountData = await discountRes.json().catch(() => ({}));
-        if (discountData.discountAmount) {
-          discountAmount = discountData.discountAmount;
-          discountRuleName = discountData.ruleName;
-        }
-      } catch (_) {}
-      const total = Math.round((subtotal - discountAmount + shippingCost) * 100) / 100;
+      const total = Math.round((subtotal + shippingCost) * 100) / 100;
 
       content.innerHTML = `
         <h1 class="store-cart-heading">Shopping cart</h1>
@@ -242,9 +224,11 @@
               (i, idx) => `
             <div class="store-cart-card ${i.printData && Object.keys(i.printData).length ? "store-cart-card-has-pod" : ""}" data-idx="${idx}">
               <div class="store-cart-card-img">
-                ${i.imageUrl
-                  ? '<img src="' + (i.imageUrl || '').replace(/"/g, '&quot;') + '" alt="" loading="lazy">'
-                  : '<div class="store-cart-card-placeholder"><span>📦</span></div>'}
+                ${i.printData && Object.keys(i.printData).length
+                  ? '<div class="store-cart-pod-thumb" data-cart-index="' + idx + '" aria-live="polite"><div class="store-cart-pod-thumb-loading">Loading…</div></div>'
+                  : i.imageUrl
+                    ? '<img src="' + (i.imageUrl || '').replace(/"/g, '&quot;') + '" alt="" loading="lazy">'
+                    : '<div class="store-cart-card-placeholder"><span>📦</span></div>'}
               </div>
               <div class="store-cart-card-body">
                 <h3 class="store-cart-card-title">${escape(i.name)}</h3>
@@ -289,7 +273,6 @@
           <span>Subtotal (${itemCount} ${itemCount === 1 ? "item" : "items"})</span>
           <span>$${formatPrice(subtotal)}</span>
         </div>
-        ${discountAmount > 0 ? `<div class="store-summary-row store-summary-discount"><span>Discount${discountRuleName ? " (" + escape(discountRuleName) + ")" : ""}</span><span>-$${formatPrice(discountAmount)}</span></div>` : ""}
         ${shippingCost > 0 ? `<div class="store-summary-row"><span>Shipping (${escape(window.selectedShipping?.serviceName || "")})</span><span>$${formatPrice(shippingCost)}</span></div>` : ""}
         <div class="store-summary-row store-summary-total">
           <span>Order total</span>
@@ -335,8 +318,8 @@
       for (let idx = 0; idx < cart.length; idx++) {
         const item = cart[idx];
         if (!item.printData || !Object.keys(item.printData).length) continue;
-        const container = content.querySelector(".store-cart-pod-preview[data-cart-index=\"" + idx + "\"]");
-        if (!container) continue;
+        const thumbContainer = content.querySelector(".store-cart-pod-thumb[data-cart-index=\"" + idx + "\"]");
+        const previewContainer = content.querySelector(".store-cart-pod-preview[data-cart-index=\"" + idx + "\"]");
         try {
           const res = await fetch("/api/pod/preview", {
             method: "POST",
@@ -358,13 +341,15 @@
           const blob = await res.blob();
           const url = URL.createObjectURL(blob);
           cartPODBlobUrls.push(url);
-          container.innerHTML = "<p class=\"store-cart-pod-preview-label\">Final product for review</p><iframe class=\"store-cart-pod-iframe\" src=\"" + url.replace(/"/g, "&quot;") + "\" title=\"Print preview\"></iframe>";
+          const thumbIframe = "<iframe class=\"store-cart-pod-thumb-iframe\" src=\"" + url.replace(/"/g, "&quot;") + "\" title=\"Print preview\"></iframe>";
+          const previewIframe = "<iframe class=\"store-cart-pod-iframe\" src=\"" + url.replace(/"/g, "&quot;") + "\" title=\"Print preview\"></iframe>";
+          if (thumbContainer) thumbContainer.innerHTML = thumbIframe;
+          if (previewContainer) previewContainer.innerHTML = "<p class=\"store-cart-pod-preview-label\">Final product for review</p>" + previewIframe;
         } catch (e) {
-          const p = document.createElement("p");
-          p.className = "store-cart-pod-preview-error";
-          p.textContent = e.message || "Preview unavailable";
-          container.innerHTML = "";
-          container.appendChild(p);
+          const errMsg = escape(e.message || "Preview unavailable");
+          const errHtml = "<p class=\"store-cart-pod-preview-error\">" + errMsg + "</p>";
+          if (thumbContainer) thumbContainer.innerHTML = errHtml;
+          if (previewContainer) previewContainer.innerHTML = errHtml;
         }
       }
     }

@@ -16,7 +16,6 @@ const BENTO_ITEMS = [
   { id: "deployments", href: "/deployments.html", icon: "🏢", title: "Deployments", desc: "Manage companies – add and switch between deployments", large: false },
   { id: "categories", href: "/categories.html", icon: "📂", title: "Store Categories", desc: "Add categories for the storefront – tag products to sort them", large: false },
   { id: "shipping", href: "/shipping.html", icon: "🚚", title: "Shipping Tiers", desc: "Box sizes and weights by item count – 250 cards, 500 cards, etc.", large: false },
-  { id: "discounts", href: "/discounts.html", icon: "💰", title: "Discount Rules", desc: "Bulk discounts – e.g. 10% off when ordering 2+ different products", large: false },
   { id: "reports", href: "/reports.html", icon: "📊", title: "Reports", desc: "AI-powered reports – ask anything", large: false },
 ];
 
@@ -46,7 +45,7 @@ const CATEGORY_TO_BENTO_IDS = {
   Logs: ["logs"],
   Notifications: ["templates"],
   Finance: ["reports"],
-  Purchasing: ["shipping", "discounts"],
+  Purchasing: ["shipping"],
   Downloads: [],
 };
 

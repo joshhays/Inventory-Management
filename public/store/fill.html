@@ -26,11 +26,23 @@
         <h1 id="fillTitle" class="store-fill-title"></h1>
         <div class="store-fill-layout">
           <div class="store-fill-form-section">
-            <div class="pod-qty-row">
-              <label for="podQty">Quantity</label>
-              <input type="number" id="podQty" min="1" value="1" class="pod-qty-input">
+            <div class="pod-num-cards-row">
+              <label>Number of designs</label>
+              <div class="pod-num-cards-options">
+                <label class="pod-num-option"><input type="radio" name="podNumCards" value="1" checked> 1 design</label>
+                <label class="pod-num-option"><input type="radio" name="podNumCards" value="2"> 2 designs</label>
+                <label class="pod-num-option"><input type="radio" name="podNumCards" value="4"> 4 designs</label>
+              </div>
             </div>
-            <div class="pod-form-wrap" id="podFormWrap"></div>
+            <div class="pod-qty-row" id="podQtyRow">
+              <label>Quantity per design</label>
+              <select id="podQtyPerDesign" class="pod-qty-select">
+                <option value="100">100</option>
+                <option value="150">150</option>
+                <option value="250" selected>250</option>
+              </select>
+            </div>
+            <div class="pod-forms-wrap" id="podFormsWrap"></div>
             <div class="store-fill-actions">
               <button type="button" class="btn-apply" id="podAddToCartBtn">Add to cart</button>
               <a href="__STORE_BASE__/products" class="btn-secondary" id="fillCancelBtn">Cancel</a>
@@ -39,6 +51,7 @@
           <div class="store-fill-preview-section">
             <div class="pod-proof-wrap">
               <div class="pod-proof-label">Live preview</div>
+              <div id="podProofCardTabs" class="pod-proof-tabs" style="display:none"></div>
               <p class="pod-proof-hint">Shows your filled design. Updates as you type.</p>
               <div id="podProof" class="pod-proof"></div>
             </div>
@@ -121,11 +134,11 @@
         return (s || "").replace(/ \/ /g, "\n").replace(/\//g, "\n");
       }
 
-      function getPODFormValues(config) {
+      function getPODFormValuesForCard(config, cardIdx) {
         const values = {};
         (config.fields || []).forEach((f) => {
           const key = f.key || "field";
-          const el = document.getElementById("pod-" + key);
+          const el = document.getElementById("pod-" + cardIdx + "-" + key);
           if (!el) { values[key] = ""; return; }
           if (el.tagName === "SELECT") {
             const raw = el.multiple ? Array.from(el.selectedOptions).map((o) => o.value).join("\n") : el.value;
@@ -135,6 +148,10 @@
           }
         });
         return values;
+      }
+
+      function getPODFormValues(config) {
+        return getPODFormValuesForCard(config, 0);
       }
 
       function parseAllowedQuantities(val) {
@@ -221,74 +238,79 @@
         }
       }
 
-      function buildForm(product, config) {
-        const formWrap = document.getElementById("podFormWrap");
-        formWrap.innerHTML = "";
-        const values = {};
-        const fields = config.fields || [];
+      function updatePODProofFromCard(config, cardIdx, numCards) {
+        const values = getPODFormValuesForCard(config, cardIdx);
+        updatePODProof(config, values);
+      }
 
+      let currentPreviewCardIdx = 0;
+
+      function buildFormSection(product, config, cardIdx, numCards) {
+        const fields = config.fields || [];
         function normOpt(opt) {
           const val = typeof opt === "object" && opt != null && "value" in opt ? opt.value : opt;
           const lbl = typeof opt === "object" && opt != null && "label" in opt ? opt.label : val;
           const desc = typeof opt === "object" && opt != null && "description" in opt ? opt.description : "";
           return { value: val, label: lbl, description: desc };
         }
-
         function updateDescForSelect(sel, descEl) {
           const selOpt = sel.multiple ? Array.from(sel.selectedOptions)[0] : sel.options[sel.selectedIndex];
           descEl.textContent = selOpt && selOpt.dataset.description ? selOpt.dataset.description : "";
         }
-
+        const section = document.createElement("div");
+        section.className = "pod-card-section";
+        section.dataset.cardIdx = cardIdx;
+        const heading = document.createElement("h3");
+        heading.className = "pod-card-section-title";
+        heading.textContent = "Card " + (cardIdx + 1);
+        section.appendChild(heading);
         for (let idx = 0; idx < fields.length; idx++) {
           const f = fields[idx];
           const key = f.key || "field";
           const nextF = fields[idx + 1];
           const isPhoneRow = key === "phoneP" && nextF && (nextF.key || "") === "phoneM";
-
+          const fieldId = "pod-" + cardIdx + "-" + key;
           if (isPhoneRow) {
-            values.phoneP = "";
-            values.phoneM = "";
             const row = document.createElement("div");
             row.className = "pod-form-row-inline";
             ["phoneP", "phoneM"].forEach((k, i) => {
+              const kid = "pod-" + cardIdx + "-" + k;
               const lab = document.createElement("label");
               lab.textContent = i === 0 ? "P" : "M";
-              lab.setAttribute("for", "pod-" + k);
+              lab.setAttribute("for", kid);
               const inp = document.createElement("input");
               inp.type = "tel";
-              inp.id = "pod-" + k;
+              inp.id = kid;
               inp.name = k;
               inp.placeholder = "(555) 123-4567";
               inp.className = "pod-input pod-input-phone";
               inp.maxLength = 14;
-              inp.addEventListener("input", () => {
+              const cb = () => {
                 inp.value = formatPhoneInput(inp.value);
                 inp.setSelectionRange(inp.value.length, inp.value.length);
-                updatePODProof(config, getPODFormValues(config));
-              });
+                if (currentPreviewCardIdx === cardIdx) updatePODProofFromCard(config, cardIdx, numCards);
+              };
+              inp.addEventListener("input", cb);
               row.appendChild(lab);
               row.appendChild(inp);
             });
-            formWrap.appendChild(row);
+            section.appendChild(row);
             idx++;
             continue;
           }
-
           const isTextarea = (f.type || "text") === "textarea";
           const isMultiselect = (f.type || "") === "multiselect";
           const isSelect = (f.type || "") === "select" || (isMultiselect && Array.isArray(f.options) && f.options.length > 0);
           const hasOptions = Array.isArray(f.options) && f.options.length > 0;
-          values[key] = "";
-
           const label = document.createElement("label");
           label.textContent = (f.label || key) + (f.required ? " *" : "");
-          label.setAttribute("for", "pod-" + key);
-
+          label.setAttribute("for", fieldId);
+          const cb = () => { if (currentPreviewCardIdx === cardIdx) updatePODProofFromCard(config, cardIdx, numCards); };
           if (isMultiselect && hasOptions) {
             const wrap = document.createElement("div");
             wrap.className = "pod-field-select-wrap";
             const select = document.createElement("select");
-            select.id = "pod-" + key;
+            select.id = fieldId;
             select.name = key;
             select.className = "pod-input pod-select pod-select-multiple";
             select.multiple = true;
@@ -303,16 +325,16 @@
             });
             const descEl = document.createElement("div");
             descEl.className = "pod-field-option-desc";
-            select.addEventListener("change", () => { updateDescForSelect(select, descEl); updatePODProof(config, getPODFormValues(config)); });
+            select.addEventListener("change", () => { updateDescForSelect(select, descEl); cb(); });
             wrap.appendChild(label);
             wrap.appendChild(select);
             wrap.appendChild(descEl);
-            formWrap.appendChild(wrap);
+            section.appendChild(wrap);
           } else if (isSelect && hasOptions) {
             const wrap = document.createElement("div");
             wrap.className = "pod-field-select-wrap";
             const select = document.createElement("select");
-            select.id = "pod-" + key;
+            select.id = fieldId;
             select.name = key;
             select.className = "pod-input pod-select";
             if (f.required) select.required = true;
@@ -330,40 +352,52 @@
             });
             const descEl = document.createElement("div");
             descEl.className = "pod-field-option-desc";
-            select.addEventListener("change", () => { updateDescForSelect(select, descEl); updatePODProof(config, getPODFormValues(config)); });
+            select.addEventListener("change", () => { updateDescForSelect(select, descEl); cb(); });
             wrap.appendChild(label);
             wrap.appendChild(select);
             wrap.appendChild(descEl);
-            formWrap.appendChild(wrap);
+            section.appendChild(wrap);
           } else if (isTextarea) {
             const ta = document.createElement("textarea");
-            ta.id = "pod-" + key;
+            ta.id = fieldId;
             ta.name = key;
             ta.placeholder = f.label || key;
             ta.className = "pod-input pod-textarea";
             ta.rows = 3;
             if (f.required) ta.required = true;
-            ta.addEventListener("input", () => updatePODProof(config, getPODFormValues(config)));
-            formWrap.appendChild(label);
-            formWrap.appendChild(ta);
+            ta.addEventListener("input", cb);
+            section.appendChild(label);
+            section.appendChild(ta);
           } else {
             const input = document.createElement("input");
             input.type = "text";
-            input.id = "pod-" + key;
+            input.id = fieldId;
             input.name = key;
             input.placeholder = f.label || key;
             input.className = "pod-input";
             if (f.required) input.required = true;
-            input.addEventListener("input", () => updatePODProof(config, getPODFormValues(config)));
-            formWrap.appendChild(label);
-            formWrap.appendChild(input);
+            input.addEventListener("input", cb);
+            section.appendChild(label);
+            section.appendChild(input);
           }
         }
+        return section;
+      }
 
-        updatePODProof(config, values);
-        if ((config.layout || "business_card").toLowerCase() === "business_card") {
-          fetchPODPreviewAndShow(values);
+      function buildForms(product, config, numCards) {
+        const formWrap = document.getElementById("podFormsWrap");
+        formWrap.innerHTML = "";
+        for (let i = 0; i < numCards; i++) {
+          formWrap.appendChild(buildFormSection(product, config, i, numCards));
         }
+        const layout = (config.layout || "business_card").toLowerCase();
+        if (layout === "business_card") {
+          updatePODProofFromCard(config, 0, numCards);
+        }
+      }
+
+      function buildForm(product, config) {
+        buildForms(product, config, 1);
       }
 
       async function load() {
@@ -398,84 +432,133 @@
           document.getElementById("fillTitle").textContent = "Customize: " + (product.name || "Print");
 
           const config = getPODConfig(product);
-          buildForm(product, config);
 
-          const qtyRow = document.querySelector(".pod-qty-row");
-          if (qtyRow) {
-            const allowed = parseAllowedQuantities(product.allowedQuantities);
-            const minQty = product.minOrderQty != null ? Number(product.minOrderQty) : 1;
-            const maxQty = product.maxOrderQty != null ? Number(product.maxOrderQty) : null;
-            const options = allowed && allowed.length ? allowed : getQtyDropdownOptions(minQty, maxQty);
-            const lab = document.createElement("label");
-            lab.textContent = "Quantity";
-            lab.setAttribute("for", "podQty");
-            qtyRow.innerHTML = "";
-            qtyRow.appendChild(lab);
-            const select = document.createElement("select");
-            select.id = "podQty";
-            select.className = "pod-qty-input pod-qty-select";
-            options.forEach((q) => {
-              const opt = document.createElement("option");
-              opt.value = q;
-              opt.textContent = q;
-              select.appendChild(opt);
-            });
-            qtyRow.appendChild(select);
+          function getNumCards() {
+            const r = document.querySelector("input[name=podNumCards]:checked");
+            return Math.max(1, parseInt(r?.value, 10) || 1);
           }
+
+          function syncProofTabs(numCards) {
+            const tabs = document.getElementById("podProofCardTabs");
+            if (numCards <= 1) {
+              tabs.style.display = "none";
+              tabs.innerHTML = "";
+              return;
+            }
+            tabs.style.display = "flex";
+            tabs.innerHTML = "";
+            for (let i = 0; i < numCards; i++) {
+              const btn = document.createElement("button");
+              btn.type = "button";
+              btn.className = "pod-proof-tab" + (i === currentPreviewCardIdx ? " active" : "");
+              btn.textContent = "Card " + (i + 1);
+              btn.dataset.cardIdx = String(i);
+              btn.addEventListener("click", () => {
+                currentPreviewCardIdx = i;
+                tabs.querySelectorAll(".pod-proof-tab").forEach((t) => t.classList.remove("active"));
+                btn.classList.add("active");
+                updatePODProofFromCard(config, i, numCards);
+              });
+              tabs.appendChild(btn);
+            }
+          }
+
+          function rebuildForms() {
+            const numCards = getNumCards();
+            buildForms(product, config, numCards);
+            syncProofTabs(numCards);
+          }
+
+          function getQtyPerDesign() {
+            return Math.max(100, parseInt(document.getElementById("podQtyPerDesign")?.value, 10) || 250);
+          }
+
+          function getPriceFromMatrix(matrix, qtyPerDesign, numDesigns) {
+            if (!matrix || typeof matrix !== "object") return null;
+            const row = matrix[String(qtyPerDesign)];
+            if (!row || typeof row !== "object") return null;
+            const total = row[String(numDesigns)];
+            if (total == null || typeof total !== "number") return null;
+            const totalCards = qtyPerDesign * numDesigns;
+            return totalCards > 0 ? total / totalCards : null;
+          }
+
+          function syncQtyOptions() {
+            const sel = document.getElementById("podQtyPerDesign");
+            if (!sel) return;
+            let options = [100, 150, 250];
+            try {
+              const raw = product.pricingMatrix;
+              const mx = typeof raw === "string" ? JSON.parse(raw) : raw;
+              if (mx && typeof mx === "object") {
+                const keys = Object.keys(mx).map((k) => parseInt(k, 10)).filter((n) => !isNaN(n) && n > 0);
+                if (keys.length) options = keys.sort((a, b) => a - b);
+              }
+            } catch (_) {}
+            const allowed = parseAllowedQuantities(product.allowedQuantities);
+            if (allowed && allowed.length) options = allowed;
+            sel.innerHTML = options.map((q) => "<option value=\"" + q + "\">" + q + "</option>").join("");
+            if (!options.includes(250)) sel.value = options[0];
+          }
+
+          syncQtyOptions();
+
+          rebuildForms();
+
+          document.querySelectorAll("input[name=podNumCards]").forEach((r) => {
+            r.addEventListener("change", rebuildForms);
+          });
 
           document.getElementById("fillBackLink").href = base + "/products";
           document.getElementById("fillCancelBtn").href = base + "/products";
 
           document.getElementById("podAddToCartBtn").addEventListener("click", () => {
-            const printData = getPODFormValues(config);
-            const validation = validatePODRequired(config, printData);
-            if (!validation.ok) {
-              alert(validation.message);
-              return;
-            }
-            const qty = Math.max(1, parseInt(document.getElementById("podQty")?.value, 10) || 1);
-            const allowed = parseAllowedQuantities(product.allowedQuantities);
-            if (allowed && allowed.length && !allowed.includes(qty)) {
-              alert(product.name + " can only be ordered in quantities of: " + allowed.join(", "));
-              return;
-            }
-            const minQty = product.minOrderQty != null ? Number(product.minOrderQty) : null;
-            const maxQty = product.maxOrderQty != null ? Number(product.maxOrderQty) : null;
-            if (minQty != null && qty < minQty) {
-              alert(product.name + " requires a minimum order quantity of " + minQty);
-              return;
-            }
-            if (maxQty != null && qty > maxQty) {
-              alert(product.name + " has a maximum order quantity of " + maxQty);
-              return;
-            }
-            const cart = getCart();
-            const existing = cart.find((i) => i.productId === product.id && JSON.stringify(i.printData || {}) === JSON.stringify(printData || {}));
-            const requested = (existing ? existing.quantity : 0) + qty;
-            const available = product.quantity ?? 0;
-            if (requested > available) {
-              alert("Out of stock. Only " + available + " available.");
-              return;
-            }
+            const numCards = getNumCards();
+            const qtyPerDesign = getQtyPerDesign();
+            const matrix = (function() {
+              try {
+                const r = product.pricingMatrix;
+                return typeof r === "string" ? JSON.parse(r) : r;
+              } catch (_) { return null; }
+            })();
+            const unitPrice = getPriceFromMatrix(matrix, qtyPerDesign, numCards) ?? product.price;
             const imageFile = getFirstImageFile(product.files);
             const pdfFile = getFirstFile(product.files);
             const previewBase = "/api/products/" + product.id + "/preview" + (window.STORE_SLUG ? "?deployment=" + encodeURIComponent(window.STORE_SLUG) : "");
             const imgUrl = imageFile ? getImageUrl(imageFile) : pdfFile ? previewBase : null;
-            if (existing) {
-              existing.quantity = (existing.quantity || 1) + qty;
-            } else {
-              cart.push({
-                productId: product.id,
-                sku: product.sku,
-                quantity: qty,
-                name: product.name,
-                price: product.price,
-                imageUrl: imgUrl || null,
-                printData: printData,
-                allowedQuantities: product.allowedQuantities || null,
-                minOrderQty: product.minOrderQty ?? null,
-                maxOrderQty: product.maxOrderQty ?? null,
-              });
+            const cart = getCart();
+            const available = product.quantity ?? 0;
+
+            for (let i = 0; i < numCards; i++) {
+              const printData = getPODFormValuesForCard(config, i);
+              const validation = validatePODRequired(config, printData);
+              if (!validation.ok) {
+                alert("Design " + (i + 1) + ": " + validation.message);
+                return;
+              }
+              const requested = cart.filter((it) => it.productId === product.id && JSON.stringify(it.printData || {}) === JSON.stringify(printData)).reduce((s, it) => s + (it.quantity || 1), 0) + qtyPerDesign;
+              if (requested > available) {
+                alert("Out of stock. Only " + available + " available.");
+                return;
+              }
+              const existing = cart.find((it) => it.productId === product.id && JSON.stringify(it.printData || {}) === JSON.stringify(printData));
+              if (existing) {
+                existing.quantity = (existing.quantity || 1) + qtyPerDesign;
+              } else {
+                const qtyOpts = matrix ? Object.keys(matrix).map((k) => parseInt(k, 10)).filter((n) => !isNaN(n) && n > 0).sort((a, b) => a - b) : null;
+                cart.push({
+                  productId: product.id,
+                  sku: product.sku,
+                  quantity: qtyPerDesign,
+                  name: product.name,
+                  price: unitPrice,
+                  imageUrl: imgUrl || null,
+                  printData: printData,
+                  allowedQuantities: qtyOpts && qtyOpts.length ? JSON.stringify(qtyOpts) : null,
+                  minOrderQty: 1,
+                  maxOrderQty: null,
+                });
+              }
             }
             setCart(cart);
             window.location.href = base + "/cart";
