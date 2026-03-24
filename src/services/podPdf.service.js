@@ -13,6 +13,40 @@ const CROP_INSET_INCHES = 0.125;
 const CROP_INSET_PT = CROP_INSET_INCHES * 72;
 
 /**
+ * Trim rectangle for a page: MediaBox inset by CROP_INSET_PT on each side.
+ * Uses full MediaBox (x, y, width, height). Coordinates match pdf-lib setCropBox(x, y, width, height)
+ * — not upper-right corners.
+ * @returns {{ mediaX: number, mediaY: number, mediaW: number, mediaH: number, llx: number, lly: number, trimW: number, trimH: number }}
+ */
+function getTrimRectForPage(page) {
+  const m = page.getMediaBox();
+  const innerW = m.width - 2 * CROP_INSET_PT;
+  const innerH = m.height - 2 * CROP_INSET_PT;
+  if (innerW <= 0 || innerH <= 0) {
+    return {
+      mediaX: m.x,
+      mediaY: m.y,
+      mediaW: m.width,
+      mediaH: m.height,
+      llx: m.x,
+      lly: m.y,
+      trimW: m.width,
+      trimH: m.height,
+    };
+  }
+  return {
+    mediaX: m.x,
+    mediaY: m.y,
+    mediaW: m.width,
+    mediaH: m.height,
+    llx: m.x + CROP_INSET_PT,
+    lly: m.y + CROP_INSET_PT,
+    trimW: innerW,
+    trimH: innerH,
+  };
+}
+
+/**
  * Load and embed a custom font from the fonts folder, or fall back to Helvetica.
  * @param {PDFDocument} pdfDoc
  * @param {string} [fontFile] - Filename in fonts folder (e.g. "ITCGaramondStd-BkCond.otf"). If omitted, uses Helvetica.
@@ -127,14 +161,14 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
 
     const font = await fontForField(field.fontFile);
 
-    const { height } = page.getSize();
+    const media = page.getMediaBox();
 
-    // Coordinates are inches from top-left; convert to PDF points.
+    // Coordinates are inches from top-left of MediaBox; convert to PDF points (origin bottom-left).
     const xIn = Number(field.xInches || 0);
     const yIn = Number(field.yInches || 0);
-    const x = xIn * 72;
+    const x = media.x + xIn * 72;
     const yFromTop = yIn * 72;
-    let y = height - yFromTop; // pdf-lib origin is bottom-left
+    let y = media.y + media.height - yFromTop;
 
     // Vertical stacking: if title is empty, move company line up by 12pt (no gap)
     if (key === "company") {
@@ -235,8 +269,8 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
 }
 
 /**
- * Crop a PDF by setting CropBox inset 0.125" from each edge (matches physical trim from bleed).
- * Skipped if the page is too small to inset.
+ * Crop a PDF by setting CropBox inset 0.125" from MediaBox on each side (e.g. 3.75×2.25" → 3.5×2").
+ * Uses pdf-lib setCropBox(x, y, width, height) with trim width/height = media − 2×inset.
  * @param {Uint8Array|Buffer} pdfBytes
  * @returns {Promise<Buffer>}
  */
@@ -244,37 +278,13 @@ async function cropPdfToTrim(pdfBytes) {
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const pages = pdfDoc.getPages();
   for (const page of pages) {
-    const { width, height } = page.getSize();
-    const innerW = width - 2 * CROP_INSET_PT;
-    const innerH = height - 2 * CROP_INSET_PT;
-    if (innerW > 0 && innerH > 0) {
-      const llx = CROP_INSET_PT;
-      const lly = CROP_INSET_PT;
-      const urx = width - CROP_INSET_PT;
-      const ury = height - CROP_INSET_PT;
-      page.setCropBox(llx, lly, urx, ury);
+    const { llx, lly, trimW, trimH } = getTrimRectForPage(page);
+    if (trimW > 0 && trimH > 0) {
+      page.setCropBox(llx, lly, trimW, trimH);
     }
   }
   const out = await pdfDoc.save();
   return Buffer.from(out);
-}
-
-/**
- * Crop rectangle matching cropPdfToTrim: 0.125" inset from page edges (PDF bottom-left origin).
- * @returns {{ llx: number, lly: number, trimW: number, trimH: number }}
- */
-function trimOriginOnPage(width, height) {
-  const innerW = width - 2 * CROP_INSET_PT;
-  const innerH = height - 2 * CROP_INSET_PT;
-  if (innerW <= 0 || innerH <= 0) {
-    return { llx: 0, lly: 0, trimW: width, trimH: height };
-  }
-  return {
-    llx: CROP_INSET_PT,
-    lly: CROP_INSET_PT,
-    trimW: innerW,
-    trimH: innerH,
-  };
 }
 
 /**
@@ -296,11 +306,7 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
   if (basePdfBytes && basePdfBytes.length) {
     try {
       const baseDoc = await PDFDocument.load(basePdfBytes);
-      basePageMetrics = baseDoc.getPages().map((p) => {
-        const { width, height } = p.getSize();
-        const { llx, lly, trimW, trimH } = trimOriginOnPage(width, height);
-        return { width, height, llx, lly, trimW, trimH };
-      });
+      basePageMetrics = baseDoc.getPages().map((p) => getTrimRectForPage(p));
     } catch {
       basePageMetrics = null;
     }
@@ -309,8 +315,10 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
   function metricsForPageIndex(pageIndex) {
     if (!basePageMetrics?.length) {
       return {
-        width: TRIM_WIDTH_PT,
-        height: TRIM_HEIGHT_PT,
+        mediaX: 0,
+        mediaY: 0,
+        mediaW: TRIM_WIDTH_PT,
+        mediaH: TRIM_HEIGHT_PT,
         llx: 0,
         lly: 0,
         trimW: TRIM_WIDTH_PT,
@@ -379,9 +387,9 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
     const font = await fontForField(field.fontFile);
     const xIn = Number(field.xInches || 0);
     const yIn = Number(field.yInches || 0);
-    const { width: srcW, height: srcH, llx, lly } = metricsForPageIndex(pageIndex);
-    const xPdf = xIn * 72;
-    let yPdf = srcH - yIn * 72;
+    const { mediaX, mediaY, mediaW: srcW, mediaH: srcH, llx, lly } = metricsForPageIndex(pageIndex);
+    const xPdf = mediaX + xIn * 72;
+    let yPdf = mediaY + srcH - yIn * 72;
 
     if (key === "company") {
       const titleValue = userData.title;
