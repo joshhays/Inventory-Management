@@ -70,13 +70,17 @@ const register = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ message: "Username and password are required." });
+    const usernameOrEmail = typeof username === "string" ? username.trim() : "";
+    if (!usernameOrEmail || !password) {
+      return res.status(400).json({ message: "Username or email and password are required." });
     }
 
     let user;
     try {
-      user = await authService.findByUsername(username);
+      user = await authService.findByUsername(usernameOrEmail);
+      if (!user) {
+        user = await authService.findByEmail(usernameOrEmail);
+      }
     } catch (dbError) {
       if (dbError.message?.includes("findUnique") || dbError.message?.includes("prisma")) {
         return res.status(500).json({
@@ -87,12 +91,12 @@ const login = async (req, res, next) => {
     }
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid username or password." });
+      return res.status(401).json({ message: "Invalid username/email or password." });
     }
 
     const valid = await authService.verifyPassword(password, user.password);
     if (!valid) {
-      return res.status(401).json({ message: "Invalid username or password." });
+      return res.status(401).json({ message: "Invalid username/email or password." });
     }
 
     const safeUser = authService.toSafeUser(user);

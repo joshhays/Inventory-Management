@@ -29,7 +29,7 @@ export default function LoginScreen() {
     const u = username.trim();
     const p = password;
     if (!u || !p) {
-      setError('Username and password are required.');
+      setError('Username or email and password are required.');
       return;
     }
     setError('');
@@ -74,7 +74,7 @@ export default function LoginScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Username"
+              placeholder="Username or email"
               placeholderTextColor={WebTheme.textMuted}
               value={username}
               onChangeText={(t) => { setUsername(t); setError(''); }}
