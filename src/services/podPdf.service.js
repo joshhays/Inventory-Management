@@ -1,7 +1,11 @@
 const path = require("path");
 const fs = require("fs");
-const { PDFDocument, StandardFonts, rgb, cmyk } = require("pdf-lib");
+const { PDFDocument, StandardFonts, rgb, cmyk, PDFName, PDFNumber } = require("pdf-lib");
 const fontkit = require("@pdf-lib/fontkit");
+const strings = require("pdf-lib/cjs/utils/strings");
+const { degrees, toRadians } = require("pdf-lib/cjs/api/rotations");
+const pdfOps = require("pdf-lib/cjs/api/operators");
+const { PDFOperator, PDFOperatorNames, PDFDict } = require("pdf-lib/cjs/core");
 
 const FONTS_DIR = path.resolve(__dirname, "../../fonts");
 
@@ -12,20 +16,46 @@ const TRIM_HEIGHT_PT = 2 * 72;
 const CROP_INSET_INCHES = 0.125;
 const CROP_INSET_PT = CROP_INSET_INCHES * 72;
 
+/** Resource name for [/Separation /PANTONE#20300#20C /DeviceCMYK …] on each page. */
+const PMS_RESOURCE_NAME = "Pms300c";
+
+/** Marker: draw with PDF Separation “PANTONE 300 C” (alternate CMYK 100/44/0/0 at full tint). */
+const FILL_SPOT_PANTONE_300 = Object.freeze({ type: "SPOT_PANTONE_300" });
+
 /**
- * Pantone 300 C (coated) as DeviceCMYK for print — avoids RGB→CMYK conversion in the RIP.
- * Values follow Pantone Color Bridge coated approximation (tune via field.cmyk if your vendor specifies otherwise).
+ * Pantone 300 C fallback as DeviceCMYK (e.g. when forceDeviceCmyk or non–pdf-lib spot path).
  */
 const CMYK_PANTONE_300_C = () => cmyk(1, 0.44, 0, 0);
 
 /** 100% black only (no rich black). */
 const CMYK_BLACK = () => cmyk(0, 0, 0, 1);
 
+function isFillSpotPantone300(color) {
+  return Boolean(color && typeof color === "object" && color.type === "SPOT_PANTONE_300");
+}
+
+function wantsPantone300Spot(field) {
+  if (field.forceDeviceCmyk === true) return false;
+  const spot = field.spot || field.pantone;
+  if (spot === "PANTONE_300_C" || spot === "300C" || spot === "300 C") return true;
+  const k = field.key;
+  if (k === "name" || k === "firstName" || k === "lastName") return true;
+  if (typeof field.color === "string") {
+    let hex = field.color.replace(/^#/, "").trim().toLowerCase();
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+    if (hex === "005eb8") return true;
+  }
+  return false;
+}
+
 /**
- * Resolve fill color for POD template fields: prefer explicit CMYK, then spot tag, then hex / key defaults.
- * @param {Object} field - Template field (key, color, cmyk, pantone, spot)
+ * Resolve fill color for POD fields. Name / PMS blue uses Separation spot unless forceDeviceCmyk.
+ * @param {Object} field - Template field (key, color, cmyk, pantone, spot, forceDeviceCmyk)
  */
 function templateFieldColor(field) {
+  if (wantsPantone300Spot(field)) {
+    return FILL_SPOT_PANTONE_300;
+  }
   if (field.cmyk && Array.isArray(field.cmyk) && field.cmyk.length === 4) {
     let [cc, mm, yy, kk] = field.cmyk.map((v) => Number(v));
     if (![cc, mm, yy, kk].some((n) => Number.isNaN(n))) {
@@ -44,19 +74,11 @@ function templateFieldColor(field) {
       );
     }
   }
-  const spot = field.spot || field.pantone;
-  if (spot === "PANTONE_300_C" || spot === "300C" || spot === "300 C") {
-    return CMYK_PANTONE_300_C();
-  }
   if (typeof field.color === "string") {
     let hex = field.color.replace(/^#/, "").trim().toLowerCase();
     if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
     if (hex === "000000") return CMYK_BLACK();
     if (hex === "005eb8") return CMYK_PANTONE_300_C();
-  }
-  const key = field.key;
-  if (key === "name" || key === "firstName" || key === "lastName") {
-    return CMYK_PANTONE_300_C();
   }
   if (typeof field.color === "string") {
     const h = field.color.replace("#", "");
@@ -68,6 +90,123 @@ function templateFieldColor(field) {
     }
   }
   return CMYK_BLACK();
+}
+
+/**
+ * Register PANTONE 300 C as a Separation color space (alternate DeviceCMYK).
+ * @returns {string} Resource name for cs operator
+ */
+function ensurePantone300Separation(pdfDoc, page) {
+  const ctx = pdfDoc.context;
+  const leaf = page.node;
+  let resourcesRef = leaf.get(PDFName.of("Resources"));
+  let resourcesDict;
+  if (!resourcesRef) {
+    resourcesDict = PDFDict.withContext(ctx);
+    resourcesRef = ctx.register(resourcesDict);
+    leaf.set(PDFName.of("Resources"), resourcesRef);
+  } else {
+    resourcesDict = ctx.lookup(resourcesRef, PDFDict);
+  }
+
+  const csEntry = resourcesDict.get(PDFName.of("ColorSpace"));
+  let colorSpaceDict =
+    csEntry != null ? ctx.lookup(csEntry, PDFDict) : undefined;
+  if (!colorSpaceDict) {
+    colorSpaceDict = PDFDict.withContext(ctx);
+    resourcesDict.set(PDFName.of("ColorSpace"), colorSpaceDict);
+  }
+
+  if (colorSpaceDict.has(PDFName.of(PMS_RESOURCE_NAME))) {
+    return PMS_RESOURCE_NAME;
+  }
+
+  const fnDict = ctx.obj({
+    FunctionType: 2,
+    Domain: [0, 1],
+    C0: [0, 0, 0, 0],
+    C1: [1, 0.44, 0, 0],
+    N: 1,
+  });
+  const fnRef = ctx.register(fnDict);
+  const sepArray = ctx.obj([
+    "Separation",
+    PDFName.of("PANTONE#20300#20C"),
+    PDFName.of("DeviceCMYK"),
+    fnRef,
+  ]);
+  const sepRef = ctx.register(sepArray);
+  colorSpaceDict.set(PDFName.of(PMS_RESOURCE_NAME), sepRef);
+  return PMS_RESOURCE_NAME;
+}
+
+function buildDrawLinesOfTextSpotOperators(encodedLines, options) {
+  const ops = [
+    pdfOps.pushGraphicsState(),
+    options.graphicsState && pdfOps.setGraphicsState(options.graphicsState),
+    pdfOps.beginText(),
+    PDFOperator.of(PDFOperatorNames.NonStrokingColorspace, [PDFName.of(options.spotResourceName)]),
+    // Separation / DeviceN require scn, not sc (PDF Reference Table 74).
+    PDFOperator.of(PDFOperatorNames.NonStrokingColorN, [PDFNumber.of(options.tint != null ? options.tint : 1)]),
+    pdfOps.setFontAndSize(options.font, options.size),
+    pdfOps.setLineHeight(options.lineHeight),
+    pdfOps.rotateAndSkewTextRadiansAndTranslate(
+      toRadians(options.rotate),
+      toRadians(options.xSkew),
+      toRadians(options.ySkew),
+      options.x,
+      options.y,
+    ),
+  ].filter(Boolean);
+  for (let i = 0; i < encodedLines.length; i++) {
+    ops.push(pdfOps.showText(encodedLines[i]), pdfOps.nextLine());
+  }
+  ops.push(pdfOps.endText(), pdfOps.popGraphicsState());
+  return ops;
+}
+
+/**
+ * Draw text in PANTONE 300 C Separation (full tint). Restores page font after.
+ */
+function pushSpotPantone300Text(page, pdfDoc, cmd) {
+  const prevFont = page.font;
+  const prevKey = page.fontKey;
+  try {
+    ensurePantone300Separation(pdfDoc, page);
+    page.setFont(cmd.font);
+    const fontKey = page.fontKey;
+    const size = cmd.fontSize;
+    const lineHeight = size * 1.2;
+    let encodedLines;
+    if (cmd.wrapWidthPts) {
+      const lines = strings.breakTextIntoLines(
+        cmd.text,
+        page.doc.defaultWordBreaks,
+        cmd.wrapWidthPts,
+        (t) => cmd.font.widthOfTextAtSize(t, size),
+      );
+      encodedLines = lines.map((line) => cmd.font.encodeText(line));
+    } else {
+      const parts = strings.lineSplit(strings.cleanText(cmd.text)).filter((s) => s.length > 0);
+      encodedLines = parts.map((line) => cmd.font.encodeText(line));
+    }
+    const ops = buildDrawLinesOfTextSpotOperators(encodedLines, {
+      spotResourceName: PMS_RESOURCE_NAME,
+      font: fontKey,
+      size,
+      rotate: degrees(0),
+      xSkew: degrees(0),
+      ySkew: degrees(0),
+      x: cmd.x,
+      y: cmd.y,
+      lineHeight,
+      tint: 1,
+    });
+    page.getContentStream().push(...ops);
+  } finally {
+    if (prevFont) page.setFont(prevFont);
+    else page.resetFont();
+  }
 }
 
 /**
@@ -297,6 +436,10 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
     if (groupMinSize && groupKeys.has(cmd.key)) {
       size = groupMinSize;
     }
+    if (isFillSpotPantone300(cmd.color)) {
+      pushSpotPantone300Text(page, pdfDoc, { ...cmd, fontSize: size });
+      continue;
+    }
     const drawOpts = {
       x: cmd.x,
       y: cmd.y,
@@ -488,6 +631,10 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
     if (!page) continue;
     let size = cmd.fontSize;
     if (groupMinSize && groupKeys.has(cmd.key)) size = groupMinSize;
+    if (isFillSpotPantone300(cmd.color)) {
+      pushSpotPantone300Text(page, pdfDoc, { ...cmd, fontSize: size });
+      continue;
+    }
     const drawOpts = { x: cmd.x, y: cmd.y, size, font: cmd.font, color: cmd.color };
     if (cmd.wrapWidthPts) {
       drawOpts.maxWidth = cmd.wrapWidthPts;
