@@ -109,6 +109,9 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
     let rawValue = userData[key];
     if (key === "phone") {
       rawValue = buildPhoneDisplay(userData);
+      if ((rawValue == null || String(rawValue).trim() === "") && userData.phone) {
+        rawValue = String(userData.phone).trim();
+      }
     }
     // Suppression: if the data is empty, draw nothing (including any implied label/prefix)
     if (rawValue == null || String(rawValue).trim() === "") continue;

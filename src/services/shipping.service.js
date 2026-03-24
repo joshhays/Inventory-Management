@@ -107,14 +107,19 @@ async function getRates(dest, itemCount, deploymentId = null) {
   });
 
   const upsdapRates = filterUpsdapRates(shipment.rates);
+  const SHIPPING_SURCHARGE = 10;
 
-  const rates = upsdapRates.map((r) => ({
-    serviceCode: r.id || `${r.carrier}_${r.service}`,
-    serviceName: `${r.carrier} ${r.service}`.trim(),
-    totalCharges: parseFloat(r.rate) || 0,
-    currencyCode: r.currency || "USD",
-    transitDays: r.delivery_days != null ? r.delivery_days : null,
-  }));
+  const rates = upsdapRates.map((r) => {
+    let serviceName = `${r.carrier} ${r.service}`.trim();
+    serviceName = serviceName.replace(/\bUPSDAP\b/gi, "UPS");
+    return {
+      serviceCode: r.id || `${r.carrier}_${r.service}`,
+      serviceName,
+      totalCharges: (parseFloat(r.rate) || 0) + SHIPPING_SURCHARGE,
+      currencyCode: r.currency || "USD",
+      transitDays: r.delivery_days != null ? r.delivery_days : null,
+    };
+  });
 
   return rates.sort((a, b) => a.totalCharges - b.totalCharges);
 }

@@ -110,7 +110,17 @@
           }
           const cart = getCart();
           for (const i of items) {
-            const existing = cart.find((c) => c.productId === i.productId);
+            let printData = null;
+            if (i.printData) {
+              if (typeof i.printData === "object" && Object.keys(i.printData).length) {
+                printData = i.printData;
+              } else if (typeof i.printData === "string" && i.printData.trim()) {
+                try {
+                  printData = JSON.parse(i.printData);
+                  if (!Object.keys(printData || {}).length) printData = null;
+                } catch (_) {}
+              }
+            }
             const qty = i.quantity || 1;
             const cartItem = {
               productId: i.productId,
@@ -119,7 +129,10 @@
               price: i.unitPrice ?? 0,
               sku: i.sku || "",
               imageUrl: null,
+              ...(printData && { printData }),
             };
+            const matchKey = JSON.stringify({ productId: i.productId, printData: printData || {} });
+            const existing = cart.find((c) => JSON.stringify({ productId: c.productId, printData: c.printData || {} }) === matchKey);
             if (existing) {
               existing.quantity = (existing.quantity || 1) + qty;
             } else {

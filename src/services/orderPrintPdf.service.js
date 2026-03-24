@@ -28,6 +28,16 @@ function parseUserData(item) {
   }
 }
 
+/** Normalize userData keys to match businessCardTemplate (name, title, role, email, phone, address, website, disclosure) */
+function normalizeUserDataForTemplate(userData) {
+  if (!userData || typeof userData !== "object") return userData;
+  const merged = { ...userData };
+  if (!merged.name && (merged.fullName || merged["Full Name"])) merged.name = merged.fullName || merged["Full Name"];
+  if (!merged.company && merged.companyName) merged.company = merged.companyName;
+  if (!merged.role && (merged.position || merged["Position"])) merged.role = merged.position || merged["Position"];
+  return merged;
+}
+
 function getTemplateConfig(product) {
   if (!product?.printTemplateConfig || typeof product.printTemplateConfig !== "string") return businessCardTemplate;
   try {
@@ -71,6 +81,8 @@ async function generateApprovalPdfForItem(item, product = null) {
   const userData = parseUserData(item);
   if (!userData) return null;
 
+  const normalizedData = normalizeUserDataForTemplate(userData);
+
   let prod = product;
   if (!prod && item.productId) {
     prod = await prisma.product.findUnique({
@@ -78,15 +90,16 @@ async function generateApprovalPdfForItem(item, product = null) {
       select: { id: true, printTemplateConfig: true },
     });
   }
-  const templateConfig = getTemplateConfig(prod);
   let basePdfBytes = prod ? await getBasePdfBytesForProduct(prod) : null;
   if (!basePdfBytes && fs.existsSync(POD_BASE_PDF)) {
     basePdfBytes = fs.readFileSync(POD_BASE_PDF);
   }
   if (!basePdfBytes) {
-    return generateImprintOnlyPdf(userData, templateConfig);
+    const templateConfig = getTemplateConfig(prod);
+    return generateImprintOnlyPdf(normalizedData, templateConfig);
   }
-  const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, userData, templateConfig);
+  const templateConfig = businessCardTemplate;
+  const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, normalizedData, templateConfig);
   return cropPdfToTrim(pdfBuffer);
 }
 
