@@ -151,7 +151,7 @@ async function triggerNotification(orderId, templateName) {
     const orderPrintPdfService = require("./orderPrintPdf.service");
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];
-      const pdfBuffer = await orderPrintPdfService.generatePrintPdfForItem(item);
+      const pdfBuffer = await orderPrintPdfService.generateApprovalPdfForItem(item);
       if (pdfBuffer && pdfBuffer.length > 0) {
         const safeName = (item.productName || "item").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
         attachments.push({

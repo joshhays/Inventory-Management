@@ -2,7 +2,8 @@
  * Generates print PDFs for order items (POD/business card).
  *
  * - Approval PDF: includes master (base template) so approvers see full design.
- * - Email/print PDF: imprint-only (no base) for printer to composite.
+ * - Imprint-only PDF: text on 3.5×2" trim; coordinates mapped from base PDF when available.
+ * - ORDER_READY_FOR_PRINT emails attach the approval PDF (same as admin proof download).
  */
 
 const path = require("path");
@@ -105,7 +106,7 @@ async function generateApprovalPdfForItem(item, product = null) {
 
 /**
  * Generate imprint-only PDF (no base/master). For printer to composite.
- * Used in ORDER_READY_FOR_PRINT email after approval.
+ * Uses the product's base PDF page size to map field coordinates into 3.5×2" trim (same as proof crop).
  * @param {Object} item - OrderItem with printData, productId
  * @param {Object} [product] - Optional product with printTemplateConfig
  * @returns {Promise<Buffer|null>}
@@ -113,15 +114,20 @@ async function generateApprovalPdfForItem(item, product = null) {
 async function generatePrintPdfForItem(item, product = null) {
   const userData = parseUserData(item);
   if (!userData) return null;
+  const normalizedData = normalizeUserDataForTemplate(userData);
   let prod = product;
   if (!prod && item.productId) {
     prod = await prisma.product.findUnique({
       where: { id: Number(item.productId) },
-      select: { printTemplateConfig: true },
+      select: { id: true, printTemplateConfig: true },
     });
   }
   const templateConfig = getTemplateConfig(prod);
-  return generateImprintOnlyPdf(userData, templateConfig);
+  let basePdfBytes = prod ? await getBasePdfBytesForProduct(prod) : null;
+  if (!basePdfBytes && fs.existsSync(POD_BASE_PDF)) {
+    basePdfBytes = fs.readFileSync(POD_BASE_PDF);
+  }
+  return generateImprintOnlyPdf(normalizedData, templateConfig, basePdfBytes);
 }
 
 module.exports = {

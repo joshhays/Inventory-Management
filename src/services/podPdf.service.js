@@ -253,16 +253,55 @@ async function cropPdfToTrim(pdfBytes) {
 }
 
 /**
+ * Lower-left corner of centered trim rect on a page (same logic as cropPdfToTrim).
+ * @returns {{ llx: number, lly: number }}
+ */
+function trimOriginOnPage(width, height) {
+  if (width > TRIM_WIDTH_PT || height > TRIM_HEIGHT_PT) {
+    return {
+      llx: Math.max(0, (width - TRIM_WIDTH_PT) / 2),
+      lly: Math.max(0, (height - TRIM_HEIGHT_PT) / 2),
+    };
+  }
+  return { llx: 0, lly: 0 };
+}
+
+/**
  * Generate imprint-only PDF: 3.5" x 2" pages with only the text content (no base/master background).
- * For sending to printer - they composite this with their own base.
+ * Field coordinates match generateBusinessCardPdf: inches from the top-left of each base PDF page.
+ * When basePdfBytes is provided, positions are converted into trim space (center crop) so text aligns
+ * with the composite proof. When omitted, coordinates are assumed relative to a 3.5×2" page.
  *
  * @param {Object} userData - e.g. { name, title, role, email, phoneP, phoneM, address, website }
  * @param {Object} templateConfig - JSON describing field positions (same as generateBusinessCardPdf)
+ * @param {Uint8Array|Buffer|null} [basePdfBytes] - Master PDF used for placement (optional)
  * @returns {Promise<Buffer>}
  */
-async function generateImprintOnlyPdf(userData, templateConfig) {
+async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = null) {
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
+
+  let basePageMetrics = null;
+  if (basePdfBytes && basePdfBytes.length) {
+    try {
+      const baseDoc = await PDFDocument.load(basePdfBytes);
+      basePageMetrics = baseDoc.getPages().map((p) => {
+        const { width, height } = p.getSize();
+        const { llx, lly } = trimOriginOnPage(width, height);
+        return { width, height, llx, lly };
+      });
+    } catch {
+      basePageMetrics = null;
+    }
+  }
+
+  function metricsForPageIndex(pageIndex) {
+    if (!basePageMetrics?.length) {
+      return { width: TRIM_WIDTH_PT, height: TRIM_HEIGHT_PT, llx: 0, lly: 0 };
+    }
+    const i = Math.min(Math.max(0, pageIndex), basePageMetrics.length - 1);
+    return basePageMetrics[i];
+  }
 
   const pageIndices = new Set((templateConfig?.fields || []).map((f) => typeof f.page === "number" ? f.page : 0));
   const maxPage = Math.max(0, ...pageIndices);
@@ -300,31 +339,38 @@ async function generateImprintOnlyPdf(userData, templateConfig) {
   }
 
   const drawCommands = [];
-  const pageHeight = TRIM_HEIGHT_PT;
 
   for (const field of fields) {
     const key = field.key;
     if (!key) continue;
 
     let rawValue = userData[key];
-    if (key === "phone") rawValue = buildPhoneDisplay(userData);
+    if (key === "phone") {
+      rawValue = buildPhoneDisplay(userData);
+      if ((rawValue == null || String(rawValue).trim() === "") && userData.phone) {
+        rawValue = String(userData.phone).trim();
+      }
+    }
     if (rawValue == null || String(rawValue).trim() === "") continue;
     const text = String(rawValue).trim();
 
     const pageIndex = typeof field.page === "number" ? field.page : 0;
-    const page = pdfDoc.getPage(pageIndex);
-    if (!page) continue;
+    if (pageIndex > maxPage) continue;
 
     const font = await fontForField(field.fontFile);
     const xIn = Number(field.xInches || 0);
     const yIn = Number(field.yInches || 0);
-    const x = xIn * 72;
-    let y = pageHeight - yIn * 72;
+    const { width: srcW, height: srcH, llx, lly } = metricsForPageIndex(pageIndex);
+    const xPdf = xIn * 72;
+    let yPdf = srcH - yIn * 72;
 
     if (key === "company") {
       const titleValue = userData.title;
-      if (titleValue == null || String(titleValue).trim() === "") y += 12;
+      if (titleValue == null || String(titleValue).trim() === "") yPdf += 12;
     }
+
+    const x = xPdf - llx;
+    const y = yPdf - lly;
 
     let fontSize = Number(field.fontSize || 10);
     let color = rgb(0, 0, 0);
