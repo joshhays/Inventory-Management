@@ -2,20 +2,37 @@ const fs = require("fs");
 const csv = require("csv-parser");
 const productService = require("../services/product.service");
 const productFileService = require("../services/productFile.service");
+const wasabiService = require("../services/wasabi.service");
 const labelService = require("../services/label.service");
 const { mapRowToProduct } = require("../lib/csvParser");
 const { canAccessProduct } = require("../lib/auth-helpers");
 
-function withFileUrls(product) {
+const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
+
+function getFirstImageFile(files) {
+  return (files || []).find((f) => IMAGE_EXT.test(f.filename));
+}
+
+async function withFileUrls(product) {
   if (!product) return product;
   if (product.files) {
-    product.files = product.files.map((f) => ({ ...f, url: productFileService.getFileUrl(f) }));
+    product.files = await Promise.all(
+      product.files.map(async (f) => ({ ...f, url: await productFileService.getFileUrlAsync(f) }))
+    );
+  }
+  const imageKey = product.imageUrl || getFirstImageFile(product.files)?.path;
+  if (imageKey && wasabiService.isConfigured()) {
+    const signedUrl = await wasabiService.getImageUrl(imageKey);
+    product.imageUrl = signedUrl || product.imageUrl;
+  } else if (!product.imageUrl) {
+    const firstImage = getFirstImageFile(product.files);
+    product.imageUrl = firstImage ? await productFileService.getFileUrlAsync(firstImage) : null;
   }
   return product;
 }
 
-function withFileUrlsList(products) {
-  return (products || []).map(withFileUrls);
+async function withFileUrlsList(products) {
+  return Promise.all((products || []).map(withFileUrls));
 }
 
 const getProducts = async (req, res, next) => {
@@ -35,7 +52,7 @@ const getProducts = async (req, res, next) => {
       allowedGroupIds,
       category,
     });
-    res.status(200).json(withFileUrlsList(products));
+    res.status(200).json(await withFileUrlsList(products));
   } catch (error) {
     next(error);
   }
@@ -69,7 +86,7 @@ const getProduct = async (req, res, next) => {
         return res.status(403).json({ message: "You do not have access to this product." });
       }
     }
-    res.status(200).json(withFileUrls(product));
+    res.status(200).json(await withFileUrls(product));
   } catch (error) {
     next(error);
   }
@@ -117,7 +134,7 @@ const createProduct = async (req, res, next) => {
       maxOrderQty,
     });
 
-    return res.status(201).json(withFileUrls(product));
+    return res.status(201).json(await withFileUrls(product));
   } catch (error) {
     return next(error);
   }
@@ -148,7 +165,7 @@ const updateQuantity = async (req, res, next) => {
     }
 
     const withFiles = await productService.getProductWithFiles(id);
-    return res.status(200).json(withFileUrls(withFiles || product));
+    return res.status(200).json(await withFileUrls(withFiles || product));
   } catch (error) {
     if (error.message?.includes("Kit has no components")) {
       return res.status(400).json({ message: error.message });
@@ -212,7 +229,7 @@ const updateProduct = async (req, res, next) => {
       return res.status(404).json({ message: "Product not found." });
     }
     const withFiles = await productService.getProductWithFiles(id);
-    return res.status(200).json(withFileUrls(withFiles || product));
+    return res.status(200).json(await withFileUrls(withFiles || product));
   } catch (error) {
     return next(error);
   }

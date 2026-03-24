@@ -254,9 +254,14 @@
 
     function getImageUrl(fileOrPath) {
       if (!fileOrPath) return "";
-      if (typeof fileOrPath === "object" && fileOrPath.url) return fileOrPath.url;
+      if (typeof fileOrPath === "object" && fileOrPath.url) {
+        const u = fileOrPath.url;
+        if (u && (u.startsWith("http://") || u.startsWith("https://"))) return u;
+        return u || "";
+      }
       const p = typeof fileOrPath === "string" ? fileOrPath : fileOrPath?.path;
       if (!p) return "";
+      if (p.startsWith("http://") || p.startsWith("https://")) return p;
       return "/uploads/" + p.split("/").map(encodeURIComponent).join("/");
     }
 
@@ -335,7 +340,9 @@
         const firstImg = getFirstImageFile(p.files);
         const firstFile = getFirstFile(p.files);
         let thumbHtml;
-        if (firstImg) {
+        if (p.imageUrl && (p.imageUrl.startsWith("http://") || p.imageUrl.startsWith("https://"))) {
+          thumbHtml = `<div class="product-thumb-wrap"><img class="product-thumb" src="${(p.imageUrl || "").replace(/"/g, "&quot;")}" alt=""></div>`;
+        } else if (firstImg) {
           const imgUrl = getImageUrl(firstImg);
           thumbHtml = `<div class="product-thumb-wrap"><img class="product-thumb" src="${imgUrl}" alt=""></div>`;
         } else if (firstFile) {

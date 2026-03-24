@@ -34,7 +34,9 @@ const getFiles = async (req, res, next) => {
       if (access.status) return res.status(access.status).json({ message: access.message });
     }
     const files = await productFileService.getByProductId(id);
-    const withUrls = files.map((f) => ({ ...f, url: productFileService.getFileUrl(f) }));
+    const withUrls = await Promise.all(
+      files.map(async (f) => ({ ...f, url: await productFileService.getFileUrlAsync(f) }))
+    );
     res.status(200).json(withUrls);
   } catch (error) {
     next(error);
@@ -58,6 +60,11 @@ const getPreview = async (req, res, next) => {
     const getBaseDir = (f) => (productFileService.getFileUrl(f)?.startsWith("/product-files/") ? PRODUCT_FILES_DIR : UPLOAD_DIR);
 
     if (imageFile) {
+      if (imageFile.path.startsWith("uploads/")) {
+        const wasabiService = require("../services/wasabi.service");
+        const signedUrl = await wasabiService.getImageUrl(imageFile.path);
+        if (signedUrl) return res.redirect(signedUrl);
+      }
       const fullPath = path.join(getBaseDir(imageFile), imageFile.path);
       if (fs.existsSync(fullPath)) {
         return res.sendFile(path.resolve(fullPath));
@@ -144,6 +151,30 @@ const getPreview = async (req, res, next) => {
   }
 };
 
+const uploadFile = async (req, res, next) => {
+  try {
+    if (!req.user) return res.status(401).json({ message: "Authentication required." });
+    const { id } = req.params;
+    const access = await checkProductAccess(req, res, id);
+    if (access.status) return res.status(access.status).json({ message: access.message });
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded." });
+    }
+    const productFile = await productFileService.addFromWasabi(
+      id,
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype || "application/octet-stream"
+    );
+    if (!productFile) {
+      return res.status(500).json({ message: "Wasabi is not configured or upload failed." });
+    }
+    res.status(201).json({ ...productFile, url: await productFileService.getFileUrlAsync(productFile) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 const attachFile = async (req, res, next) => {
   try {
     if (!req.user) return res.status(401).json({ message: "Authentication required." });
@@ -159,7 +190,7 @@ const attachFile = async (req, res, next) => {
     if (!productFile) {
       return res.status(404).json({ message: "Product or file not found. Ensure the file exists in product-files/." });
     }
-    res.status(201).json({ ...productFile, url: productFileService.getFileUrl(productFile) });
+    res.status(201).json({ ...productFile, url: await productFileService.getFileUrlAsync(productFile) });
   } catch (error) {
     next(error);
   }
@@ -184,6 +215,7 @@ const deleteFile = async (req, res, next) => {
 module.exports = {
   getFiles,
   getPreview,
+  uploadFile,
   attachFile,
   deleteFile,
 };

@@ -1,20 +1,8 @@
 const path = require("path");
-const fs = require("fs");
 const multer = require("multer");
 
-const uploadDir = path.join(__dirname, "../../uploads/deployment-logos");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = (path.extname(file.originalname) || ".png").toLowerCase();
-    const safeExt = [".png", ".jpg", ".jpeg", ".gif", ".webp"].includes(ext) ? ext : ".png";
-    cb(null, `deployment-${req.params.id}-${Date.now()}${safeExt}`);
-  },
-});
+// Use memoryStorage so controller can upload to Wasabi when configured, or write to disk when not
+const storage = multer.memoryStorage();
 
 module.exports = multer({
   storage,

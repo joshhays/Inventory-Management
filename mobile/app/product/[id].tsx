@@ -26,13 +26,17 @@ const IMAGE_EXT = /\.(jpg|jpeg|png|gif|webp)$/i;
 const PDF_EXT = /\.pdf$/i;
 const PAGE_BG = '#F5F7FA';
 
-/** Returns preview URL: for images use direct file URL, for PDFs use backend preview (first page only) */
+/** Returns preview URL: for images use direct file URL (signed Wasabi URLs are complete), for PDFs use backend preview */
 function getPreviewUrl(product: Product): string | null {
   const base = getApiBase();
   const files = product.files || [];
   const imageFile = files.find((f) => IMAGE_EXT.test(f.filename));
   const pdfFile = files.find((f) => PDF_EXT.test(f.filename));
 
+  if ((product as { imageUrl?: string }).imageUrl) {
+    const u = (product as { imageUrl?: string }).imageUrl!;
+    if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  }
   if (imageFile) {
     if (imageFile.url) return imageFile.url.startsWith('/') ? `${base}${imageFile.url}` : imageFile.url;
     const encodedPath = imageFile.path.split('/').map(encodeURIComponent).join('/');

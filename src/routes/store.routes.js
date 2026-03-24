@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const fs = require("fs");
 const deploymentService = require("../services/deployment.service");
+const { withPresignedLogo, withPresignedLogos } = require("../lib/deploymentUrls");
 
 const router = express.Router();
 const storeDir = path.resolve(__dirname, "../../public/store");
@@ -54,7 +55,8 @@ function serveStorePage(slug, page, dep, res, next) {
 router.get(["/store", "/store/"], async (req, res, next) => {
   if (req.path !== "/store/") return res.redirect(302, "/store/");
   try {
-    const deployments = await deploymentService.findAll();
+    let deployments = await deploymentService.findAll();
+    deployments = await withPresignedLogos(deployments);
     function escapeHtml(s) {
       return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
     }
@@ -128,8 +130,9 @@ router.get("/store/:slug", async (req, res, next) => {
 router.get("/store/:slug/", async (req, res, next) => {
   const { slug } = req.params;
   try {
-    const dep = await deploymentService.findBySlug(slug);
+    let dep = await deploymentService.findBySlug(slug);
     if (!dep) return res.status(404).send("Store not found");
+    dep = await withPresignedLogo(dep);
     serveStorePage(slug, "index", dep, res, next);
   } catch (e) {
     next(e);
@@ -142,8 +145,9 @@ router.get("/store/:slug/:page", async (req, res, next) => {
   const pageBase = page.replace(/\.html$/, "");
   if (!STORE_PAGES.includes(pageBase)) return next();
   try {
-    const dep = await deploymentService.findBySlug(slug);
+    let dep = await deploymentService.findBySlug(slug);
     if (!dep) return res.status(404).send("Store not found");
+    dep = await withPresignedLogo(dep);
     serveStorePage(slug, pageBase, dep, res, next);
   } catch (e) {
     next(e);

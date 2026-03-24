@@ -75,9 +75,14 @@
 
     function getImageUrl(file) {
       if (!file) return "";
-      if (typeof file === "object" && file.url) return file.url;
+      if (typeof file === "object" && file.url) {
+        const u = file.url;
+        if (u && (u.startsWith("http://") || u.startsWith("https://"))) return u;
+        return u || "";
+      }
       const p = typeof file === "string" ? file : file?.path;
       if (!p) return "";
+      if (p.startsWith("http://") || p.startsWith("https://")) return p;
       return "/uploads/" + p.split("/").map(encodeURIComponent).join("/");
     }
 
@@ -158,9 +163,9 @@
       const imageFile = getFirstImageFile(p.files);
       const pdfFile = getFirstFile(p.files);
       const previewBase = "/api/products/" + p.id + "/preview" + (window.STORE_SLUG ? "?deployment=" + encodeURIComponent(window.STORE_SLUG) : "");
-      const imgUrl = imageFile
-        ? getImageUrl(imageFile)
-        : pdfFile ? previewBase : null;
+      const imgUrl = (p.imageUrl && (p.imageUrl.startsWith("http://") || p.imageUrl.startsWith("https://")))
+        ? p.imageUrl
+        : imageFile ? getImageUrl(imageFile) : pdfFile ? previewBase : null;
       if (existing) {
         existing.quantity = (existing.quantity || 1) + qty;
         if (!existing.imageUrl && imgUrl) existing.imageUrl = imgUrl;
@@ -205,7 +210,9 @@
           const pdfFile = getFirstFile(p.files);
           const isPOD = !!(p.isPrintOnDemand && p.printTemplateConfig);
           const previewBase = "/api/products/" + p.id + "/preview" + (window.STORE_SLUG ? "?deployment=" + encodeURIComponent(window.STORE_SLUG) : "");
-          const imgUrl = imageFile
+          const imgUrl = (p.imageUrl && (p.imageUrl.startsWith("http://") || p.imageUrl.startsWith("https://")))
+            ? p.imageUrl
+            : imageFile
             ? getImageUrl(imageFile)
             : pdfFile
               ? previewBase

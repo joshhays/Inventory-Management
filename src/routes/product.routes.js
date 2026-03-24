@@ -3,6 +3,7 @@ const productController = require("../controllers/product.controller");
 const productFileController = require("../controllers/productFile.controller");
 const kitItemController = require("../controllers/kitItem.controller");
 const uploadCsv = require("../middleware/uploadCsv");
+const uploadProductFile = require("../middleware/uploadProductFile");
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ router.get("/:id/kit-items", kitItemController.getKitItems);
 router.post("/:id/kit-items", kitItemController.addKitItem);
 router.patch("/:id/kit-items/:itemId", kitItemController.updateKitItem);
 router.delete("/:id/kit-items/:itemId", kitItemController.removeKitItem);
+router.post("/:id/files/upload", uploadProductFile, productFileController.uploadFile);
 router.post("/:id/files", productFileController.attachFile);
 router.delete("/:id/files/:fileId", productFileController.deleteFile);
 

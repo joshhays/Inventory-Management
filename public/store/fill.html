@@ -106,8 +106,14 @@
 
       function getImageUrl(file) {
         if (!file) return "";
-        if (typeof file === "object" && file.url) return file.url;
+        if (typeof file === "object" && file.url) {
+          const u = file.url;
+          if (u && (u.startsWith("http://") || u.startsWith("https://"))) return u;
+          return u || "";
+        }
         const p = typeof file === "string" ? file : file?.path;
+        if (!p) return "";
+        if (p.startsWith("http://") || p.startsWith("https://")) return p;
         return p ? "/uploads/" + p.split("/").map(encodeURIComponent).join("/") : "";
       }
 
@@ -525,7 +531,9 @@
             const imageFile = getFirstImageFile(product.files);
             const pdfFile = getFirstFile(product.files);
             const previewBase = "/api/products/" + product.id + "/preview" + (window.STORE_SLUG ? "?deployment=" + encodeURIComponent(window.STORE_SLUG) : "");
-            const imgUrl = imageFile ? getImageUrl(imageFile) : pdfFile ? previewBase : null;
+            const imgUrl = (product.imageUrl && (product.imageUrl.startsWith("http://") || product.imageUrl.startsWith("https://")))
+              ? product.imageUrl
+              : imageFile ? getImageUrl(imageFile) : pdfFile ? previewBase : null;
             const cart = getCart();
             const available = product.quantity ?? 0;
 
