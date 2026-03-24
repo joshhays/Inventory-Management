@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs");
-const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
+const { PDFDocument, StandardFonts, rgb, cmyk } = require("pdf-lib");
 const fontkit = require("@pdf-lib/fontkit");
 
 const FONTS_DIR = path.resolve(__dirname, "../../fonts");
@@ -11,6 +11,64 @@ const TRIM_HEIGHT_PT = 2 * 72;
 /** Inset from each page edge when setting CropBox (standard 1/8" bleed trim). */
 const CROP_INSET_INCHES = 0.125;
 const CROP_INSET_PT = CROP_INSET_INCHES * 72;
+
+/**
+ * Pantone 300 C (coated) as DeviceCMYK for print — avoids RGB→CMYK conversion in the RIP.
+ * Values follow Pantone Color Bridge coated approximation (tune via field.cmyk if your vendor specifies otherwise).
+ */
+const CMYK_PANTONE_300_C = () => cmyk(1, 0.44, 0, 0);
+
+/** 100% black only (no rich black). */
+const CMYK_BLACK = () => cmyk(0, 0, 0, 1);
+
+/**
+ * Resolve fill color for POD template fields: prefer explicit CMYK, then spot tag, then hex / key defaults.
+ * @param {Object} field - Template field (key, color, cmyk, pantone, spot)
+ */
+function templateFieldColor(field) {
+  if (field.cmyk && Array.isArray(field.cmyk) && field.cmyk.length === 4) {
+    let [cc, mm, yy, kk] = field.cmyk.map((v) => Number(v));
+    if (![cc, mm, yy, kk].some((n) => Number.isNaN(n))) {
+      const maxComp = Math.max(cc, mm, yy, kk);
+      if (maxComp > 1) {
+        cc /= 100;
+        mm /= 100;
+        yy /= 100;
+        kk /= 100;
+      }
+      return cmyk(
+        Math.min(1, Math.max(0, cc)),
+        Math.min(1, Math.max(0, mm)),
+        Math.min(1, Math.max(0, yy)),
+        Math.min(1, Math.max(0, kk)),
+      );
+    }
+  }
+  const spot = field.spot || field.pantone;
+  if (spot === "PANTONE_300_C" || spot === "300C" || spot === "300 C") {
+    return CMYK_PANTONE_300_C();
+  }
+  if (typeof field.color === "string") {
+    let hex = field.color.replace(/^#/, "").trim().toLowerCase();
+    if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+    if (hex === "000000") return CMYK_BLACK();
+    if (hex === "005eb8") return CMYK_PANTONE_300_C();
+  }
+  const key = field.key;
+  if (key === "name" || key === "firstName" || key === "lastName") {
+    return CMYK_PANTONE_300_C();
+  }
+  if (typeof field.color === "string") {
+    const h = field.color.replace("#", "");
+    if (h.length === 6) {
+      const r = parseInt(h.slice(0, 2), 16) / 255;
+      const g = parseInt(h.slice(2, 4), 16) / 255;
+      const b = parseInt(h.slice(4, 6), 16) / 255;
+      if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) return rgb(r, g, b);
+    }
+  }
+  return CMYK_BLACK();
+}
 
 /**
  * Trim rectangle for a page: MediaBox inset by CROP_INSET_PT on each side.
@@ -180,18 +238,7 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
 
     let fontSize = Number(field.fontSize || 10);
 
-    let color = rgb(0, 0, 0);
-    if (typeof field.color === "string") {
-      const hex = field.color.replace("#", "");
-      if (hex.length === 6) {
-        const r = parseInt(hex.slice(0, 2), 16) / 255;
-        const g = parseInt(hex.slice(2, 4), 16) / 255;
-        const b = parseInt(hex.slice(4, 6), 16) / 255;
-        if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) {
-          color = rgb(r, g, b);
-        }
-      }
-    }
+    const color = templateFieldColor(field);
 
     // Copyfitting: if maxWidthInches is provided, shrink font size so text fits (single-line fields)
     const maxWidthInches = typeof field.maxWidthInches === "number" ? field.maxWidthInches : null;
@@ -400,16 +447,7 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
     const y = yPdf - lly;
 
     let fontSize = Number(field.fontSize || 10);
-    let color = rgb(0, 0, 0);
-    if (typeof field.color === "string") {
-      const hex = field.color.replace("#", "");
-      if (hex.length === 6) {
-        const r = parseInt(hex.slice(0, 2), 16) / 255;
-        const g = parseInt(hex.slice(2, 4), 16) / 255;
-        const b = parseInt(hex.slice(4, 6), 16) / 255;
-        if (!Number.isNaN(r) && !Number.isNaN(g) && !Number.isNaN(b)) color = rgb(r, g, b);
-      }
-    }
+    const color = templateFieldColor(field);
 
     const maxWidthInches = typeof field.maxWidthInches === "number" ? field.maxWidthInches : null;
     let wrapWidthPts = null;
