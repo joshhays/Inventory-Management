@@ -8,6 +8,10 @@ const FONTS_DIR = path.resolve(__dirname, "../../fonts");
 const TRIM_WIDTH_PT = 3.5 * 72;
 const TRIM_HEIGHT_PT = 2 * 72;
 
+/** Inset from each page edge when setting CropBox (standard 1/8" bleed trim). */
+const CROP_INSET_INCHES = 0.125;
+const CROP_INSET_PT = CROP_INSET_INCHES * 72;
+
 /**
  * Load and embed a custom font from the fonts folder, or fall back to Helvetica.
  * @param {PDFDocument} pdfDoc
@@ -231,7 +235,8 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
 }
 
 /**
- * Crop a PDF to 3.5" x 2" trim size by setting CropBox. Used for preview/viewer so bleed is hidden.
+ * Crop a PDF by setting CropBox inset 0.125" from each edge (matches physical trim from bleed).
+ * Skipped if the page is too small to inset.
  * @param {Uint8Array|Buffer} pdfBytes
  * @returns {Promise<Buffer>}
  */
@@ -240,11 +245,13 @@ async function cropPdfToTrim(pdfBytes) {
   const pages = pdfDoc.getPages();
   for (const page of pages) {
     const { width, height } = page.getSize();
-    if (width > TRIM_WIDTH_PT || height > TRIM_HEIGHT_PT) {
-      const llx = Math.max(0, (width - TRIM_WIDTH_PT) / 2);
-      const lly = Math.max(0, (height - TRIM_HEIGHT_PT) / 2);
-      const urx = llx + TRIM_WIDTH_PT;
-      const ury = lly + TRIM_HEIGHT_PT;
+    const innerW = width - 2 * CROP_INSET_PT;
+    const innerH = height - 2 * CROP_INSET_PT;
+    if (innerW > 0 && innerH > 0) {
+      const llx = CROP_INSET_PT;
+      const lly = CROP_INSET_PT;
+      const urx = width - CROP_INSET_PT;
+      const ury = height - CROP_INSET_PT;
       page.setCropBox(llx, lly, urx, ury);
     }
   }
@@ -253,23 +260,27 @@ async function cropPdfToTrim(pdfBytes) {
 }
 
 /**
- * Lower-left corner of centered trim rect on a page (same logic as cropPdfToTrim).
- * @returns {{ llx: number, lly: number }}
+ * Crop rectangle matching cropPdfToTrim: 0.125" inset from page edges (PDF bottom-left origin).
+ * @returns {{ llx: number, lly: number, trimW: number, trimH: number }}
  */
 function trimOriginOnPage(width, height) {
-  if (width > TRIM_WIDTH_PT || height > TRIM_HEIGHT_PT) {
-    return {
-      llx: Math.max(0, (width - TRIM_WIDTH_PT) / 2),
-      lly: Math.max(0, (height - TRIM_HEIGHT_PT) / 2),
-    };
+  const innerW = width - 2 * CROP_INSET_PT;
+  const innerH = height - 2 * CROP_INSET_PT;
+  if (innerW <= 0 || innerH <= 0) {
+    return { llx: 0, lly: 0, trimW: width, trimH: height };
   }
-  return { llx: 0, lly: 0 };
+  return {
+    llx: CROP_INSET_PT,
+    lly: CROP_INSET_PT,
+    trimW: innerW,
+    trimH: innerH,
+  };
 }
 
 /**
  * Generate imprint-only PDF: 3.5" x 2" pages with only the text content (no base/master background).
  * Field coordinates match generateBusinessCardPdf: inches from the top-left of each base PDF page.
- * When basePdfBytes is provided, positions are converted into trim space (center crop) so text aligns
+ * When basePdfBytes is provided, positions are converted into trim space (0.125" edge crop) so text aligns
  * with the composite proof. When omitted, coordinates are assumed relative to a 3.5×2" page.
  *
  * @param {Object} userData - e.g. { name, title, role, email, phoneP, phoneM, address, website }
@@ -287,8 +298,8 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
       const baseDoc = await PDFDocument.load(basePdfBytes);
       basePageMetrics = baseDoc.getPages().map((p) => {
         const { width, height } = p.getSize();
-        const { llx, lly } = trimOriginOnPage(width, height);
-        return { width, height, llx, lly };
+        const { llx, lly, trimW, trimH } = trimOriginOnPage(width, height);
+        return { width, height, llx, lly, trimW, trimH };
       });
     } catch {
       basePageMetrics = null;
@@ -297,7 +308,14 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
 
   function metricsForPageIndex(pageIndex) {
     if (!basePageMetrics?.length) {
-      return { width: TRIM_WIDTH_PT, height: TRIM_HEIGHT_PT, llx: 0, lly: 0 };
+      return {
+        width: TRIM_WIDTH_PT,
+        height: TRIM_HEIGHT_PT,
+        llx: 0,
+        lly: 0,
+        trimW: TRIM_WIDTH_PT,
+        trimH: TRIM_HEIGHT_PT,
+      };
     }
     const i = Math.min(Math.max(0, pageIndex), basePageMetrics.length - 1);
     return basePageMetrics[i];
@@ -306,7 +324,8 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
   const pageIndices = new Set((templateConfig?.fields || []).map((f) => typeof f.page === "number" ? f.page : 0));
   const maxPage = Math.max(0, ...pageIndices);
   for (let i = 0; i <= maxPage; i++) {
-    pdfDoc.addPage([TRIM_WIDTH_PT, TRIM_HEIGHT_PT]);
+    const m = metricsForPageIndex(i);
+    pdfDoc.addPage([m.trimW, m.trimH]);
   }
 
   const fontCache = new Map();
