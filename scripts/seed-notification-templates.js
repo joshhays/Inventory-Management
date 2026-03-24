@@ -17,7 +17,7 @@ const TEMPLATES = [
     name: "ORDER_PLACED",
     displayName: "Order confirmation",
     subject: "Order confirmation - #{{orderId}}",
-    body: "Hi {{name}},\n\nThank you for your order. We've received your order #{{orderId}}.\n\nTotal: ${{total}}\n\nWe'll notify you when it ships.",
+    body: "Hi {{name}},\n\nThank you for your order. We've received your order #{{orderId}}.\n\n{{rushCustomerNote}}Total: ${{total}}\n\nWe'll notify you when it ships.",
   },
   {
     name: "ORDER_REJECTED",
@@ -29,14 +29,14 @@ const TEMPLATES = [
     name: "ORDER_APPROVAL_NEEDED",
     displayName: "Order approval needed",
     subject: "Order #{{orderId}} needs your approval",
-    body: "Hi,\n\nA new order #{{orderId}} from {{customerName}} needs your approval.\n\n<a href=\"{{approvalLink}}\">Review and approve</a>\n\nTotal: ${{total}}",
+    body: "Hi,\n\n{{rushNote}}A new order #{{orderId}} from {{customerName}} needs your approval.\n\n<a href=\"{{approvalLink}}\">Review and approve</a>\n\nTotal: ${{total}}",
     recipientType: "admin_groups",
   },
   {
     name: "ORDER_READY_FOR_PRINT",
     displayName: "Order ready for printing",
     subject: "Order #{{orderId}} approved — ready for printing",
-    body: "Hi,\n\nOrder #{{orderId}} from {{customerName}} has been approved and is ready for printing.\n\nItems:\n{{itemsList}}\n\nTotal: ${{total}}\n\nProof PDFs are attached to this email.\n\n<a href=\"{{orderLink}}\">View order details</a>\n\nPlease start the print job when ready.",
+    body: "Hi,\n\n{{rushNote}}Order #{{orderId}} from {{customerName}} has been approved and is ready for printing.\n\nItems:\n{{itemsList}}\n\nTotal: ${{total}}\n\nProof PDFs are attached to this email.\n\n<a href=\"{{orderLink}}\">View order details</a>\n\nPlease start the print job when ready.",
     recipientType: "admin_groups",
   },
   {

@@ -169,6 +169,13 @@
       if (existing) {
         existing.quantity = (existing.quantity || 1) + qty;
         if (!existing.imageUrl && imgUrl) existing.imageUrl = imgUrl;
+        if (p.rushFee != null && Number(p.rushFee) > 0) {
+          existing.rushFee = Number(p.rushFee);
+          if (typeof existing.rushSelected !== "boolean") existing.rushSelected = false;
+        } else {
+          delete existing.rushFee;
+          delete existing.rushSelected;
+        }
       } else {
         const item = {
           productId: p.id,
@@ -181,6 +188,10 @@
           minOrderQty: p.minOrderQty ?? null,
           maxOrderQty: p.maxOrderQty ?? null,
         };
+        if (p.rushFee != null && Number(p.rushFee) > 0) {
+          item.rushFee = Number(p.rushFee);
+          item.rushSelected = false;
+        }
         if (printData && typeof printData === "object" && Object.keys(printData).length) item.printData = printData;
         cart.push(item);
       }

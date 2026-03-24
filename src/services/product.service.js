@@ -8,6 +8,14 @@ function parseOptionalInt(input) {
   return !isNaN(n) && n > 0 ? n : null;
 }
 
+/** Rush fee in dollars; null if unset or not positive. */
+function parseOptionalRushFee(input) {
+  if (input == null || String(input).trim() === "") return null;
+  const n = Number(String(input).trim());
+  if (Number.isNaN(n) || n <= 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
 /** Parse allowedQuantities input to JSON array string. Accepts "250, 500, 750" or "[250,500,750]" */
 function parseAllowedQuantities(input) {
   if (input == null || String(input).trim() === "") return null;
@@ -111,6 +119,7 @@ const createProduct = (productData) => {
       allowedQuantities: parseAllowedQuantities(productData.allowedQuantities),
       minOrderQty: parseOptionalInt(productData.minOrderQty),
       maxOrderQty: parseOptionalInt(productData.maxOrderQty),
+      rushFee: parseOptionalRushFee(productData.rushFee),
       ...(productData.groupId != null && productData.groupId !== "" && {
         groupId: Number(productData.groupId) || null,
       }),
@@ -168,6 +177,9 @@ const updateProduct = async (id, productData) => {
       }),
       ...(productData.maxOrderQty !== undefined && {
         maxOrderQty: parseOptionalInt(productData.maxOrderQty),
+      }),
+      ...(productData.rushFee !== undefined && {
+        rushFee: parseOptionalRushFee(productData.rushFee),
       }),
     },
   });

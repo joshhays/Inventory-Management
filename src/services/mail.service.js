@@ -12,6 +12,8 @@
  * - ORDER_SHIPPED: when order status is changed to shipped (order.controller.js)
  *
  * Placeholders: {{name}}, {{email}}, {{orderId}}, {{total}}, {{trackingCode}}, {{shippingLabelUrl}}, {{approvalLink}}, {{orderLink}}, {{itemsList}}
+ * Rush: {{isRush}}, {{rushLabel}}, {{rushNote}}, {{rushNoteHtml}}, {{rushSubjectPrefix}} — use in ORDER_APPROVAL_NEEDED / ORDER_READY_FOR_PRINT templates.
+ * When isRush is YES, [RUSH] is also prepended to subject for those two templates automatically.
  */
 
 const { Resend } = require("resend");
@@ -127,6 +129,17 @@ async function triggerNotification(orderId, templateName) {
     .join("\n");
   const itemsListHtml = itemsList ? itemsList.replace(/\n/g, "<br>") : "(no items)";
 
+  const isRush = !!order.isRush;
+  const rushLabel = isRush ? "YES" : "NO";
+  const rushNote = isRush
+    ? "RUSH ORDER: Customer paid for expedited processing. Please prioritize this order for approval and production.\n\n"
+    : "";
+  const rushNoteHtml = rushNote ? rushNote.replace(/\n/g, "<br>") : "";
+  const rushSubjectPrefix = isRush ? "[RUSH] " : "";
+  const rushCustomerNote = isRush
+    ? "This order includes rush / expedited processing.\n\n"
+    : "";
+
   const data = {
     name: order.customerName,
     email: order.customerEmail,
@@ -140,9 +153,23 @@ async function triggerNotification(orderId, templateName) {
     orderLink,
     itemsList: itemsList || "(no items)",
     itemsListHtml,
+    isRush: rushLabel,
+    rushLabel,
+    rushNote,
+    rushNoteHtml,
+    rushSubjectPrefix,
+    rushCustomerNote,
   };
 
-  const subject = replacePlaceholders(template.subject, data);
+  let subject = replacePlaceholders(template.subject, data);
+  const userUsedRushSubjectPrefix = /\{\{\s*rushSubjectPrefix\s*\}\}/i.test(template.subject || "");
+  if (
+    isRush &&
+    (templateName === "ORDER_APPROVAL_NEEDED" || templateName === "ORDER_READY_FOR_PRINT") &&
+    !userUsedRushSubjectPrefix
+  ) {
+    subject = rushSubjectPrefix + subject;
+  }
   const body = replacePlaceholders(template.body, data);
   const html = body.replace(/\n/g, "<br>");
 

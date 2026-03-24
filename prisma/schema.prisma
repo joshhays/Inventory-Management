@@ -177,6 +177,7 @@ model Product {
   allowedQuantities   String?      // JSON array e.g. [100,150,250] - POD quantity options
   minOrderQty        Int?         // Min quantity per order (null = no min)
   maxOrderQty        Int?         // Max quantity per order (null = no max)
+  rushFee            Float?       // Optional rush add-on ($); storefront shows checkbox when > 0
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   files               ProductFile[]
@@ -273,6 +274,7 @@ model Order {
   shippingCost        Float        @default(0)
   shippingMethod      String?
   discountAmount      Float        @default(0)
+  isRush              Boolean      @default(false) // Any rush fee line items; used in approver/production emails
   shippingLabelUrl    String?      // URL to shipping label (EasyPost, etc.)
   trackingCode        String?      // Carrier tracking number
   easypostShipmentId  String?      // EasyPost shipment ID for label creation

@@ -553,9 +553,16 @@
               if (existing) {
                 existing.quantity = (existing.quantity || 1) + qtyPerDesign;
                 existing.pricingMatrix = product.pricingMatrix || existing.pricingMatrix;
+                if (product.rushFee != null && Number(product.rushFee) > 0) {
+                  existing.rushFee = Number(product.rushFee);
+                  if (typeof existing.rushSelected !== "boolean") existing.rushSelected = false;
+                } else {
+                  delete existing.rushFee;
+                  delete existing.rushSelected;
+                }
               } else {
                 const qtyOpts = matrix ? Object.keys(matrix).map((k) => parseInt(k, 10)).filter((n) => !isNaN(n) && n > 0).sort((a, b) => a - b) : null;
-                cart.push({
+                const row = {
                   productId: product.id,
                   sku: product.sku,
                   quantity: qtyPerDesign,
@@ -567,7 +574,12 @@
                   allowedQuantities: qtyOpts && qtyOpts.length ? JSON.stringify(qtyOpts) : null,
                   minOrderQty: 1,
                   maxOrderQty: null,
-                });
+                };
+                if (product.rushFee != null && Number(product.rushFee) > 0) {
+                  row.rushFee = Number(product.rushFee);
+                  row.rushSelected = false;
+                }
+                cart.push(row);
               }
             }
             setCart(cart);

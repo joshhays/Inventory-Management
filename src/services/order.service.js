@@ -132,6 +132,32 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
       total += lineTotal;
     }
 
+    let isRushOrder = false;
+    for (let i = 0; i < items.length; i++) {
+      const raw = items[i];
+      if (!raw || !raw.rush) continue;
+      const line = orderItems[i];
+      if (!line) continue;
+      const rushProduct = await tx.product.findFirst({
+        where: { id: line.productId, deploymentId: depId },
+      });
+      const fee = rushProduct?.rushFee != null ? Number(rushProduct.rushFee) : 0;
+      if (!fee || fee <= 0 || Number.isNaN(fee)) continue;
+      isRushOrder = true;
+      const feeRounded = Math.round(fee * 100) / 100;
+      orderItems.push({
+        productId: rushProduct.id,
+        sku: `${rushProduct.sku}-RUSH`,
+        productName: `Rush processing: ${rushProduct.name}`,
+        quantity: 1,
+        unitPrice: feeRounded,
+        lineTotal: feeRounded,
+        picked: false,
+        printData: null,
+      });
+      total += feeRounded;
+    }
+
     if (outOfStock.length > 0) {
       throw new Error(`Out of stock: ${outOfStock.join("; ")}`);
     }
@@ -151,6 +177,7 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
         shippingCost: shippingCostNum,
         shippingMethod: shippingMethodStr,
         discountAmount: 0,
+        isRush: isRushOrder,
         status: initialStatus && String(initialStatus).trim() ? String(initialStatus).trim().toLowerCase() : "pending",
         total,
         items: {

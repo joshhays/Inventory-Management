@@ -290,11 +290,23 @@
             fetch("/api/products/" + id + (params.toString() ? "?" + params.toString() : ""), { credentials: "include" }).then((r) => r.ok ? r.json() : null)
           ));
           products.forEach((p) => {
-            if (p && p.pricingMatrix) {
+            if (!p) return;
+            if (p.pricingMatrix) {
               cart.filter((i) => i.productId === p.id && i.printData).forEach((i) => { i.pricingMatrix = p.pricingMatrix; });
             }
+            if (p.rushFee != null && Number(p.rushFee) > 0) {
+              cart.filter((i) => i.productId === p.id).forEach((i) => {
+                i.rushFee = Number(p.rushFee);
+                if (typeof i.rushSelected !== "boolean") i.rushSelected = false;
+              });
+            } else {
+              cart.filter((i) => i.productId === p.id).forEach((i) => {
+                delete i.rushFee;
+                delete i.rushSelected;
+              });
+            }
           });
-          if (products.some((p) => p && p.pricingMatrix)) setCart(cart);
+          if (products.some((p) => p && (p.pricingMatrix || (p.rushFee != null && Number(p.rushFee) > 0)))) setCart(cart);
         } catch (_) {}
       }
 
@@ -302,9 +314,13 @@
       const getItemPrice = (i, idx) => effectivePrices.has(idx) ? effectivePrices.get(idx) : (i.price || 0);
 
       const subtotal = cart.reduce((s, i, idx) => s + getItemPrice(i, idx) * (i.quantity || 1), 0);
+      const rushTotal = cart.reduce((s, i) => {
+        const rf = i.rushFee != null ? Number(i.rushFee) : 0;
+        return s + (rf > 0 && i.rushSelected ? rf : 0);
+      }, 0);
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
       const shippingCost = window.selectedShipping?.totalCharges ?? 0;
-      const total = Math.round((subtotal + shippingCost) * 100) / 100;
+      const total = Math.round((subtotal + rushTotal + shippingCost) * 100) / 100;
 
       content.innerHTML = `
         <h1 class="store-cart-heading">Shopping cart</h1>
@@ -349,6 +365,11 @@
                   </div>
                   <button type="button" class="store-cart-delete" data-idx="${idx}">Delete</button>
                 </div>
+                ${(function() {
+                  const rf = i.rushFee != null ? Number(i.rushFee) : 0;
+                  if (!(rf > 0)) return "";
+                  return '<div class="store-cart-rush-row"><label class="store-cart-rush-label"><input type="checkbox" class="store-cart-rush-cb" data-idx="' + idx + '"' + (i.rushSelected ? " checked" : "") + '><span>Rush processing <span class="store-cart-rush-fee">+$' + formatPrice(rf) + "</span></span></label></div>";
+                })()}
               </div>
               <div class="store-cart-card-total">
                 $${formatPrice(itemPrice * (i.quantity || 1))}
@@ -368,6 +389,7 @@
           <span>Subtotal (${itemCount} ${itemCount === 1 ? "item" : "items"})</span>
           <span>$${formatPrice(subtotal)}</span>
         </div>
+        ${rushTotal > 0 ? `<div class="store-summary-row store-summary-rush"><span>Rush processing</span><span>$${formatPrice(rushTotal)}</span></div>` : ""}
         ${shippingCost > 0 ? `<div class="store-summary-row"><span>Shipping (${escape(window.selectedShipping?.serviceName || "")})</span><span>$${formatPrice(shippingCost)}</span></div>` : ""}
         <div class="store-summary-row store-summary-total">
           <span>Order total</span>
@@ -397,6 +419,17 @@
       });
       content.querySelectorAll(".store-cart-delete").forEach((btn) => {
         btn.addEventListener("click", async () => { await updateCartItemByIdx(Number(btn.dataset.idx), 0, true); });
+      });
+      content.querySelectorAll(".store-cart-rush-cb").forEach((cb) => {
+        cb.addEventListener("change", () => {
+          const idx = Number(cb.dataset.idx);
+          const c = getCart();
+          if (c[idx]) {
+            c[idx].rushSelected = !!cb.checked;
+            setCart(c);
+            render();
+          }
+        });
       });
 
       loadCartPODPreviews(cart, content);
@@ -604,6 +637,7 @@
               productId: i.productId,
               quantity: i.quantity || 1,
               ...(i.printData && Object.keys(i.printData).length ? { printData: i.printData } : {}),
+              ...(i.rushFee != null && Number(i.rushFee) > 0 && i.rushSelected ? { rush: true } : {}),
             })),
           };
         const res = await fetch("/api/customer/orders", {
