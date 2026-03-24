@@ -79,7 +79,7 @@ async function create({ username, email, password, name, isAdmin, isUser, groupI
   return authService.toSafeUser(user);
 }
 
-async function update(id, { email, password, name, isAdmin, isUser, groupIds, adminGroupIds }) {
+async function update(id, { username, email, password, name, isAdmin, isUser, groupIds, adminGroupIds }) {
   const existing = await prisma.user.findUnique({
     where: { id: Number(id) },
     include: { groups: true },
