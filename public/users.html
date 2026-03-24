@@ -81,8 +81,8 @@
         </div>
         <div class="modal-row" id="adminGroupsRow" style="display:none">
           <label>Admin Group <span class="required" style="color: var(--danger);">*</span></label>
-          <select id="adminGroups" multiple size="4" style="min-height: 80px;" required>
-            <option value="">— Select at least one —</option>
+          <select id="adminGroups" multiple size="4" style="min-height: 80px;">
+            <option value="" disabled>— Select at least one (when Admin is checked) —</option>
           </select>
           <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Required for admin users. Access is determined by the <a href="/admin/admin-access" target="_blank">Admin Access</a> tab. Hold Ctrl/Cmd to select multiple groups. <a href="/admin/groups">Manage admin groups</a>.</p>
         </div>
@@ -219,12 +219,18 @@
     function populateAdminGroupsSelect(selectedIds = []) {
       const sel = document.getElementById("adminGroups");
       if (adminGroups.length === 0) {
-        sel.innerHTML = '<option value="">— Create admin groups first —</option>';
+        sel.innerHTML = '<option value="" disabled>— Create admin groups first —</option>';
       } else {
         sel.innerHTML = adminGroups.map((g) =>
           `<option value="${g.id}" ${selectedIds.includes(g.id) ? "selected" : ""}>${escape(g.name)}</option>`
         ).join("");
       }
+    }
+
+    function syncAdminGroupsRequired() {
+      const isAdmin = document.getElementById("userIsAdmin").checked;
+      const sel = document.getElementById("adminGroups");
+      if (sel) sel.required = isAdmin && adminGroups.length > 0;
     }
 
     function openCreate() {
@@ -244,6 +250,7 @@
       populateUserGroupsSelect([]);
       populateAdminGroupsSelect([]);
       document.getElementById("adminGroupsRow").style.display = "none";
+      syncAdminGroupsRequired();
       userModal.classList.add("open");
     }
 
@@ -266,6 +273,7 @@
       populateUserGroupsSelect(u.groupIds || []);
       populateAdminGroupsSelect(u.adminGroupIds || []);
       document.getElementById("adminGroupsRow").style.display = u.isAdmin ? "block" : "none";
+      syncAdminGroupsRequired();
       userModal.classList.add("open");
     }
 
@@ -290,10 +298,12 @@
     document.getElementById("userIsAdmin").addEventListener("change", () => {
       const isAdmin = document.getElementById("userIsAdmin").checked;
       document.getElementById("adminGroupsRow").style.display = isAdmin ? "block" : "none";
+      syncAdminGroupsRequired();
     });
 
     userForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      syncAdminGroupsRequired();
       const username = document.getElementById("userUsername").value.trim();
       const email = document.getElementById("userEmail").value.trim();
       const password = document.getElementById("userPassword").value;
