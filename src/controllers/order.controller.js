@@ -1,10 +1,7 @@
-const path = require("path");
-const fs = require("fs");
 const orderService = require("../services/order.service");
 const shippingService = require("../services/shipping.service");
 const approvalService = require("../services/approval.service");
-const { generateImprintOnlyPdf } = require("../services/podPdf.service");
-const { businessCardTemplate } = require("../podTemplates");
+const orderPrintPdfService = require("../services/orderPrintPdf.service");
 
 const approveOrder = async (req, res, next) => {
   try {
@@ -198,21 +195,12 @@ const getOrderItemPrintPdf = async (req, res, next) => {
     if (!item) {
       return res.status(404).json({ message: "Order item not found." });
     }
-    let userData = {};
-    if (item.printData && typeof item.printData === "string" && item.printData.trim()) {
-      try {
-        userData = JSON.parse(item.printData);
-      } catch (_) {
-        return res.status(400).json({ message: "Invalid print data for this item." });
-      }
-    }
-    if (Object.keys(userData).length === 0) {
+    const pdfBuffer = await orderPrintPdfService.generateApprovalPdfForItem(item);
+    if (!pdfBuffer) {
       return res.status(400).json({ message: "No print data for this item." });
     }
 
-    const pdfBuffer = await generateImprintOnlyPdf(userData, businessCardTemplate);
-
-    const filename = `order-${orderId}-item-${item.id}-print.pdf`;
+    const filename = `order-${orderId}-item-${item.id}-proof.pdf`;
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `inline; filename="${filename}"`);
     res.send(pdfBuffer);

@@ -43,7 +43,24 @@ const wasabiService = {
     }
   },
 
-  // 2. Upload a file (Logo, Product Image, etc.)
+  // 2. Get file bytes from bucket (for server-side PDF generation)
+  async getFileBuffer(fileKey) {
+    if (!fileKey || !isConfigured()) return null;
+    try {
+      const command = new GetObjectCommand({
+        Bucket: process.env.WASABI_BUCKET,
+        Key: fileKey,
+      });
+      const response = await s3Client.send(command);
+      const chunks = [];
+      for await (const chunk of response.Body) chunks.push(chunk);
+      return Buffer.concat(chunks);
+    } catch (_) {
+      return null;
+    }
+  },
+
+  // 3. Upload a file (Logo, Product Image, etc.)
   async uploadFile(fileBuffer, fileName, contentType, subfolder) {
     if (!isConfigured()) return null;
     const base = subfolder ? `uploads/${subfolder}` : "uploads";
