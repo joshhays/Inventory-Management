@@ -55,7 +55,11 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
   try {
     const user = req.user;
     const { customerPhone, shippingAddress, shipping, shippingCost, shippingMethod, items } = req.body;
-    const customerName = req.body.customerName || user.name || user.email.split("@")[0];
+    const customerName =
+      req.body.customerName ||
+      (shipping?.name ? String(shipping.name).trim() : null) ||
+      user.name ||
+      user.email.split("@")[0];
     const customerEmail = (req.body.customerEmail || user.email).toLowerCase().trim();
 
     if (!items || !Array.isArray(items) || items.length === 0) {

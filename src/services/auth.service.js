@@ -1,7 +1,9 @@
+const crypto = require("crypto");
 const prisma = require("../lib/prisma");
 const bcrypt = require("bcrypt");
 
 const SALT_ROUNDS = 10;
+const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
 async function findByEmail(email) {
   return prisma.user.findUnique({
@@ -31,6 +33,39 @@ async function hashPassword(plainPassword) {
   return bcrypt.hash(plainPassword, SALT_ROUNDS);
 }
 
+async function createPasswordResetToken(email) {
+  const user = await findByEmail(email);
+  if (!user) return null;
+
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + RESET_TOKEN_EXPIRY_MS);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordResetToken: token, passwordResetExpires: expires },
+  });
+
+  return { token, user };
+}
+
+async function findUserByResetToken(token) {
+  if (!token || typeof token !== "string" || token.length < 32) return null;
+  const user = await prisma.user.findFirst({
+    where: {
+      passwordResetToken: token,
+      passwordResetExpires: { gt: new Date() },
+    },
+  });
+  return user;
+}
+
+async function clearPasswordReset(userId) {
+  await prisma.user.update({
+    where: { id: Number(userId) },
+    data: { passwordResetToken: null, passwordResetExpires: null },
+  });
+}
+
 function toSafeUser(user) {
   if (!user) return null;
   const { password, ...rest } = user;
@@ -55,5 +90,8 @@ module.exports = {
   findById,
   verifyPassword,
   hashPassword,
+  createPasswordResetToken,
+  findUserByResetToken,
+  clearPasswordReset,
   toSafeUser,
 };

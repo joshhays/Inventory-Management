@@ -19,6 +19,16 @@ async function getProfile(req, res, next) {
   }
 }
 
+function isValidName(name, email) {
+  if (name === null || name === undefined) return true;
+  const n = String(name).trim();
+  const e = String(email).toLowerCase().trim();
+  if (n === "") return false;
+  if (n.toLowerCase() === e) return false;
+  if (n.toLowerCase() === e.split("@")[0]) return false;
+  return true;
+}
+
 async function updateProfile(req, res, next) {
   try {
     const userId = req.session?.user?.id;
@@ -26,6 +36,17 @@ async function updateProfile(req, res, next) {
       return res.status(401).json({ message: "Not authenticated." });
     }
     const { name, phone } = req.body;
+    if (name !== undefined) {
+      const existing = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true },
+      });
+      if (!isValidName(name, existing?.email || "")) {
+        return res.status(400).json({
+          message: "Name must be different from your email address.",
+        });
+      }
+    }
     const user = await prisma.user.update({
       where: { id: userId },
       data: {

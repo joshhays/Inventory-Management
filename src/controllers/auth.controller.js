@@ -1,5 +1,15 @@
 const authService = require("../services/auth.service");
 
+function isValidName(name, email) {
+  if (!name || typeof name !== "string") return false;
+  const n = String(name).trim();
+  const e = String(email).toLowerCase().trim();
+  if (!n) return false;
+  if (n.toLowerCase() === e) return false;
+  if (n.toLowerCase() === e.split("@")[0]) return false;
+  return true;
+}
+
 const register = async (req, res, next) => {
   try {
     const { email, password, name } = req.body;
@@ -8,6 +18,11 @@ const register = async (req, res, next) => {
     }
     if (password.length < 6) {
       return res.status(400).json({ message: "Password must be at least 6 characters." });
+    }
+    if (!isValidName(name, email)) {
+      return res.status(400).json({
+        message: "Name is required and must be different from your email (use your real name, not your email address).",
+      });
     }
     const emailNorm = String(email).toLowerCase().trim();
     const existing = await authService.findByEmail(emailNorm);
@@ -20,7 +35,7 @@ const register = async (req, res, next) => {
       data: {
         email: emailNorm,
         password: hashed,
-        name: name ? String(name).trim() : null,
+        name: String(name).trim(),
         isAdmin: false,
         isUser: true,
       },
@@ -99,9 +114,72 @@ const me = async (req, res, next) => {
   }
 };
 
+const requestPasswordReset = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email || typeof email !== "string" || !email.trim()) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const result = await authService.createPasswordResetToken(email.trim().toLowerCase());
+    // Always return success to avoid leaking whether an email exists
+    const baseUrl = (process.env.APP_URL || process.env.BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || "")
+      .replace(/\/$/, "");
+    const baseFull = baseUrl ? (baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`) : "";
+
+    if (result && baseFull) {
+      const resetLink = `${baseFull}/reset-password.html?token=${encodeURIComponent(result.token)}`;
+      const mailService = require("../services/mail.service");
+      try {
+        await mailService.sendPasswordResetEmail(result.user.email, resetLink, result.user.name);
+      } catch (mailErr) {
+        console.error("Password reset email failed:", mailErr.message);
+        return res.status(500).json({ message: "Failed to send email. Please try again later." });
+      }
+    }
+
+    res.status(200).json({
+      message: "If an account exists with that email, you will receive a password reset link.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and new password are required." });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
+    }
+
+    const user = await authService.findUserByResetToken(token);
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset link. Please request a new one." });
+    }
+
+    const hashed = await authService.hashPassword(newPassword);
+    await authService.clearPasswordReset(user.id);
+    const prisma = require("../lib/prisma");
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashed },
+    });
+
+    res.status(200).json({ message: "Password reset successfully. You can now sign in." });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
   me,
+  requestPasswordReset,
+  resetPassword,
 };

@@ -8,6 +8,8 @@ router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.post("/logout", authController.logout);
 router.get("/me", requireAuth, authController.me);
+router.post("/forgot-password", authController.requestPasswordReset);
+router.post("/reset-password", authController.resetPassword);
 
 router.get("/debug", (req, res) => {
   res.json({

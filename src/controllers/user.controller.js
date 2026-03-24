@@ -1,5 +1,15 @@
 const userService = require("../services/user.service");
 
+function isValidName(name, email) {
+  if (name === null || name === undefined) return true;
+  const n = String(name).trim();
+  const e = String(email).toLowerCase().trim();
+  if (n === "") return false;
+  if (n.toLowerCase() === e) return false;
+  if (n.toLowerCase() === e.split("@")[0]) return false;
+  return true;
+}
+
 const getUsers = async (req, res, next) => {
   try {
     const users = await userService.findAll();
@@ -26,6 +36,11 @@ const createUser = async (req, res, next) => {
     const { email, password, name, isAdmin, isUser, groupIds, adminGroupIds } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required." });
+    }
+    if (!isValidName(name, email)) {
+      return res.status(400).json({
+        message: "Name is required and must be different from the email address.",
+      });
     }
     const isAdminUser = isAdmin ?? false;
     const adminGroupIdList = Array.isArray(adminGroupIds)
@@ -75,6 +90,16 @@ const updateUser = async (req, res, next) => {
       return res.status(400).json({
         message: "Admin users must be assigned at least one admin group.",
       });
+    }
+
+    if (name !== undefined) {
+      const existing = await userService.findById(id);
+      const emailToCheck = (email !== undefined ? String(email).toLowerCase().trim() : null) || existing?.email || "";
+      if (!isValidName(name, emailToCheck)) {
+        return res.status(400).json({
+          message: "Name must be different from the email address.",
+        });
+      }
     }
 
     const user = await userService.update(id, {

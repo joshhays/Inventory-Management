@@ -17,7 +17,7 @@
       <form id="registerForm" class="login-form">
         <div class="login-field">
           <label for="name">Name</label>
-          <input type="text" id="name" name="name" autocomplete="name" placeholder="Your name">
+          <input type="text" id="name" name="name" required autocomplete="name" placeholder="Your full name (not your email)">
         </div>
         <div class="login-field">
           <label for="email">Email</label>
@@ -49,7 +49,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: document.getElementById("name").value.trim() || undefined,
+            name: document.getElementById("name").value.trim(),
             email: document.getElementById("email").value.trim(),
             password: document.getElementById("password").value,
           }),

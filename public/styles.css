@@ -22,6 +22,7 @@
   --accent-hover: #334155;
   --success: #10b981;
   --success-hover: #059669;
+  --successBg: #ecfdf5;
   --warning: #f59e0b;
   --danger: #dc2626;
   --danger-hover: #b91c1c;
@@ -382,6 +383,28 @@ body::before {
   color: var(--danger);
   background: var(--dangerBg);
   border-radius: var(--radius-sm);
+}
+
+.login-success {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: var(--success);
+  background: var(--successBg);
+  border-radius: var(--radius-sm);
+}
+
+.login-forgot {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.login-forgot a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.login-forgot a:hover {
+  text-decoration: underline;
 }
 
 .login-btn {

@@ -181,7 +181,53 @@ async function triggerNotification(orderId, templateName) {
   return { success: true, messageId: results[0], messageIds: results };
 }
 
+/**
+ * Send a password reset email.
+ * @param {string} to - Email address
+ * @param {string} resetLink - Full URL to the reset page with token
+ * @param {string} [userName] - Optional display name
+ * @returns {Promise<{ success: boolean, messageId?: string }>}
+ */
+async function sendPasswordResetEmail(to, resetLink, userName) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error("RESEND_API_KEY is required");
+
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  const fromName = process.env.RESEND_FROM_NAME || "Inventory System";
+  const displayName = userName || to.split("@")[0];
+
+  const html = `
+    <p>Hi ${escapeHtml(displayName)},</p>
+    <p>You requested a password reset. Click the link below to set a new password:</p>
+    <p><a href="${escapeHtml(resetLink)}" style="color:#2563eb;text-decoration:underline">Reset password</a></p>
+    <p>Or copy this link: ${escapeHtml(resetLink)}</p>
+    <p>This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>
+    <p>— ${escapeHtml(fromName)}</p>
+  `;
+
+  const resend = getClient();
+  const { data, error } = await resend.emails.send({
+    from: `${fromName} <${fromEmail}>`,
+    to: String(to).toLowerCase().trim(),
+    subject: "Reset your password",
+    html,
+  });
+
+  if (error) throw new Error(`Resend error: ${error.message}`);
+  return { success: true, messageId: data?.id };
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 module.exports = {
   triggerNotification,
   replacePlaceholders,
+  sendPasswordResetEmail,
 };
