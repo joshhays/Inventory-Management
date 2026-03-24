@@ -15,12 +15,12 @@ const Y_ROLE = Y_TITLE + STEP_TITLE_TO_ROLE_IN;
 
 /**
  * Clear gap between bottom of one contact line and top of the next ≈ 0.05".
- * Baseline step ≈ gap + descender + ascender for 9pt copy (tune if you change font size).
+ * Baseline step = gap + line band (ascender/descender) for 9pt Knockout — prior
+ * desc/asc estimates were too large and read as ~0.1" clear instead of 0.05".
  */
-const CONTACT_STACK_GAP_IN = 0.05;
-const CONTACT_9PT_DESC_IN = 0.035;
-const CONTACT_9PT_ASC_IN = 0.095;
-const CONTACT_BASELINE_STEP_IN = CONTACT_STACK_GAP_IN + CONTACT_9PT_DESC_IN + CONTACT_9PT_ASC_IN;
+const CONTACT_STACK_CLEAR_IN = 0.05;
+const CONTACT_9PT_LINE_BAND_IN = 0.08;
+const CONTACT_BASELINE_STEP_IN = CONTACT_STACK_CLEAR_IN + CONTACT_9PT_LINE_BAND_IN;
 
 const Y_EMAIL = 1.525;
 const Y_PHONE = Y_EMAIL + CONTACT_BASELINE_STEP_IN;
