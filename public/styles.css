@@ -2202,6 +2202,22 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   gap: 1rem;
 }
 
+.store-cart-disclaimer {
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  max-width: 52rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--glass-border-subtle);
+  border-radius: var(--radius);
+}
+
+.store-cart-disclaimer-text {
+  margin: 0;
+}
+
 .store-cart-card {
   display: grid;
   grid-template-columns: 120px 1fr auto;

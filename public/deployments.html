@@ -88,6 +88,11 @@
           <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">JSON: address, phone, email. Or plain text.</p>
         </div>
         <div class="modal-row">
+          <label>Cart disclaimer <span style="color: var(--text-muted);">(storefront cart)</span></label>
+          <textarea id="deploymentCartDisclaimer" rows="5" placeholder="e.g. Standard orders ship within 4 business days after approval. Rush next-day: check Rush (+$50). Shipping estimates are from ship date, not order date."></textarea>
+          <p class="kit-modal-hint" style="margin: 0.25rem 0 0;">Shown on the customer cart for this deployment. Plain text; line breaks are kept.</p>
+        </div>
+        <div class="modal-row">
           <label class="form-check-label">
             <input type="checkbox" id="deploymentShippingEnabled" checked>
             <span>Shipping API enabled</span>
@@ -130,6 +135,7 @@
     const brandColor2Input = document.getElementById("deploymentBrandColor2");
     const brandColor2Hex = document.getElementById("deploymentBrandColor2Hex");
     const customerInfoInput = document.getElementById("deploymentCustomerInfo");
+    const cartDisclaimerInput = document.getElementById("deploymentCartDisclaimer");
     const editIdInput = document.getElementById("deploymentEditId");
 
     btnChooseLogo.addEventListener("click", () => logoFileInput.click());
@@ -232,6 +238,7 @@
               brandColor2Input.value = d.brandColor2 || "#e2e8f0";
               brandColor2Hex.value = d.brandColor2 || "#e2e8f0";
               customerInfoInput.value = d.customerInfo || "";
+              cartDisclaimerInput.value = d.cartDisclaimer || "";
               document.getElementById("deploymentShippingEnabled").checked = d.shippingEnabled !== false;
               document.getElementById("deploymentModalTitle").textContent = "Edit Deployment";
               document.getElementById("btnSubmit").textContent = "Save";
@@ -330,6 +337,7 @@
       brandColor2Input.value = "#e2e8f0";
       brandColor2Hex.value = "#e2e8f0";
       customerInfoInput.value = "";
+      cartDisclaimerInput.value = "";
       document.getElementById("deploymentShippingEnabled").checked = true;
       categoriesRow.style.display = "none";
       categoriesList.innerHTML = "";
@@ -366,6 +374,7 @@
         brandColor1: brandColor1Hex.value.trim() || undefined,
         brandColor2: brandColor2Hex.value.trim() || undefined,
         customerInfo: customerInfoInput.value.trim() || undefined,
+        cartDisclaimer: cartDisclaimerInput.value.trim() || null,
         shippingEnabled: document.getElementById("deploymentShippingEnabled").checked,
       };
       try {

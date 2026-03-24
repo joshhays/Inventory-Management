@@ -18,7 +18,7 @@ async function findBySlug(slug) {
   });
 }
 
-async function create({ name, slug, logoUrl, brandColor1, brandColor2, customerInfo, shippingEnabled }) {
+async function create({ name, slug, logoUrl, brandColor1, brandColor2, customerInfo, cartDisclaimer, shippingEnabled }) {
   return prisma.deployment.create({
     data: {
       name: String(name).trim(),
@@ -27,12 +27,13 @@ async function create({ name, slug, logoUrl, brandColor1, brandColor2, customerI
       brandColor1: brandColor1 ? String(brandColor1).trim() || null : null,
       brandColor2: brandColor2 ? String(brandColor2).trim() || null : null,
       customerInfo: customerInfo != null ? String(customerInfo).trim() || null : null,
+      cartDisclaimer: cartDisclaimer != null && String(cartDisclaimer).trim() ? String(cartDisclaimer).trim() : null,
       shippingEnabled: shippingEnabled !== false,
     },
   });
 }
 
-async function update(id, { name, slug, logoUrl, brandColor1, brandColor2, customerInfo, shippingEnabled, adminAccessConfig }) {
+async function update(id, { name, slug, logoUrl, brandColor1, brandColor2, customerInfo, cartDisclaimer, shippingEnabled, adminAccessConfig }) {
   const data = {};
   if (name != null) data.name = String(name).trim();
   if (slug != null) data.slug = String(slug).trim().toLowerCase().replace(/\s+/g, "-");
@@ -40,6 +41,9 @@ async function update(id, { name, slug, logoUrl, brandColor1, brandColor2, custo
   if (brandColor1 !== undefined) data.brandColor1 = brandColor1 ? String(brandColor1).trim() || null : null;
   if (brandColor2 !== undefined) data.brandColor2 = brandColor2 ? String(brandColor2).trim() || null : null;
   if (customerInfo !== undefined) data.customerInfo = customerInfo ? String(customerInfo).trim() : null;
+  if (cartDisclaimer !== undefined) {
+    data.cartDisclaimer = cartDisclaimer != null && String(cartDisclaimer).trim() ? String(cartDisclaimer).trim() : null;
+  }
   if (shippingEnabled !== undefined) data.shippingEnabled = shippingEnabled !== false;
   if (adminAccessConfig !== undefined) data.adminAccessConfig = adminAccessConfig ? JSON.stringify(adminAccessConfig) : null;
   if (Object.keys(data).length === 0) return findById(id);

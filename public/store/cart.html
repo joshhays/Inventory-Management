@@ -6,6 +6,7 @@
   <title>Cart - Store</title>
   <link rel="stylesheet" href="/styles.css">
   <script>var _b="__STORE_BASE__",_s="__STORE_SLUG__";if(!_b||_b.indexOf("__")===0){var m=location.pathname.match(/^\/store\/([^/]+)/);window.STORE_BASE=m?"/store/"+m[1]:"/store";window.STORE_SLUG=m?m[1]:null;}else{window.STORE_BASE=_b;window.STORE_SLUG=_s;}window.STORE_CART_KEY=window.STORE_SLUG?"storeCart_"+window.STORE_SLUG:"storeCart";</script>
+  <script>window.STORE_CART_DISCLAIMER=__STORE_CART_DISCLAIMER_JS__;</script>
 </head>
 <body>
   <div class="app-layout">
@@ -98,6 +99,12 @@
       const div = document.createElement("div");
       div.textContent = s ?? "";
       return div.innerHTML;
+    }
+
+    function cartDisclaimerBlock() {
+      const t = typeof window.STORE_CART_DISCLAIMER === "string" ? window.STORE_CART_DISCLAIMER.trim() : "";
+      if (!t) return "";
+      return `<div class="store-cart-disclaimer" role="note"><p class="store-cart-disclaimer-text">${escape(t).replace(/\n/g, "<br>")}</p></div>`;
     }
 
     function formatPrice(n) {
@@ -239,6 +246,7 @@
             <p>Add items from the store to get started.</p>
             <a href="__STORE_BASE__/" class="btn-apply store-cart-empty-btn">Continue shopping</a>
           </div>
+          ${cartDisclaimerBlock()}
         `;
         sidebar.style.display = "none";
         return;
@@ -352,6 +360,7 @@
             )
             .join("")}
         </div>
+        ${cartDisclaimerBlock()}
       `;
 
       summaryEl.innerHTML = `

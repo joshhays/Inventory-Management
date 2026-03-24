@@ -81,6 +81,7 @@ model Deployment {
   brandColor1       String?       // PMS color 1 (hex) - header
   brandColor2       String?      // PMS color 2 (hex) - background gradient
   customerInfo      String?       // JSON: { address?, phone?, email?, ... }
+  cartDisclaimer    String?       @db.Text // Shown on customer cart (shipping/rush policy, etc.)
   shippingEnabled   Boolean      @default(true) // false = no EasyPost rates/labels for this deployment
   adminAccessConfig String?       // JSON: Pageflex-style access matrix [{ category, pages, viewModifyGroupIds, viewOnlyGroupIds }]
   createdAt         DateTime     @default(now())

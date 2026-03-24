@@ -34,6 +34,14 @@ function lighten(hex, amount) {
   return "#" + m.map((x) => Math.min(255, Math.round(parseInt(x, 16) + (255 - parseInt(x, 16)) * amount)).toString(16).padStart(2, "0")).join("");
 }
 
+/** JSON.stringify for embedding in <script> (avoids breaking on </script> in user text). */
+function jsonForInlineScript(value) {
+  return JSON.stringify(value ?? "")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029")
+    .replace(/</g, "\\u003c");
+}
+
 function serveStorePage(slug, page, dep, res, next) {
   const file = page === "" || page === "index" ? "index.html" : `${page}.html`;
   const filePath = path.join(storeDir, file);
@@ -56,7 +64,8 @@ function serveStorePage(slug, page, dep, res, next) {
       .replace(/__STORE_BASE__/g, base)
       .replace(/__STORE_SLUG__/g, slug)
       .replace(/__STORE_LOGO__/g, logoUrl)
-      .replace(/__STORE_NAME__/g, storeName);
+      .replace(/__STORE_NAME__/g, storeName)
+      .replace(/__STORE_CART_DISCLAIMER_JS__/g, jsonForInlineScript(dep?.cartDisclaimer));
     if (brandCss.length) {
       out = out.replace("</head>", `<style id="store-brand">:root{${brandCss.join(" ")}}</style>\n</head>`);
     }
