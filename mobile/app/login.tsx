@@ -20,29 +20,29 @@ import { useDeployment } from '@/contexts/DeploymentContext';
 export default function LoginScreen() {
   const { deployment, clearDeployment } = useDeployment();
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = useCallback(async () => {
-    const e = email.trim();
+    const u = username.trim();
     const p = password;
-    if (!e || !p) {
-      setError('Email and password are required.');
+    if (!u || !p) {
+      setError('Username and password are required.');
       return;
     }
     setError('');
     setSubmitting(true);
     try {
-      await login(e, p);
+      await login(u, p);
       // AuthContext updates, layout shows main app
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setSubmitting(false);
     }
-  }, [email, password, login]);
+  }, [username, password, login]);
 
   const logoUrl = deployment?.logoUrl;
 
@@ -74,11 +74,10 @@ export default function LoginScreen() {
 
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder="Username"
               placeholderTextColor={WebTheme.textMuted}
-              value={email}
-              onChangeText={(t) => { setEmail(t); setError(''); }}
-              keyboardType="email-address"
+              value={username}
+              onChangeText={(t) => { setUsername(t); setError(''); }}
               autoCapitalize="none"
               autoCorrect={false}
               editable={!submitting}

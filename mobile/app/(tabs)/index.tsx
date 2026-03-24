@@ -53,7 +53,7 @@ export default function DashboardScreen() {
             </ThemedText>
             <ThemedText style={styles.subtitle}>
               {deployment?.name ?? 'Inventory'}
-              {user?.email ? ` · ${user.email}` : ''}
+              {user?.username ? ` · ${user.username}` : ''}
             </ThemedText>
           </View>
           <View style={styles.headerActions}>

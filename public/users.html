@@ -30,6 +30,7 @@
         <table id="table" style="display:none">
           <thead>
             <tr>
+              <th>Username</th>
               <th>Email</th>
               <th>Name</th>
               <th>Admin</th>
@@ -50,6 +51,10 @@
     <div class="modal" style="min-width: 400px;">
       <h3 id="userModalTitle">Create User</h3>
       <form id="userForm">
+        <div class="modal-row">
+          <label>Username <span class="required" style="color: var(--danger);">*</span></label>
+          <input type="text" id="userUsername" required placeholder="Username (letters, numbers, _ -)">
+        </div>
         <div class="modal-row">
           <label>Email</label>
           <input type="email" id="userEmail" required placeholder="user@example.com">
@@ -178,6 +183,7 @@
     function render() {
       body.innerHTML = users.map((u) => `
         <tr data-id="${u.id}">
+          <td>${escape(u.username) || "—"}</td>
           <td>${escape(u.email)}</td>
           <td>${escape(u.name) || "—"}</td>
           <td>${u.isAdmin ? "✓" : "—"}</td>
@@ -224,6 +230,8 @@
     function openCreate() {
       editingId = null;
       document.getElementById("userModalTitle").textContent = "Create User";
+      document.getElementById("userUsername").value = "";
+      document.getElementById("userUsername").disabled = false;
       document.getElementById("userEmail").value = "";
       document.getElementById("userEmail").disabled = false;
       document.getElementById("userPassword").value = "";
@@ -244,6 +252,8 @@
       if (!u) return;
       editingId = id;
       document.getElementById("userModalTitle").textContent = "Edit User";
+      document.getElementById("userUsername").value = u.username || "";
+      document.getElementById("userUsername").disabled = false;
       document.getElementById("userEmail").value = u.email;
       document.getElementById("userEmail").disabled = true;
       document.getElementById("userPassword").value = "";
@@ -268,7 +278,7 @@
       const u = users.find((x) => x.id === id);
       deleteTargetId = id;
       document.getElementById("deleteConfirmText").textContent =
-        u ? `Are you sure you want to delete ${escape(u.email)}?` : "Are you sure?";
+        u ? `Are you sure you want to delete ${escape(u.username || u.email)}?` : "Are you sure?";
       deleteModal.classList.add("open");
     }
 
@@ -284,6 +294,7 @@
 
     userForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      const username = document.getElementById("userUsername").value.trim();
       const email = document.getElementById("userEmail").value.trim();
       const password = document.getElementById("userPassword").value;
       const name = document.getElementById("userName").value.trim() || null;
@@ -317,7 +328,7 @@
 
       try {
         if (editingId) {
-          const body = { email, name, isAdmin, isUser, groupIds, adminGroupIds };
+          const body = { username, email, name, isAdmin, isUser, groupIds, adminGroupIds };
           if (password) body.password = password;
           const res = await fetch(`/api/users/${editingId}`, {
             method: "PATCH",
@@ -334,7 +345,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify({ email, password, name, isAdmin, isUser, groupIds, adminGroupIds }),
+            body: JSON.stringify({ username, email, password, name, isAdmin, isUser, groupIds, adminGroupIds }),
           });
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));

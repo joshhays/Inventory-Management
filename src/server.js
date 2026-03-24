@@ -32,6 +32,10 @@ if (fs.existsSync(adminUiDistPath)) {
   }
 }
 
+function normalizeUsername(u) {
+  return String(u).trim().toLowerCase().replace(/[^a-z0-9_-]/g, "") || "admin";
+}
+
 async function ensureAdminUser() {
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
@@ -42,6 +46,7 @@ async function ensureAdminUser() {
 
   try {
     const emailNorm = email.toLowerCase().trim();
+    const usernameNorm = normalizeUsername(process.env.ADMIN_USERNAME || email.split("@")[0]);
     const hashed = await bcrypt.hash(password, 10);
     const existing = await prisma.user.findUnique({ where: { email: emailNorm } });
     if (existing) {
@@ -49,12 +54,18 @@ async function ensureAdminUser() {
         where: { email: emailNorm },
         data: { password: hashed, isAdmin: true },
       });
-      console.log(`Admin user ${emailNorm} updated.`);
+      console.log(`Admin user ${existing.username || emailNorm} updated.`);
     } else {
+      let username = usernameNorm;
+      let attempts = 0;
+      while (await prisma.user.findUnique({ where: { username } })) {
+        attempts++;
+        username = usernameNorm + (attempts > 1 ? attempts : "");
+      }
       await prisma.user.create({
-        data: { email: emailNorm, password: hashed, isAdmin: true, isUser: true },
+        data: { username, email: emailNorm, password: hashed, isAdmin: true, isUser: true },
       });
-      console.log(`Admin user ${emailNorm} created.`);
+      console.log(`Admin user ${username} created.`);
     }
   } catch (e) {
     console.error("Failed to ensure admin user:", e.message);

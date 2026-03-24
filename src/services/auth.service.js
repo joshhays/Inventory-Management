@@ -15,6 +15,18 @@ async function findByEmail(email) {
   });
 }
 
+async function findByUsername(username) {
+  if (!username || typeof username !== "string") return null;
+  const u = String(username).trim().toLowerCase();
+  return prisma.user.findUnique({
+    where: { username: u },
+    include: {
+      groups: { include: { group: true } },
+      adminGroups: { include: { adminGroup: true } },
+    },
+  });
+}
+
 async function findById(id) {
   return prisma.user.findUnique({
     where: { id: Number(id) },
@@ -87,6 +99,7 @@ function toSafeUser(user) {
 
 module.exports = {
   findByEmail,
+  findByUsername,
   findById,
   verifyPassword,
   hashPassword,

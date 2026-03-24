@@ -15,8 +15,8 @@
       <p class="login-store-link"><a href="/store/">← Customer store</a></p>
       <form id="loginForm" class="login-form">
         <div class="login-field">
-          <label for="email">Email</label>
-          <input type="email" id="email" name="email" required autocomplete="email" placeholder="you@example.com">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required autocomplete="username" placeholder="Your username">
         </div>
         <div class="login-field">
           <label for="password">Password</label>
@@ -30,7 +30,7 @@
   </div>
   <script>
     const form = document.getElementById("loginForm");
-    const emailInput = document.getElementById("email");
+    const usernameInput = document.getElementById("username");
     const passwordInput = document.getElementById("password");
     const errorEl = document.getElementById("loginError");
     const btn = document.getElementById("loginBtn");
@@ -47,7 +47,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: emailInput.value.trim(),
+            username: usernameInput.value.trim(),
             password: passwordInput.value,
           }),
           credentials: "include",

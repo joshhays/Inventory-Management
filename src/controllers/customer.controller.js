@@ -8,7 +8,7 @@ async function getProfile(req, res, next) {
     }
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, name: true, phone: true },
+      select: { id: true, username: true, email: true, name: true, phone: true },
     });
     if (!user) {
       return res.status(404).json({ message: "User not found." });
@@ -35,7 +35,7 @@ async function updateProfile(req, res, next) {
     if (!userId) {
       return res.status(401).json({ message: "Not authenticated." });
     }
-    const { name, phone } = req.body;
+    const { username, name, phone } = req.body;
     if (name !== undefined) {
       const existing = await prisma.user.findUnique({
         where: { id: userId },
@@ -47,13 +47,26 @@ async function updateProfile(req, res, next) {
         });
       }
     }
+    const updateData = {};
+    if (name !== undefined) updateData.name = name ? String(name).trim() : null;
+    if (phone !== undefined) updateData.phone = phone ? String(phone).trim() : null;
+    if (username !== undefined) {
+      const u = String(username).trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+      if (u.length < 2) {
+        return res.status(400).json({ message: "Username must be at least 2 characters (letters, numbers, underscores, hyphens only)." });
+      }
+      const existing = await prisma.user.findFirst({
+        where: { username: u, NOT: { id: userId } },
+      });
+      if (existing) {
+        return res.status(400).json({ message: "This username is already taken." });
+      }
+      updateData.username = u;
+    }
     const user = await prisma.user.update({
       where: { id: userId },
-      data: {
-        ...(name !== undefined && { name: name ? String(name).trim() : null }),
-        ...(phone !== undefined && { phone: phone ? String(phone).trim() : null }),
-      },
-      select: { id: true, email: true, name: true, phone: true },
+      data: updateData,
+      select: { id: true, username: true, email: true, name: true, phone: true },
     });
     return res.status(200).json({ profile: user });
   } catch (error) {

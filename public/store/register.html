@@ -16,6 +16,10 @@
       <p class="login-store-link"><a href="__STORE_BASE__/login">Already have an account? Sign in</a></p>
       <form id="registerForm" class="login-form">
         <div class="login-field">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" required autocomplete="username" placeholder="Choose a username (letters, numbers, _ -)">
+        </div>
+        <div class="login-field">
           <label for="name">Name</label>
           <input type="text" id="name" name="name" required autocomplete="name" placeholder="Your full name (not your email)">
         </div>
@@ -49,6 +53,7 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            username: document.getElementById("username").value.trim(),
             name: document.getElementById("name").value.trim(),
             email: document.getElementById("email").value.trim(),
             password: document.getElementById("password").value,

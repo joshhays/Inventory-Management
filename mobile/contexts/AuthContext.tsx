@@ -4,6 +4,7 @@ import { getApiBase } from '@/contexts/DeploymentContext';
 
 type User = {
   id: number;
+  username: string;
   email: string;
   name: string | null;
   isAdmin: boolean;
@@ -13,7 +14,7 @@ type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 };
@@ -51,11 +52,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     const base = getApiBase().replace(/\/$/, '');
     const res = await fetch(`${base}/api/auth/login`, fetchOptions({
       method: 'POST',
-      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
     }));
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {

@@ -25,6 +25,10 @@
       <section class="store-settings-section">
         <h2>Profile</h2>
         <div class="store-form-row">
+          <label for="profileUsername">Username</label>
+          <input type="text" id="profileUsername" placeholder="Your login username (letters, numbers, _ -)">
+        </div>
+        <div class="store-form-row">
           <label for="profileName">Name</label>
           <input type="text" id="profileName" placeholder="Your name">
         </div>
@@ -102,6 +106,7 @@
       }
     }
 
+    const profileUsername = document.getElementById("profileUsername");
     const profileName = document.getElementById("profileName");
     const profileEmail = document.getElementById("profileEmail");
     const profilePhone = document.getElementById("profilePhone");
@@ -126,6 +131,7 @@
         }
         const data = await res.json();
         const p = data.profile || {};
+        profileUsername.value = p.username || "";
         profileName.value = p.name || "";
         profileEmail.value = p.email || "";
         profilePhone.value = p.phone || "";
@@ -196,6 +202,7 @@
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
+            username: profileUsername.value.trim() || undefined,
             name: profileName.value.trim() || null,
             phone: profilePhone.value.trim() || null,
           }),

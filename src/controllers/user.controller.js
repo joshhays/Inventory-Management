@@ -33,9 +33,9 @@ const getUser = async (req, res, next) => {
 
 const createUser = async (req, res, next) => {
   try {
-    const { email, password, name, isAdmin, isUser, groupIds, adminGroupIds } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+    const { username, email, password, name, isAdmin, isUser, groupIds, adminGroupIds } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Username, email, and password are required." });
     }
     if (!isValidName(name, email)) {
       return res.status(400).json({
@@ -52,6 +52,7 @@ const createUser = async (req, res, next) => {
       });
     }
     const user = await userService.create({
+      username,
       email,
       password,
       name,
@@ -103,6 +104,7 @@ const updateUser = async (req, res, next) => {
     }
 
     const user = await userService.update(id, {
+      username: req.body.username,
       email,
       password,
       name,

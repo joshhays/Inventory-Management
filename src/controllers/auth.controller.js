@@ -10,14 +10,22 @@ function isValidName(name, email) {
   return true;
 }
 
+function normalizeUsername(u) {
+  return String(u).trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
+}
+
 const register = async (req, res, next) => {
   try {
-    const { email, password, name } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+    const { username, email, password, name } = req.body;
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Username, email, and password are required." });
     }
     if (password.length < 6) {
       return res.status(400).json({ message: "Password must be at least 6 characters." });
+    }
+    const usernameNorm = normalizeUsername(username);
+    if (usernameNorm.length < 2) {
+      return res.status(400).json({ message: "Username must be at least 2 characters (letters, numbers, underscores, hyphens only)." });
     }
     if (!isValidName(name, email)) {
       return res.status(400).json({
@@ -25,14 +33,21 @@ const register = async (req, res, next) => {
       });
     }
     const emailNorm = String(email).toLowerCase().trim();
-    const existing = await authService.findByEmail(emailNorm);
-    if (existing) {
+    const [existingByUsername, existingByEmail] = await Promise.all([
+      authService.findByUsername(usernameNorm),
+      authService.findByEmail(emailNorm),
+    ]);
+    if (existingByUsername) {
+      return res.status(400).json({ message: "This username is already taken." });
+    }
+    if (existingByEmail) {
       return res.status(400).json({ message: "An account with this email already exists." });
     }
     const hashed = await authService.hashPassword(password);
     const prisma = require("../lib/prisma");
     const user = await prisma.user.create({
       data: {
+        username: usernameNorm,
         email: emailNorm,
         password: hashed,
         name: String(name).trim(),
@@ -54,14 +69,14 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+    const { username, password } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ message: "Username and password are required." });
     }
 
     let user;
     try {
-      user = await authService.findByEmail(email);
+      user = await authService.findByUsername(username);
     } catch (dbError) {
       if (dbError.message?.includes("findUnique") || dbError.message?.includes("prisma")) {
         return res.status(500).json({
@@ -72,12 +87,12 @@ const login = async (req, res, next) => {
     }
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid email or password." });
+      return res.status(401).json({ message: "Invalid username or password." });
     }
 
     const valid = await authService.verifyPassword(password, user.password);
     if (!valid) {
-      return res.status(401).json({ message: "Invalid email or password." });
+      return res.status(401).json({ message: "Invalid username or password." });
     }
 
     const safeUser = authService.toSafeUser(user);
