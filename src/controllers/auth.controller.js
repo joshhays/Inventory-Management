@@ -1,4 +1,5 @@
 const authService = require("../services/auth.service");
+const deploymentService = require("../services/deployment.service");
 
 function isValidName(name, email) {
   if (!name || typeof name !== "string") return false;
@@ -147,7 +148,19 @@ const requestPasswordReset = async (req, res, next) => {
     const baseFull = baseUrl ? (baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`) : "";
 
     if (result && baseFull) {
-      const resetLink = `${baseFull}/reset-password.html?token=${encodeURIComponent(result.token)}`;
+      const rawSlug = typeof req.body.storeSlug === "string" ? req.body.storeSlug.trim() : "";
+      let resetPath = `/reset-password.html?token=${encodeURIComponent(result.token)}`;
+      if (rawSlug) {
+        try {
+          const dep = await deploymentService.findBySlug(rawSlug);
+          if (dep) {
+            resetPath = `/store/${encodeURIComponent(rawSlug)}/reset-password?token=${encodeURIComponent(result.token)}`;
+          }
+        } catch (_) {
+          /* ignore invalid slug, use default reset URL */
+        }
+      }
+      const resetLink = `${baseFull}${resetPath}`;
       const mailService = require("../services/mail.service");
       try {
         await mailService.sendPasswordResetEmail(result.user.email, resetLink, result.user.name);

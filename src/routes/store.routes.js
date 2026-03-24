@@ -6,7 +6,20 @@ const { withPresignedLogo, withPresignedLogos } = require("../lib/deploymentUrls
 
 const router = express.Router();
 const storeDir = path.resolve(__dirname, "../../public/store");
-const STORE_PAGES = ["", "index", "products", "cart", "orders", "settings", "login", "register", "fill", "approvals"];
+const STORE_PAGES = [
+  "",
+  "index",
+  "products",
+  "cart",
+  "orders",
+  "settings",
+  "login",
+  "register",
+  "forgot-password",
+  "reset-password",
+  "fill",
+  "approvals",
+];
 
 const DEFAULT_LOGO_SVG = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDgwIDM2Ij48cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMzYiIGZpbGw9IiNmMWY1ZjkiIHJ4PSI2Ii8+PHRleHQgeD0iNDAiIHk9IjIyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjNjQ3NDhiIiBmb250LXNpemU9IjEyIiBmb250LWZhbWlseT0ic3lzdGVtLXVpLHNhbnMtc2VyaWYiPlN0b3JlPC90ZXh0Pjwvc3ZnPg==";
 
