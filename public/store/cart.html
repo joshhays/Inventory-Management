@@ -321,6 +321,7 @@
       const itemCount = cart.reduce((s, i) => s + (i.quantity || 1), 0);
       const shippingCost = window.selectedShipping?.totalCharges ?? 0;
       const total = Math.round((subtotal + rushTotal + shippingCost) * 100) / 100;
+      const storeBase = window.STORE_BASE || "/store";
 
       content.innerHTML = `
         <h1 class="store-cart-heading">Shopping cart</h1>
@@ -365,6 +366,9 @@
                   </div>
                   <button type="button" class="store-cart-delete" data-idx="${idx}">Delete</button>
                 </div>
+                ${i.printData && Object.keys(i.printData).length
+                  ? '<div class="store-cart-edit-row"><a href="' + storeBase + "/fill?product=" + encodeURIComponent(i.productId) + "&editCart=" + idx + "\" class=\"btn-secondary store-cart-edit-design\">Edit design</a></div>"
+                  : ""}
                 ${(function() {
                   const rf = i.rushFee != null ? Number(i.rushFee) : 0;
                   if (!(rf > 0)) return "";

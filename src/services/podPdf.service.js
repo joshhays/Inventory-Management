@@ -12,6 +12,29 @@ const FONTS_DIR = path.resolve(__dirname, "../../fonts");
 const TRIM_WIDTH_PT = 3.5 * 72;
 const TRIM_HEIGHT_PT = 2 * 72;
 
+/** Business card copyfitting: max sizes (pt); title + role share one size after fitting. */
+const MAX_NAME_FONT_PT = 12;
+const MAX_TITLE_ROLE_FONT_PT = 9;
+
+/**
+ * After per-field copyfitting, set title and role to the same font size (min of both lines).
+ */
+function normalizeTitleRoleFontSizes(drawCommands) {
+  const titleCmds = drawCommands.filter((c) => c.key === "title");
+  const roleCmds = drawCommands.filter((c) => c.key === "role");
+  if (titleCmds.length === 0 || roleCmds.length === 0) return;
+  if (titleCmds[0].pageIndex !== roleCmds[0].pageIndex) return;
+  const titleMin = Math.min(...titleCmds.map((c) => c.fontSize));
+  const roleMin = Math.min(...roleCmds.map((c) => c.fontSize));
+  const unified = Math.min(titleMin, roleMin);
+  titleCmds.forEach((c) => {
+    c.fontSize = unified;
+  });
+  roleCmds.forEach((c) => {
+    c.fontSize = unified;
+  });
+}
+
 /** Inset from each page edge when setting CropBox (standard 1/8" bleed trim). */
 const CROP_INSET_INCHES = 0.125;
 const CROP_INSET_PT = CROP_INSET_INCHES * 72;
@@ -376,6 +399,11 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
     }
 
     let fontSize = Number(field.fontSize || 10);
+    if (key === "name") {
+      fontSize = Math.min(MAX_NAME_FONT_PT, fontSize);
+    } else if (key === "title" || key === "role") {
+      fontSize = Math.min(MAX_TITLE_ROLE_FONT_PT, fontSize);
+    }
 
     const color = templateFieldColor(field);
 
@@ -392,6 +420,12 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
         const minFontSize = field.minFontSize ? Number(field.minFontSize) || 6 : 6;
         fontSize = Math.max(minFontSize, Math.floor(fontSize * scale));
       }
+    }
+
+    if (key === "name") {
+      fontSize = Math.min(MAX_NAME_FONT_PT, fontSize);
+    } else if (key === "title" || key === "role") {
+      fontSize = Math.min(MAX_TITLE_ROLE_FONT_PT, fontSize);
     }
 
     const lineHeight = fontSize * 1.2;
@@ -417,6 +451,8 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
       drawCommands.push({ key, pageIndex, text: lines[0], x, y, fontSize, color, wrapWidthPts, font });
     }
   }
+
+  normalizeTitleRoleFontSizes(drawCommands);
 
   // Normalize font size across contact block (email, phone, address, website)
   const groupKeys = new Set(["email", "phone", "address", "website"]);
@@ -590,6 +626,11 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
     const y = yPdf - lly;
 
     let fontSize = Number(field.fontSize || 10);
+    if (key === "name") {
+      fontSize = Math.min(MAX_NAME_FONT_PT, fontSize);
+    } else if (key === "title" || key === "role") {
+      fontSize = Math.min(MAX_TITLE_ROLE_FONT_PT, fontSize);
+    }
     const color = templateFieldColor(field);
 
     const maxWidthInches = typeof field.maxWidthInches === "number" ? field.maxWidthInches : null;
@@ -606,6 +647,12 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
       }
     }
 
+    if (key === "name") {
+      fontSize = Math.min(MAX_NAME_FONT_PT, fontSize);
+    } else if (key === "title" || key === "role") {
+      fontSize = Math.min(MAX_TITLE_ROLE_FONT_PT, fontSize);
+    }
+
     const lineHeight = fontSize * 1.2;
     const lines = text.split(/\r?\n/).filter((s) => s.length > 0);
     if (lines.length === 0) continue;
@@ -619,6 +666,8 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
       drawCommands.push({ key, pageIndex, text: lines[0], x, y, fontSize, color, wrapWidthPts, font });
     }
   }
+
+  normalizeTitleRoleFontSizes(drawCommands);
 
   const groupKeys = new Set(["email", "phone", "address", "website"]);
   let groupMinSize = null;

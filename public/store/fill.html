@@ -192,6 +192,30 @@
         return { ok: true };
       }
 
+      /** Prefill POD fields from saved cart printData (single card index). */
+      function applyPrintDataToFields(config, printData, cardIdx) {
+        const pd = printData || {};
+        (config.fields || []).forEach((f) => {
+          const key = f.key || "field";
+          const el = document.getElementById("pod-" + cardIdx + "-" + key);
+          if (!el) return;
+          let v = pd[key];
+          if (v == null) v = "";
+          if (el.tagName === "SELECT") {
+            if (el.multiple) {
+              const parts = String(v).split(/\n/).map((s) => s.trim()).filter(Boolean);
+              Array.from(el.options).forEach((o) => { o.selected = parts.includes(o.value); });
+            } else {
+              el.value = String(v);
+            }
+          } else if (el.type === "tel" || (key || "").toLowerCase().includes("phone")) {
+            el.value = formatPhoneInput(String(v));
+          } else {
+            el.value = String(v);
+          }
+        });
+      }
+
       let podProofBlobUrl = null;
       let podProofDebounceTimer = null;
       const POD_PREVIEW_DEBOUNCE_MS = 500;
@@ -438,6 +462,18 @@
           document.getElementById("fillTitle").textContent = "Customize: " + (product.name || "Print");
 
           const config = getPODConfig(product);
+          let editingCartIndex = null;
+          const ecParam = params.get("editCart");
+          if (ecParam != null && ecParam !== "") {
+            const idx = parseInt(ecParam, 10);
+            const cartProbe = getCart();
+            if (!isNaN(idx) && idx >= 0 && idx < cartProbe.length) {
+              const it = cartProbe[idx];
+              if (Number(it.productId) === Number(productId) && it.printData && Object.keys(it.printData).length) {
+                editingCartIndex = idx;
+              }
+            }
+          }
 
           function getNumCards() {
             const r = document.querySelector("input[name=podNumCards]:checked");
@@ -509,14 +545,34 @@
 
           syncQtyOptions();
 
-          rebuildForms();
+          if (editingCartIndex !== null) {
+            const editItem = getCart()[editingCartIndex];
+            document.getElementById("fillTitle").textContent = "Edit: " + (product.name || "Print");
+            document.getElementById("podAddToCartBtn").textContent = "Update cart";
+            const r1 = document.querySelector("input[name=podNumCards][value=\"1\"]");
+            if (r1) r1.checked = true;
+            const numRow = document.querySelector(".pod-num-cards-row");
+            if (numRow) numRow.style.display = "none";
+            document.getElementById("fillBackLink").href = base + "/cart";
+            document.getElementById("fillCancelBtn").href = base + "/cart";
+            const qsel = document.getElementById("podQtyPerDesign");
+            if (qsel && editItem.quantity) {
+              const qv = Number(editItem.quantity);
+              if ([...qsel.options].some((o) => Number(o.value) === qv)) qsel.value = String(qv);
+            }
+            rebuildForms();
+            applyPrintDataToFields(config, editItem.printData, 0);
+            syncProofTabs(1);
+            updatePODProofFromCard(config, 0, 1);
+          } else {
+            document.getElementById("fillBackLink").href = base + "/products";
+            document.getElementById("fillCancelBtn").href = base + "/products";
+            rebuildForms();
+          }
 
           document.querySelectorAll("input[name=podNumCards]").forEach((r) => {
             r.addEventListener("change", rebuildForms);
           });
-
-          document.getElementById("fillBackLink").href = base + "/products";
-          document.getElementById("fillCancelBtn").href = base + "/products";
 
           document.getElementById("podAddToCartBtn").addEventListener("click", () => {
             const numCards = getNumCards();
@@ -536,6 +592,49 @@
               : imageFile ? getImageUrl(imageFile) : pdfFile ? previewBase : null;
             const cart = getCart();
             const available = product.quantity ?? 0;
+
+            if (editingCartIndex !== null) {
+              const printData = getPODFormValuesForCard(config, 0);
+              const validation = validatePODRequired(config, printData);
+              if (!validation.ok) {
+                alert(validation.message);
+                return;
+              }
+              if (editingCartIndex < 0 || editingCartIndex >= cart.length) {
+                alert("This cart line is no longer available. Return to the cart.");
+                return;
+              }
+              const cartItem = cart[editingCartIndex];
+              if (Number(cartItem.productId) !== Number(product.id)) {
+                alert("Product mismatch. Open the cart and try again.");
+                return;
+              }
+              const qtyOther = cart.reduce((s, it, j) => (j === editingCartIndex ? s : (it.productId === product.id ? s + (it.quantity || 1) : s)), 0);
+              if (qtyOther + qtyPerDesign > available) {
+                alert("Out of stock. Only " + available + " available.");
+                return;
+              }
+              const old = cart[editingCartIndex];
+              const newLine = {
+                ...old,
+                quantity: qtyPerDesign,
+                printData: printData,
+                price: unitPrice,
+                pricingMatrix: product.pricingMatrix || old.pricingMatrix,
+              };
+              if (product.rushFee != null && Number(product.rushFee) > 0) {
+                newLine.rushFee = Number(product.rushFee);
+                if (typeof old.rushSelected === "boolean") newLine.rushSelected = old.rushSelected;
+              } else {
+                delete newLine.rushFee;
+                delete newLine.rushSelected;
+              }
+              const newCart = cart.slice();
+              newCart[editingCartIndex] = newLine;
+              setCart(newCart);
+              window.location.href = base + "/cart";
+              return;
+            }
 
             for (let i = 0; i < numCards; i++) {
               const printData = getPODFormValuesForCard(config, i);
