@@ -11,7 +11,8 @@ const FONTS_DIR = path.resolve(__dirname, "../../fonts");
 
 const {
   CONTACT_BASELINE_STEP_IN,
-  ROLE_TO_EMAIL_BASELINE_STEP_IN,
+  CONTACT_9PT_LINE_BAND_IN,
+  ROLE_EMAIL_CLEAR_GAP_IN,
   NAME_TITLE_CLEAR_GAP_IN,
   NAME_TITLE_PAIR_BAND_REF_IN,
   STEP_TITLE_TO_ROLE_IN,
@@ -27,8 +28,8 @@ const MAX_TITLE_ROLE_FONT_PT = 9;
 /**
  * After copyfitting: stack name → title → role using the same baseline model as the contact block
  * (clear gap + scaled pair band — not pdf-lib bbox metrics, which read ~0.12" clear vs 0.05").
- * When role is drawn, anchor email → phone → address → website from the role using ROLE_TO_EMAIL_BASELINE_STEP_IN
- * then CONTACT_BASELINE_STEP_IN between each line (name Y is unchanged — template yInches).
+ * When role is drawn, anchor email → phone → address → website: clear gap from bottom of role to top of email
+ * is ROLE_EMAIL_CLEAR_GAP_IN plus scaled pair band, then CONTACT_BASELINE_STEP_IN between contact lines.
  */
 function applyBusinessCardVerticalStack(drawCommands) {
   const nameCmds = drawCommands.filter((c) => c.key === "name");
@@ -57,7 +58,9 @@ function applyBusinessCardVerticalStack(drawCommands) {
   const emailCmd = emailCmds[0];
   if (roleCmd.pageIndex !== emailCmd.pageIndex) return;
 
-  const roleEmailStepPt = ROLE_TO_EMAIL_BASELINE_STEP_IN * 72;
+  const pairBandRoleEmailIn =
+    CONTACT_9PT_LINE_BAND_IN * ((roleCmd.fontSize + emailCmd.fontSize) / (2 * 9));
+  const roleEmailStepPt = (ROLE_EMAIL_CLEAR_GAP_IN + pairBandRoleEmailIn) * 72;
   const contactStepPt = CONTACT_BASELINE_STEP_IN * 72;
   const contactChain = ["email", "phone", "address", "website"];
   let y = roleCmd.y - roleEmailStepPt;

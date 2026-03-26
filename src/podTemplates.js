@@ -35,8 +35,15 @@ const CONTACT_BASELINE_STEP_IN = CONTACT_STACK_CLEAR_IN + CONTACT_9PT_LINE_BAND_
  */
 const NAME_TITLE_PAIR_BAND_REF_IN = 0.08;
 
-/** Baseline step from role to email (inches). podPdf.service anchors the contact stack from role when role is drawn. */
-const ROLE_TO_EMAIL_BASELINE_STEP_IN = 0.25;
+/**
+ * Clear vertical distance from bottom of role (Knockout 49) to top of email (Knockout 30), inches.
+ * Baseline step = this gap + scaled pair band so copyfit font sizes track; see podPdf.service.
+ */
+const ROLE_EMAIL_CLEAR_GAP_IN = 0.23;
+
+/** Baseline step role → email for template Y (9pt role + 9pt email). */
+const ROLE_TO_EMAIL_BASELINE_STEP_IN =
+  ROLE_EMAIL_CLEAR_GAP_IN + CONTACT_9PT_LINE_BAND_IN * ((9 + 9) / (2 * 9));
 
 const Y_EMAIL = Y_ROLE + ROLE_TO_EMAIL_BASELINE_STEP_IN;
 const Y_PHONE = Y_EMAIL + CONTACT_BASELINE_STEP_IN;
@@ -149,6 +156,7 @@ module.exports = {
   CONTACT_9PT_LINE_BAND_IN,
   CONTACT_BASELINE_STEP_IN,
   ROLE_TO_EMAIL_BASELINE_STEP_IN,
+  ROLE_EMAIL_CLEAR_GAP_IN,
   NAME_TITLE_CLEAR_GAP_IN,
   NAME_TITLE_PAIR_BAND_REF_IN,
   STEP_TITLE_TO_ROLE_IN,
