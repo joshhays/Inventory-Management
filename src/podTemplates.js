@@ -7,7 +7,11 @@ const FONT_KNOCKOUT_30 = "Knockout-30.ttf";
 
 /** Name baseline from top of MediaBox (inches). */
 const Y_NAME = 0.9456;
-/** Keep title/role vertical rhythm from legacy template. */
+/**
+ * Title/role yInches are fallbacks when name is absent. When name is present, podPdf.service
+ * places title with a fixed 0.05" clear gap below the name (font-size–independent), then role
+ * one legacy baseline step below title.
+ */
 const STEP_NAME_TO_TITLE_IN = 1.05 - 0.8655;
 const STEP_TITLE_TO_ROLE_IN = 1.195 - 1.05;
 const Y_TITLE = Y_NAME + STEP_NAME_TO_TITLE_IN;
@@ -97,7 +101,7 @@ const businessCardTemplate = {
       xInches: BODY_TEXT_X_INCHES,
       yInches: Y_ADDRESS,
       fontSize: 9,
-      maxWidthInches: 1.7,
+      maxWidthInches: 2.15,
       cmyk: [0, 0, 0, 1],
       color: "#000000",
       fontFile: FONT_KNOCKOUT_30,

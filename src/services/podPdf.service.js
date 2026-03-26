@@ -16,6 +16,53 @@ const TRIM_HEIGHT_PT = 2 * 72;
 const MAX_NAME_FONT_PT = 12;
 const MAX_TITLE_ROLE_FONT_PT = 9;
 
+/** Clear vertical gap between bottom of name line and top of title line (inches), fixed regardless of font size. */
+const NAME_TITLE_CLEAR_GAP_IN = 0.05;
+/** Legacy baseline step from title baseline to role baseline (matches podTemplates Y_ROLE − Y_TITLE). */
+const TITLE_TO_ROLE_BASELINE_STEP_IN = 1.195 - 1.05;
+
+/**
+ * Distance from baseline upward to font top (excluding descender band in pdf-lib height).
+ * @param {import("pdf-lib").PDFFont} font
+ * @param {number} size
+ */
+function lineAscentPts(font, size) {
+  return font.heightAtSize(size, { descender: false });
+}
+
+/**
+ * Distance from baseline downward to font bottom (descenders).
+ * @param {import("pdf-lib").PDFFont} font
+ * @param {number} size
+ */
+function lineDescentPts(font, size) {
+  return font.heightAtSize(size, { descender: true }) - font.heightAtSize(size, { descender: false });
+}
+
+/**
+ * After copyfitting, set title baseline so clear gap between name bottom and title top is NAME_TITLE_CLEAR_GAP_IN.
+ * Role baseline stays a fixed step below title (legacy layout). Skips if name or title is missing.
+ * @param {Array<{ key: string, y: number, fontSize: number, font: import("pdf-lib").PDFFont }>} drawCommands
+ */
+function applyNameTitleRoleVerticalSpacing(drawCommands) {
+  const nameCmds = drawCommands.filter((c) => c.key === "name");
+  const titleCmds = drawCommands.filter((c) => c.key === "title");
+  if (nameCmds.length === 0 || titleCmds.length === 0) return;
+
+  const bottomNameLine = nameCmds.reduce((a, b) => (a.y < b.y ? a : b));
+  const titleCmd = titleCmds[0];
+  const gapPt = NAME_TITLE_CLEAR_GAP_IN * 72;
+  const nameDesc = lineDescentPts(bottomNameLine.font, bottomNameLine.fontSize);
+  const titleAsc = lineAscentPts(titleCmd.font, titleCmd.fontSize);
+  titleCmd.y = bottomNameLine.y - nameDesc - gapPt - titleAsc;
+
+  const roleCmds = drawCommands.filter((c) => c.key === "role");
+  if (roleCmds.length > 0) {
+    const roleCmd = roleCmds[0];
+    roleCmd.y = titleCmd.y - TITLE_TO_ROLE_BASELINE_STEP_IN * 72;
+  }
+}
+
 /**
  * After per-field copyfitting, set title and role to the same font size (min of both lines).
  */
@@ -453,6 +500,7 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
   }
 
   normalizeTitleRoleFontSizes(drawCommands);
+  applyNameTitleRoleVerticalSpacing(drawCommands);
 
   // Normalize font size across contact block (email, phone, address, website)
   const groupKeys = new Set(["email", "phone", "address", "website"]);
@@ -668,6 +716,7 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
   }
 
   normalizeTitleRoleFontSizes(drawCommands);
+  applyNameTitleRoleVerticalSpacing(drawCommands);
 
   const groupKeys = new Set(["email", "phone", "address", "website"]);
   let groupMinSize = null;
