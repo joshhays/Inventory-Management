@@ -22,11 +22,11 @@ const NAME_TITLE_CLEAR_GAP_IN = 0.05;
 
 /**
  * Clear gap between bottom of one contact line and top of the next ≈ 0.05".
- * Band tightened vs legacy 0.08" so email/phone/address/website still fit on a 2" card after
- * ROLE_TO_EMAIL_BASELINE_STEP_IN (0.5" role baseline → email baseline).
+ * Baseline step = gap + line band (ascender/descender) for 9pt Knockout — prior
+ * desc/asc estimates were too large and read as ~0.1" clear instead of 0.05".
  */
 const CONTACT_STACK_CLEAR_IN = 0.05;
-const CONTACT_9PT_LINE_BAND_IN = 0.025;
+const CONTACT_9PT_LINE_BAND_IN = 0.08;
 const CONTACT_BASELINE_STEP_IN = CONTACT_STACK_CLEAR_IN + CONTACT_9PT_LINE_BAND_IN;
 
 /**
@@ -36,7 +36,7 @@ const CONTACT_BASELINE_STEP_IN = CONTACT_STACK_CLEAR_IN + CONTACT_9PT_LINE_BAND_
 const NAME_TITLE_PAIR_BAND_REF_IN = 0.08;
 
 /** Baseline step from role to email (inches). podPdf.service anchors the contact stack from role when role is drawn. */
-const ROLE_TO_EMAIL_BASELINE_STEP_IN = 0.5;
+const ROLE_TO_EMAIL_BASELINE_STEP_IN = 0.25;
 
 const Y_EMAIL = Y_ROLE + ROLE_TO_EMAIL_BASELINE_STEP_IN;
 const Y_PHONE = Y_EMAIL + CONTACT_BASELINE_STEP_IN;
