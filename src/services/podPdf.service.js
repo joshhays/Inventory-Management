@@ -9,6 +9,14 @@ const { PDFOperator, PDFOperatorNames, PDFDict } = require("pdf-lib/cjs/core");
 
 const FONTS_DIR = path.resolve(__dirname, "../../fonts");
 
+const {
+  CONTACT_BASELINE_STEP_IN,
+  ROLE_TO_EMAIL_BASELINE_STEP_IN,
+  NAME_TITLE_CLEAR_GAP_IN,
+  NAME_TITLE_PAIR_BAND_REF_IN,
+  STEP_TITLE_TO_ROLE_IN,
+} = require("../podTemplates");
+
 const TRIM_WIDTH_PT = 3.5 * 72;
 const TRIM_HEIGHT_PT = 2 * 72;
 
@@ -16,50 +24,50 @@ const TRIM_HEIGHT_PT = 2 * 72;
 const MAX_NAME_FONT_PT = 12;
 const MAX_TITLE_ROLE_FONT_PT = 9;
 
-/** Clear vertical gap between bottom of name line and top of title line (inches), fixed regardless of font size. */
-const NAME_TITLE_CLEAR_GAP_IN = 0.05;
-/** Legacy baseline step from title baseline to role baseline (matches podTemplates Y_ROLE − Y_TITLE). */
-const TITLE_TO_ROLE_BASELINE_STEP_IN = 1.195 - 1.05;
-
 /**
- * Distance from baseline upward to font top (excluding descender band in pdf-lib height).
- * @param {import("pdf-lib").PDFFont} font
- * @param {number} size
+ * After copyfitting: stack name → title → role using the same baseline model as the contact block
+ * (clear gap + scaled pair band — not pdf-lib bbox metrics, which read ~0.12" clear vs 0.05").
+ * When role is drawn, anchor email → phone → address → website from the role with ROLE_TO_EMAIL_BASELINE_STEP_IN
+ * and CONTACT_BASELINE_STEP_IN (name Y is unchanged — template yInches).
  */
-function lineAscentPts(font, size) {
-  return font.heightAtSize(size, { descender: false });
-}
-
-/**
- * Distance from baseline downward to font bottom (descenders).
- * @param {import("pdf-lib").PDFFont} font
- * @param {number} size
- */
-function lineDescentPts(font, size) {
-  return font.heightAtSize(size, { descender: true }) - font.heightAtSize(size, { descender: false });
-}
-
-/**
- * After copyfitting, set title baseline so clear gap between name bottom and title top is NAME_TITLE_CLEAR_GAP_IN.
- * Role baseline stays a fixed step below title (legacy layout). Skips if name or title is missing.
- * @param {Array<{ key: string, y: number, fontSize: number, font: import("pdf-lib").PDFFont }>} drawCommands
- */
-function applyNameTitleRoleVerticalSpacing(drawCommands) {
+function applyBusinessCardVerticalStack(drawCommands) {
   const nameCmds = drawCommands.filter((c) => c.key === "name");
   const titleCmds = drawCommands.filter((c) => c.key === "title");
-  if (nameCmds.length === 0 || titleCmds.length === 0) return;
+  if (nameCmds.length > 0 && titleCmds.length > 0) {
+    const bottomNameLine = nameCmds.reduce((a, b) => (a.y < b.y ? a : b));
+    const titleCmd = titleCmds[0];
+    const nameSize = bottomNameLine.fontSize;
+    const titleSize = titleCmd.fontSize;
+    const pairBandIn = NAME_TITLE_PAIR_BAND_REF_IN * ((nameSize + titleSize) / (2 * 9));
+    const nameToTitleStepPt = (NAME_TITLE_CLEAR_GAP_IN + pairBandIn) * 72;
+    titleCmd.y = bottomNameLine.y - nameToTitleStepPt;
 
-  const bottomNameLine = nameCmds.reduce((a, b) => (a.y < b.y ? a : b));
-  const titleCmd = titleCmds[0];
-  const gapPt = NAME_TITLE_CLEAR_GAP_IN * 72;
-  const nameDesc = lineDescentPts(bottomNameLine.font, bottomNameLine.fontSize);
-  const titleAsc = lineAscentPts(titleCmd.font, titleCmd.fontSize);
-  titleCmd.y = bottomNameLine.y - nameDesc - gapPt - titleAsc;
+    const roleCmds = drawCommands.filter((c) => c.key === "role");
+    if (roleCmds.length > 0) {
+      const roleCmd = roleCmds[0];
+      roleCmd.y = titleCmd.y - STEP_TITLE_TO_ROLE_IN * 72;
+    }
+  }
 
   const roleCmds = drawCommands.filter((c) => c.key === "role");
-  if (roleCmds.length > 0) {
-    const roleCmd = roleCmds[0];
-    roleCmd.y = titleCmd.y - TITLE_TO_ROLE_BASELINE_STEP_IN * 72;
+  const emailCmds = drawCommands.filter((c) => c.key === "email");
+  if (roleCmds.length === 0 || emailCmds.length === 0) return;
+
+  const roleCmd = roleCmds[0];
+  const emailCmd = emailCmds[0];
+  if (roleCmd.pageIndex !== emailCmd.pageIndex) return;
+
+  const roleEmailStepPt = ROLE_TO_EMAIL_BASELINE_STEP_IN * 72;
+  const contactStepPt = CONTACT_BASELINE_STEP_IN * 72;
+  const contactChain = ["email", "phone", "address", "website"];
+  let y = roleCmd.y - roleEmailStepPt;
+  for (const key of contactChain) {
+    const cmds = drawCommands.filter((c) => c.key === key);
+    if (cmds.length > 0) {
+      const cmd = cmds[0];
+      if (cmd.pageIndex === roleCmd.pageIndex) cmd.y = y;
+    }
+    y -= contactStepPt;
   }
 }
 
@@ -500,7 +508,7 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
   }
 
   normalizeTitleRoleFontSizes(drawCommands);
-  applyNameTitleRoleVerticalSpacing(drawCommands);
+  applyBusinessCardVerticalStack(drawCommands);
 
   // Normalize font size across contact block (email, phone, address, website)
   const groupKeys = new Set(["email", "phone", "address", "website"]);
@@ -716,7 +724,7 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
   }
 
   normalizeTitleRoleFontSizes(drawCommands);
-  applyNameTitleRoleVerticalSpacing(drawCommands);
+  applyBusinessCardVerticalStack(drawCommands);
 
   const groupKeys = new Set(["email", "phone", "address", "website"]);
   let groupMinSize = null;

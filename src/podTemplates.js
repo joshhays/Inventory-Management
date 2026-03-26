@@ -17,16 +17,28 @@ const STEP_TITLE_TO_ROLE_IN = 1.195 - 1.05;
 const Y_TITLE = Y_NAME + STEP_NAME_TO_TITLE_IN;
 const Y_ROLE = Y_TITLE + STEP_TITLE_TO_ROLE_IN;
 
+/** Clear gap between name and title (inches); baseline step uses this + scaled band in podPdf.service. */
+const NAME_TITLE_CLEAR_GAP_IN = 0.05;
+
 /**
  * Clear gap between bottom of one contact line and top of the next ≈ 0.05".
- * Baseline step = gap + line band (ascender/descender) for 9pt Knockout — prior
- * desc/asc estimates were too large and read as ~0.1" clear instead of 0.05".
+ * Band tightened vs legacy 0.08" so email/phone/address/website still fit on a 2" card after
+ * ROLE_TO_EMAIL_BASELINE_STEP_IN (0.5" role baseline → email baseline).
  */
 const CONTACT_STACK_CLEAR_IN = 0.05;
-const CONTACT_9PT_LINE_BAND_IN = 0.08;
+const CONTACT_9PT_LINE_BAND_IN = 0.025;
 const CONTACT_BASELINE_STEP_IN = CONTACT_STACK_CLEAR_IN + CONTACT_9PT_LINE_BAND_IN;
 
-const Y_EMAIL = 1.525;
+/**
+ * Reference line band for Knockout 49 name/title baseline step (same role as legacy 0.08" at 9pt);
+ * not used for contact lines — see CONTACT_9PT_LINE_BAND_IN.
+ */
+const NAME_TITLE_PAIR_BAND_REF_IN = 0.08;
+
+/** Baseline step from role to email (inches). podPdf.service anchors the contact stack from role when role is drawn. */
+const ROLE_TO_EMAIL_BASELINE_STEP_IN = 0.5;
+
+const Y_EMAIL = Y_ROLE + ROLE_TO_EMAIL_BASELINE_STEP_IN;
 const Y_PHONE = Y_EMAIL + CONTACT_BASELINE_STEP_IN;
 const Y_ADDRESS = Y_PHONE + CONTACT_BASELINE_STEP_IN;
 const Y_WEBSITE = Y_ADDRESS + CONTACT_BASELINE_STEP_IN;
@@ -101,7 +113,7 @@ const businessCardTemplate = {
       xInches: BODY_TEXT_X_INCHES,
       yInches: Y_ADDRESS,
       fontSize: 9,
-      maxWidthInches: 2.15,
+      maxWidthInches: 2,
       cmyk: [0, 0, 0, 1],
       color: "#000000",
       fontFile: FONT_KNOCKOUT_30,
@@ -133,4 +145,11 @@ const businessCardTemplate = {
 
 module.exports = {
   businessCardTemplate,
+  CONTACT_STACK_CLEAR_IN,
+  CONTACT_9PT_LINE_BAND_IN,
+  CONTACT_BASELINE_STEP_IN,
+  ROLE_TO_EMAIL_BASELINE_STEP_IN,
+  NAME_TITLE_CLEAR_GAP_IN,
+  NAME_TITLE_PAIR_BAND_REF_IN,
+  STEP_TITLE_TO_ROLE_IN,
 };
