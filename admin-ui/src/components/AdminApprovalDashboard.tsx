@@ -112,11 +112,20 @@ export default function AdminApprovalDashboard() {
               </div>
               <div style={{ flex: "1 1 200px", minHeight: 200 }}>
                 {o.proofUrls?.length > 0 ? (
-                  <iframe
-                    src={o.proofUrls[0].proofPdfUrl}
-                    title={`Proof for order ${o.id}`}
-                    style={{ width: "100%", height: 200, border: "1px solid #e2e8f0", borderRadius: 4 }}
-                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    {o.proofUrls.map((p) => (
+                      <div key={p.itemId}>
+                        <div style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: 4 }}>
+                          {p.productName || `Item #${p.itemId}`}
+                        </div>
+                        <iframe
+                          src={p.proofPdfUrl}
+                          title={`Proof: ${p.productName || o.id}`}
+                          style={{ width: "100%", height: 200, border: "1px solid #e2e8f0", borderRadius: 4 }}
+                        />
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <span style={{ color: "#64748b" }}>No proof</span>
                 )}

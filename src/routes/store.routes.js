@@ -42,6 +42,18 @@ function jsonForInlineScript(value) {
     .replace(/</g, "\\u003c");
 }
 
+/** Parse deployment customerInfo JSON for checkout billing dropdown options. */
+function parseBillingOptionsFromCustomerInfo(customerInfo) {
+  if (!customerInfo || typeof customerInfo !== "string") return [];
+  try {
+    const o = JSON.parse(customerInfo.trim());
+    if (o && Array.isArray(o.billingOptions)) {
+      return o.billingOptions.filter((x) => typeof x === "string" && String(x).trim());
+    }
+  } catch (_) {}
+  return [];
+}
+
 function serveStorePage(slug, page, dep, res, next) {
   const file = page === "" || page === "index" ? "index.html" : `${page}.html`;
   const filePath = path.join(storeDir, file);
@@ -60,12 +72,15 @@ function serveStorePage(slug, page, dep, res, next) {
   }
   fs.readFile(filePath, "utf8", (err, html) => {
     if (err) return next(err);
+    const billingOpts =
+      page === "cart" ? parseBillingOptionsFromCustomerInfo(dep?.customerInfo) : [];
     let out = html
       .replace(/__STORE_BASE__/g, base)
       .replace(/__STORE_SLUG__/g, slug)
       .replace(/__STORE_LOGO__/g, logoUrl)
       .replace(/__STORE_NAME__/g, storeName)
-      .replace(/__STORE_CART_DISCLAIMER_JS__/g, jsonForInlineScript(dep?.cartDisclaimer));
+      .replace(/__STORE_CART_DISCLAIMER_JS__/g, jsonForInlineScript(dep?.cartDisclaimer))
+      .replace(/__STORE_BILLING_OPTIONS_JS__/g, jsonForInlineScript(billingOpts));
     if (brandCss.length) {
       out = out.replace("</head>", `<style id="store-brand">:root{${brandCss.join(" ")}}</style>\n</head>`);
     }

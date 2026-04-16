@@ -69,9 +69,14 @@
         }
         approvalsTable.style.display = "table";
         approvalsBody.innerHTML = orders.map((o) => {
-          const firstProof = (o.proofUrls || [])[0];
-          const proofCell = firstProof
-            ? `<iframe src="${escapeHtml(firstProof.proofPdfUrl)}" title="Proof for ${escapeHtml(o.customerName)}" class="approval-pdf-iframe"></iframe>`
+          const proofs = o.proofUrls || [];
+          const proofCell = proofs.length
+            ? proofs.map((p) => `
+                <div class="approval-proof-block">
+                  <span class="approval-proof-label">${escapeHtml(p.productName || "Item #" + p.itemId)}</span>
+                  <iframe src="${escapeHtml(p.proofPdfUrl)}" title="Proof: ${escapeHtml(p.productName || o.customerName)}" class="approval-pdf-iframe"></iframe>
+                </div>
+              `).join("")
             : "—";
           return `
             <tr data-id="${o.id}">
@@ -116,6 +121,8 @@
   <style>
     .approvals-hint { color: var(--text-muted); margin-bottom: 1rem; font-size: 0.95rem; }
     .btn-approve { font-size: 0.9rem; padding: 0.4rem 0.75rem; }
+    .approval-proof-block { margin-bottom: 0.75rem; }
+    .approval-proof-label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem; }
     .approval-pdf-iframe { width: 100%; min-width: 200px; height: 220px; border: 1px solid #e2e8f0; border-radius: 6px; }
   </style>
 </body>

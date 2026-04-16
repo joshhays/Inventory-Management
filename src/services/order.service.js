@@ -1,6 +1,6 @@
 const prisma = require("../lib/prisma");
 
-function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, discountAmount: passedDiscountAmount, items, status: initialStatus }) {
+function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, billingSelection, discountAmount: passedDiscountAmount, items, status: initialStatus }) {
   if (!deploymentId) throw new Error("Deployment is required.");
   const depId = Number(deploymentId);
   return prisma.$transaction(async (tx) => {
@@ -165,6 +165,8 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
     const subtotal = total;
     const shippingCostNum = Math.max(0, Number(shippingCost) || 0);
     const shippingMethodStr = shippingMethod ? String(shippingMethod).trim() : null;
+    const billingSel =
+      billingSelection != null && String(billingSelection).trim() ? String(billingSelection).trim().slice(0, 500) : null;
     total = Math.round((subtotal + shippingCostNum) * 100) / 100;
 
     const order = await tx.order.create({
@@ -176,6 +178,7 @@ function create({ deploymentId, customerName, customerEmail, customerPhone, ship
         shippingAddress: shippingAddress ? String(shippingAddress) : null,
         shippingCost: shippingCostNum,
         shippingMethod: shippingMethodStr,
+        billingSelection: billingSel,
         discountAmount: 0,
         isRush: isRushOrder,
         status: initialStatus && String(initialStatus).trim() ? String(initialStatus).trim().toLowerCase() : "pending",

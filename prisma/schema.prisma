@@ -273,6 +273,7 @@ model Order {
   shippingAddress     String?
   shippingCost        Float        @default(0)
   shippingMethod      String?
+  billingSelection    String?      // Customer-selected billing (e.g. cost center); from checkout or deployment billingOptions
   discountAmount      Float        @default(0)
   isRush              Boolean      @default(false) // Any rush fee line items; used in approver/production emails
   shippingLabelUrl    String?      // URL to shipping label (EasyPost, etc.)

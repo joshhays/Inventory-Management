@@ -83,6 +83,10 @@
       <label>Shipping Address</label>
       <p id="orderDetailAddress"></p>
     </div>
+    <div class="detail-section" id="orderDetailBillingWrap" style="display:none">
+      <label>Billing</label>
+      <p id="orderDetailBilling"></p>
+    </div>
     <div class="detail-section" id="orderDetailLabelWrap" style="display:none">
       <label>Shipping Label</label>
       <p id="orderDetailLabel"></p>
@@ -223,6 +227,15 @@
         document.getElementById("orderDetailEmail").textContent = order.customerEmail;
         document.getElementById("orderDetailPhone").textContent = order.customerPhone || "—";
         document.getElementById("orderDetailAddress").textContent = formatAddress(order.shippingAddress);
+        const billingWrap = document.getElementById("orderDetailBillingWrap");
+        const billingEl = document.getElementById("orderDetailBilling");
+        if (order.billingSelection && String(order.billingSelection).trim()) {
+          billingWrap.style.display = "block";
+          billingEl.textContent = order.billingSelection;
+        } else {
+          billingWrap.style.display = "none";
+          billingEl.textContent = "";
+        }
         document.getElementById("orderDetailStatus").value = order.status;
         const labelWrap = document.getElementById("orderDetailLabelWrap");
         const labelActions = document.getElementById("orderDetailLabelActions");

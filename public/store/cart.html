@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/styles.css">
   <script>var _b="__STORE_BASE__",_s="__STORE_SLUG__";if(!_b||_b.indexOf("__")===0){var m=location.pathname.match(/^\/store\/([^/]+)/);window.STORE_BASE=m?"/store/"+m[1]:"/store";window.STORE_SLUG=m?m[1]:null;}else{window.STORE_BASE=_b;window.STORE_SLUG=_s;}window.STORE_CART_KEY=window.STORE_SLUG?"storeCart_"+window.STORE_SLUG:"storeCart";</script>
   <script>window.STORE_CART_DISCLAIMER=__STORE_CART_DISCLAIMER_JS__;</script>
+  <script>window.STORE_BILLING_OPTIONS=__STORE_BILLING_OPTIONS_JS__;</script>
 </head>
 <body>
   <div class="app-layout">
@@ -72,6 +73,12 @@
             <label for="customerPhone">Phone (optional)</label>
             <input type="tel" id="customerPhone" placeholder="For delivery updates">
           </div>
+          <div class="store-form-row" id="billingRow">
+            <label for="billingSelect" id="billingLabel">Billing</label>
+            <select id="billingSelect" style="display:none" aria-describedby="billingHint"></select>
+            <input type="text" id="billingInput" style="display:none" maxlength="500" placeholder="Cost center or billing notes (optional)" autocomplete="organization">
+            <p id="billingHint" class="store-form-hint" style="display:none;margin:0.25rem 0 0;font-size:0.85rem;color:var(--text-muted)">Choose how this order should be billed.</p>
+          </div>
           <div class="store-form-row store-shipping-rates-row" id="shippingRatesRow">
             <label>Shipping</label>
             <div id="shippingRatesContainer">
@@ -99,6 +106,9 @@
       const div = document.createElement("div");
       div.textContent = s ?? "";
       return div.innerHTML;
+    }
+    function escapeAttr(s) {
+      return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
     }
 
     function cartDisclaimerBlock() {
@@ -407,13 +417,13 @@
       const placeOrderBtn = document.getElementById("placeOrderBtn");
       if (proofRow) proofRow.style.display = hasPOD ? "block" : "none";
       if (proofCheck) {
-        proofCheck.checked = false;
         proofCheck.required = hasPOD;
       }
       if (placeOrderBtn) placeOrderBtn.textContent = hasPOD ? "Submit for Approval" : "Place your order";
 
       sidebar.style.display = "block";
       loadSavedAddresses();
+      setupBillingCheckoutUI();
 
       content.querySelectorAll(".store-cart-qty-btn").forEach((btn) => {
         btn.addEventListener("click", async () => { await updateCartItemByIdx(Number(btn.dataset.idx), Number(btn.dataset.delta)); });
@@ -487,6 +497,54 @@
     }
 
     window.selectedShipping = null;
+
+    function setupBillingCheckoutUI() {
+      const opts = Array.isArray(window.STORE_BILLING_OPTIONS) ? window.STORE_BILLING_OPTIONS : [];
+      const row = document.getElementById("billingRow");
+      const sel = document.getElementById("billingSelect");
+      const inp = document.getElementById("billingInput");
+      const hint = document.getElementById("billingHint");
+      const lab = document.getElementById("billingLabel");
+      if (!row || !sel || !inp) return;
+      if (opts.length > 0) {
+        row.style.display = "block";
+        sel.style.display = "block";
+        inp.style.display = "none";
+        if (hint) hint.style.display = "block";
+        if (lab) lab.textContent = "Billing";
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">— Select billing —</option>' + opts.map((o) =>
+          '<option value="' + escapeAttr(o) + '">' + escape(o) + "</option>"
+        ).join("");
+        if (prev && opts.some((o) => String(o) === prev)) sel.value = prev;
+        sel.required = true;
+        inp.required = false;
+        inp.value = "";
+      } else {
+        row.style.display = "block";
+        sel.style.display = "none";
+        inp.style.display = "block";
+        if (hint) hint.style.display = "none";
+        if (lab) lab.textContent = "Billing (optional)";
+        sel.innerHTML = "";
+        sel.required = false;
+        inp.required = false;
+      }
+    }
+
+    function getBillingSelectionForOrder() {
+      const opts = Array.isArray(window.STORE_BILLING_OPTIONS) ? window.STORE_BILLING_OPTIONS : [];
+      const sel = document.getElementById("billingSelect");
+      const inp = document.getElementById("billingInput");
+      if (opts.length > 0 && sel && sel.style.display !== "none") {
+        return sel.value.trim() || null;
+      }
+      if (inp && inp.style.display !== "none") {
+        const t = inp.value.trim();
+        return t || null;
+      }
+      return null;
+    }
 
     async function fetchShippingRates() {
       const name = document.getElementById("shipName").value.trim();
@@ -610,6 +668,20 @@
         alert("Please review the print proof above and check \"Proof approved\" before placing your order.");
         return;
       }
+      if (window.shippingEnabled !== false) {
+        if (!window.selectedShipping || !window.shippingRatesCache || !window.shippingRatesCache.length) {
+          alert("Please click Get shipping rates and select a shipping option before submitting your order.");
+          return;
+        }
+      }
+      const billingOpts = Array.isArray(window.STORE_BILLING_OPTIONS) ? window.STORE_BILLING_OPTIONS : [];
+      if (billingOpts.length > 0) {
+        const b = getBillingSelectionForOrder();
+        if (!b) {
+          alert("Please select a billing option.");
+          return;
+        }
+      }
       const name = document.getElementById("shipName").value.trim();
       const address1 = document.getElementById("shipAddress1").value.trim();
       const city = document.getElementById("shipCity").value.trim();
@@ -635,6 +707,7 @@
               zip,
             },
             customerPhone: document.getElementById("customerPhone").value.trim() || undefined,
+            billingSelection: getBillingSelectionForOrder() || undefined,
             shippingCost: window.selectedShipping?.totalCharges ?? 0,
             shippingMethod: window.selectedShipping ? `${window.selectedShipping.serviceName} (${window.selectedShipping.serviceCode})` : null,
             items: cart.map((i) => ({
@@ -666,7 +739,8 @@
         alert("Error: " + (e.message || "Could not place order"));
       } finally {
         btn.disabled = false;
-        btn.textContent = "Place your order";
+        const pod = getCart().some((i) => i.printData && Object.keys(i.printData).length);
+        btn.textContent = pod ? "Submit for Approval" : "Place your order";
       }
     });
 
