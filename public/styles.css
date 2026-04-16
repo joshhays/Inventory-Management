@@ -2382,6 +2382,23 @@ tr:hover { background: rgba(255, 255, 255, 0.2); }
   margin-bottom: 0.75rem;
 }
 
+.pod-phone-format-row {
+  margin-bottom: 0.75rem;
+  max-width: 24rem;
+}
+
+.pod-phone-format-row label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-bottom: 0.15rem;
+}
+
+.pod-phone-format-row select {
+  width: 100%;
+  max-width: 20rem;
+}
+
 .pod-admin-layout-row label {
   display: block;
   font-size: 0.85rem;

@@ -97,13 +97,14 @@
                     <option value="generic_list">Generic list</option>
                   </select>
                 </div>
-                <div id="podPhoneFormatRow" style="display:none">
-                  <label for="podPhoneFormatSelect">Phone format</label>
-                  <select id="podPhoneFormatSelect">
-                    <option value="us">United States (+1)</option>
-                    <option value="mx">Mexico (+52)</option>
-                  </select>
-                </div>
+              </div>
+              <div id="podPhoneFormatRow" class="pod-phone-format-row" style="display:none">
+                <label for="podPhoneFormatSelect">Phone number format</label>
+                <select id="podPhoneFormatSelect">
+                  <option value="us">United States (+1)</option>
+                  <option value="mx">Mexico (+52)</option>
+                </select>
+                <p class="form-hint" style="margin:0.35rem 0 0;">Shown for business card layouts. Controls storefront P/M fields and PDF output.</p>
               </div>
               <div class="pod-admin-fields">
                 <div class="pod-admin-fields-header pod-admin-fields-header-grid">
@@ -440,7 +441,11 @@
           body.appendChild(row);
         });
 
-        document.getElementById("productPrintOnDemand").addEventListener("change", () => { togglePrintTemplateRow(); togglePricingMatrixRow(); });
+        document.getElementById("productPrintOnDemand").addEventListener("change", () => {
+          togglePrintTemplateRow();
+          togglePricingMatrixRow();
+          togglePodPhoneFormatRow();
+        });
         document.getElementById("productType").addEventListener("change", toggleQuantityAndKit);
 
         document.getElementById("loading").style.display = "none";
