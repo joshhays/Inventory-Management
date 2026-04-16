@@ -245,17 +245,23 @@
         }
       }
 
-      async function fetchPODPreviewAndShow(values) {
+      async function fetchPODPreviewAndShow(values, podConfig) {
         const proof = document.getElementById("podProof");
         const container = proof?.querySelector(".pod-proof-pdf-container");
         if (!container) return;
         container.innerHTML = "<div class=\"pod-proof-loading\">Loading preview…</div>";
         try {
+          const pid = productId != null && productId !== "" ? Number(productId) : null;
+          const payload = {
+            ...values,
+            ...(pid && !Number.isNaN(pid) ? { productId: pid } : {}),
+            phoneFormat: (podConfig && podConfig.phoneFormat) || "us",
+          };
           const res = await fetch("/api/pod/preview", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify(values),
+            body: JSON.stringify(payload),
           });
           if (!res.ok) throw new Error("Preview unavailable");
           const blob = await res.blob();
@@ -277,7 +283,7 @@
             proof.innerHTML = "<div class=\"pod-proof-pdf-container\"><div class=\"pod-proof-loading\">Loading preview…</div></div>";
           }
           clearTimeout(podProofDebounceTimer);
-          podProofDebounceTimer = setTimeout(() => fetchPODPreviewAndShow(values), POD_PREVIEW_DEBOUNCE_MS);
+          podProofDebounceTimer = setTimeout(() => fetchPODPreviewAndShow(values, config), POD_PREVIEW_DEBOUNCE_MS);
         } else {
           revokePodProofUrl();
           proof.innerHTML = (config.fields || [])

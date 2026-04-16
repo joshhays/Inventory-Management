@@ -467,7 +467,10 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
-            body: JSON.stringify(item.printData),
+            body: JSON.stringify({
+              ...item.printData,
+              ...(item.productId != null ? { productId: Number(item.productId) } : {}),
+            }),
           });
           if (!res.ok) {
             let msg = "Preview unavailable";
