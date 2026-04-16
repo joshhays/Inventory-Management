@@ -26,6 +26,27 @@ const MAX_NAME_FONT_PT = 12;
 const MAX_TITLE_ROLE_FONT_PT = 9;
 
 /**
+ * Format one phone segment for business card output (P/M lines or legacy single phone).
+ * @param {string} val - Raw digits / text from customer
+ * @param {"us"|"mx"|string} [phoneFormat] - From product printTemplateConfig.phoneFormat (default US +1)
+ * @returns {string|null}
+ */
+function formatPhoneNational(val, phoneFormat) {
+  const fmt = (phoneFormat || "us").toLowerCase();
+  const digits = String(val || "").replace(/\D/g, "");
+  if (fmt === "mx" || fmt === "mexico") {
+    let d = digits;
+    if (d.startsWith("52") && d.length >= 12) d = d.slice(2);
+    d = d.slice(0, 10);
+    if (d.length < 10) return null;
+    return "+52 " + d.slice(0, 2) + " " + d.slice(2, 6) + " " + d.slice(6);
+  }
+  if (digits.length < 10) return null;
+  const last10 = digits.slice(-10);
+  return "+1 " + last10.slice(0, 3) + " " + last10.slice(3, 6) + " " + last10.slice(6);
+}
+
+/**
  * After copyfitting: stack name → title → role using the same baseline model as the contact block
  * (clear gap + scaled pair band — not pdf-lib bbox metrics, which read ~0.12" clear vs 0.05").
  * When role is drawn, anchor email → phone → address → website: clear gap from bottom of role to top of email
@@ -399,11 +420,10 @@ async function generateBusinessCardPdf(basePdfBytes, userData, templateConfig) {
 
   const fields = Array.isArray(templateConfig?.fields) ? templateConfig.fields : [];
 
+  const phoneFmt = templateConfig?.phoneFormat;
+
   function formatPhoneForCard(val) {
-    const digits = String(val || "").replace(/\D/g, "");
-    if (digits.length < 10) return null;
-    const last10 = digits.slice(-10);
-    return "+1 " + last10.slice(0, 3) + " " + last10.slice(3, 6) + " " + last10.slice(6);
+    return formatPhoneNational(val, phoneFmt);
   }
 
   function buildPhoneDisplay(userData) {
@@ -633,11 +653,10 @@ async function generateImprintOnlyPdf(userData, templateConfig, basePdfBytes = n
 
   const fields = Array.isArray(templateConfig?.fields) ? templateConfig.fields : [];
 
+  const phoneFmtImprint = templateConfig?.phoneFormat;
+
   function formatPhoneForCard(val) {
-    const digits = String(val || "").replace(/\D/g, "");
-    if (digits.length < 10) return null;
-    const last10 = digits.slice(-10);
-    return "+1 " + last10.slice(0, 3) + " " + last10.slice(3, 6) + " " + last10.slice(6);
+    return formatPhoneNational(val, phoneFmtImprint);
   }
 
   function buildPhoneDisplay(ud) {

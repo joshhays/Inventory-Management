@@ -48,6 +48,17 @@ function getTemplateConfig(product) {
   return businessCardTemplate;
 }
 
+/** Phone format for approval PDF (merge into base template). */
+function getPhoneFormatForProduct(product) {
+  if (!product?.printTemplateConfig || typeof product.printTemplateConfig !== "string") return "us";
+  try {
+    const parsed = JSON.parse(product.printTemplateConfig);
+    const f = parsed && typeof parsed === "object" ? String(parsed.phoneFormat || "").toLowerCase() : "";
+    if (f === "mx" || f === "mexico") return "mx";
+  } catch (_) {}
+  return "us";
+}
+
 async function getBasePdfBytesForProduct(product) {
   if (!product?.id) return null;
   const files = await productFileService.getByProductId(product.id);
@@ -99,7 +110,8 @@ async function generateApprovalPdfForItem(item, product = null) {
     const templateConfig = getTemplateConfig(prod);
     return generateImprintOnlyPdf(normalizedData, templateConfig);
   }
-  const templateConfig = businessCardTemplate;
+  const phoneFormat = getPhoneFormatForProduct(prod);
+  const templateConfig = { ...businessCardTemplate, phoneFormat };
   const pdfBuffer = await generateBusinessCardPdf(basePdfBytes, normalizedData, templateConfig);
   return cropPdfToTrim(pdfBuffer);
 }

@@ -97,6 +97,13 @@
                     <option value="generic_list">Generic list</option>
                   </select>
                 </div>
+                <div id="podPhoneFormatRow" style="display:none">
+                  <label for="podPhoneFormatSelect">Phone format</label>
+                  <select id="podPhoneFormatSelect">
+                    <option value="us">United States (+1)</option>
+                    <option value="mx">Mexico (+52)</option>
+                  </select>
+                </div>
               </div>
               <div class="pod-admin-fields">
                 <div class="pod-admin-fields-header pod-admin-fields-header-grid">
@@ -111,7 +118,7 @@
                 <button type="button" class="btn-apply pod-admin-add-field" id="podAddFieldBtn">Add field</button>
               </div>
               <textarea id="productPrintTemplateConfig" style="display:none"></textarea>
-              <p class="form-hint">Key must match PDF field name. Use <strong>=</strong> to separate value, label, and description. For a literal <strong>=</strong>, type <strong>\=</strong>.</p>
+              <p class="form-hint">Key must match PDF field name. Use <strong>=</strong> to separate value, label, and description. For a literal <strong>=</strong>, type <strong>\=</strong>. <strong>Phone format</strong> (business card layout) controls storefront input and PDF display: US +1 or Mexico +52 (e.g. +52 55 8107 3614).</p>
             </div>
             <div class="form-row" id="pricingMatrixRow" style="display: none;">
               <label>POD Pricing Matrix</label>
@@ -171,6 +178,7 @@
     function getDefaultPODConfig() {
       return {
         layout: "business_card",
+        phoneFormat: "us",
         fields: [
           { key: "name", label: "Full Name", type: "text" },
           { key: "title", label: "Title", type: "text" },
@@ -252,6 +260,7 @@
           if (parsed && typeof parsed === "object") {
             config = {
               layout: parsed.layout || config.layout,
+              phoneFormat: parsed.phoneFormat === "mx" ? "mx" : "us",
               fields: Array.isArray(parsed.fields) && parsed.fields.length ? parsed.fields : config.fields,
             };
           }
@@ -259,7 +268,17 @@
       }
       const layoutSelect = document.getElementById("podLayoutSelect");
       if (layoutSelect) layoutSelect.value = config.layout || "business_card";
+      const phoneFmtSel = document.getElementById("podPhoneFormatSelect");
+      if (phoneFmtSel) phoneFmtSel.value = config.phoneFormat === "mx" ? "mx" : "us";
+      togglePodPhoneFormatRow();
       renderPODFields(config);
+    }
+
+    function togglePodPhoneFormatRow() {
+      const layoutSelect = document.getElementById("podLayoutSelect");
+      const row = document.getElementById("podPhoneFormatRow");
+      if (!layoutSelect || !row) return;
+      row.style.display = layoutSelect.value === "business_card" ? "block" : "none";
     }
 
     function collectPODConfig() {
@@ -294,7 +313,11 @@
           fields.push(field);
         });
       }
-      return { layout, fields };
+      const phoneFmtSel = document.getElementById("podPhoneFormatSelect");
+      const phoneFormat =
+        layout === "business_card" && phoneFmtSel && phoneFmtSel.value === "mx" ? "mx" : "us";
+      const out = { layout, fields, phoneFormat };
+      return out;
     }
 
     function syncPODConfigToHidden() {
@@ -380,6 +403,11 @@
         togglePricingMatrixRow();
         toggleQuantityAndKit();
 
+        document.getElementById("podLayoutSelect")?.addEventListener("change", () => {
+          togglePodPhoneFormatRow();
+          syncPODConfigToHidden();
+        });
+        document.getElementById("podPhoneFormatSelect")?.addEventListener("change", syncPODConfigToHidden);
         document.getElementById("podAddFieldBtn").addEventListener("click", () => {
           const body = document.getElementById("podFieldsBody");
           const row = document.createElement("div");
