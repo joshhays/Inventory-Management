@@ -197,9 +197,30 @@ async function createLabel(orderDetails, parcel = null, opts = {}) {
   };
 }
 
+/**
+ * Refund / void an EasyPost shipment (unused label). Safe to call if already refunded.
+ * @param {string} shipmentId - EasyPost shipment id (e.g. shp_...)
+ * @returns {Promise<{ ok: boolean, skipped?: boolean, message?: string }>}
+ */
+async function refundShipment(shipmentId) {
+  if (!shipmentId || String(shipmentId).trim() === "") {
+    return { ok: true, skipped: true };
+  }
+  try {
+    const client = getClient();
+    await client.Shipment.refund(String(shipmentId).trim());
+    return { ok: true };
+  } catch (e) {
+    const msg = e?.message || String(e);
+    console.warn("[EasyPost] refundShipment failed:", msg);
+    return { ok: false, message: msg };
+  }
+}
+
 module.exports = {
   getRates,
   createLabel,
+  refundShipment,
   getOriginAddress,
   parseShippingAddress,
 };

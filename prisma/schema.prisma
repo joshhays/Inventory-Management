@@ -284,6 +284,7 @@ model Order {
   total               Float
   pickingStartedAt    DateTime?
   pickingCompletedAt  DateTime?
+  inventoryDeductedAt DateTime?   // Set when POD/business-card stock was decremented on ship (prevents double deduction)
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   items               OrderItem[]

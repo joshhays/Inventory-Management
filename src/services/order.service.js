@@ -1,5 +1,49 @@
 const prisma = require("../lib/prisma");
 
+function isPodLineItem(item) {
+  return item?.printData != null && String(item.printData).trim() !== "";
+}
+
+function isRushFeeLine(item) {
+  return (
+    String(item?.sku || "").includes("-RUSH") ||
+    String(item?.productName || "").startsWith("Rush processing:")
+  );
+}
+
+/**
+ * Adjust inventory for POD / business-card lines (deltaSign -1 = ship deduct, +1 = cancel restore).
+ */
+async function applyPodInventoryDelta(tx, order, deltaSign) {
+  for (const item of order.items || []) {
+    if (!isPodLineItem(item) || isRushFeeLine(item)) continue;
+    const product = await tx.product.findUnique({ where: { id: item.productId } });
+    if (!product || product.productType === "kit") continue;
+    const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+    const qtyBefore = product.quantity;
+    const delta = qty * deltaSign;
+    const newQty = Math.max(0, qtyBefore + delta);
+    await tx.product.update({
+      where: { id: product.id },
+      data: { quantity: newQty },
+    });
+    const action = deltaSign < 0 ? "deduct" : "add";
+    const source =
+      deltaSign < 0 ? `order_ship:${order.id}` : `order_cancel:${order.id}`;
+    await tx.inventoryLog.create({
+      data: {
+        productId: product.id,
+        sku: product.sku,
+        productName: product.name,
+        action,
+        quantityBefore: qtyBefore,
+        quantityAfter: newQty,
+        source,
+      },
+    });
+  }
+}
+
 function create({ deploymentId, customerName, customerEmail, customerPhone, shippingAddress, shippingCost, shippingMethod, billingSelection, discountAmount: passedDiscountAmount, items, status: initialStatus }) {
   if (!deploymentId) throw new Error("Deployment is required.");
   const depId = Number(deploymentId);
@@ -246,22 +290,72 @@ function findById(id, deploymentId) {
 }
 
 async function updateStatus(id, status, deploymentId) {
-  const where = { id: Number(id) };
-  if (deploymentId != null) where.deploymentId = Number(deploymentId);
-  const statusNorm = String(status).trim().toLowerCase();
-  const data = { status: statusNorm };
+  const whereFind = { id: Number(id) };
+  if (deploymentId != null) whereFind.deploymentId = Number(deploymentId);
 
-  if (statusNorm === "in process") {
-    data.pickingStartedAt = new Date();
-  } else if (statusNorm === "picked") {
-    data.pickingCompletedAt = new Date();
-  }
-
-  return prisma.order.update({
-    where,
-    data,
+  const existing = await prisma.order.findFirst({
+    where: whereFind,
     include: { items: true },
   });
+  if (!existing) {
+    throw new Error("Order not found");
+  }
+
+  const statusNorm = String(status).trim().toLowerCase();
+  const prev = String(existing.status || "").toLowerCase();
+
+  const shouldRefundEasyPost =
+    (statusNorm === "cancelled" || statusNorm === "rejected") && existing.easypostShipmentId;
+  const easypostIdToRefund = shouldRefundEasyPost ? String(existing.easypostShipmentId).trim() : null;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const data = { status: statusNorm };
+
+    if (statusNorm === "in process") {
+      data.pickingStartedAt = new Date();
+    } else if (statusNorm === "picked") {
+      data.pickingCompletedAt = new Date();
+    }
+
+    if (shouldRefundEasyPost) {
+      data.shippingLabelUrl = null;
+      data.easypostShipmentId = null;
+      data.trackingCode = null;
+    }
+
+    if (
+      (statusNorm === "cancelled" || statusNorm === "rejected") &&
+      existing.inventoryDeductedAt
+    ) {
+      await applyPodInventoryDelta(tx, existing, 1);
+      data.inventoryDeductedAt = null;
+    }
+
+    if (statusNorm === "shipped" && prev !== "shipped" && !existing.inventoryDeductedAt) {
+      await applyPodInventoryDelta(tx, existing, -1);
+      data.inventoryDeductedAt = new Date();
+    }
+
+    return tx.order.update({
+      where: { id: existing.id },
+      data,
+      include: { items: true },
+    });
+  });
+
+  if (easypostIdToRefund) {
+    try {
+      const shippingService = require("./shipping.service");
+      const result = await shippingService.refundShipment(easypostIdToRefund);
+      if (!result.ok && !result.skipped) {
+        console.warn("[order] EasyPost refund did not complete:", result.message);
+      }
+    } catch (e) {
+      console.warn("[order] EasyPost refund error:", e.message);
+    }
+  }
+
+  return updated;
 }
 
 async function updateItemPicked(orderId, itemId, picked, deploymentId) {
