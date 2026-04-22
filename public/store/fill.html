@@ -80,20 +80,23 @@
         return "(" + digits.slice(0, 3) + ") " + digits.slice(3, 6) + "-" + digits.slice(6);
       }
 
-      /** Mexico: 10-digit NSN after optional country code 52 → +52 XX XXXX XXXX */
-      function formatPhoneInputMX(value) {
+      /**
+       * Mexico local entry (same feel as US): 10-digit national number only — no +52 in the field.
+       * (XX) XXXX-XXXX. +52 is applied on the PDF/preview only.
+       */
+      function formatPhoneInputMXLocal(value) {
         let d = (value || "").replace(/\D/g, "");
-        if (d.startsWith("52") && d.length >= 12) d = d.slice(2);
+        if (d.startsWith("52") && d.length > 10) d = d.slice(2);
         d = d.slice(0, 10);
         if (!d.length) return "";
-        if (d.length <= 2) return "+52 " + d;
-        if (d.length <= 6) return "+52 " + d.slice(0, 2) + " " + d.slice(2);
-        return "+52 " + d.slice(0, 2) + " " + d.slice(2, 6) + " " + d.slice(6);
+        if (d.length <= 2) return "(" + d;
+        if (d.length <= 6) return "(" + d.slice(0, 2) + ") " + d.slice(2);
+        return "(" + d.slice(0, 2) + ") " + d.slice(2, 6) + "-" + d.slice(6);
       }
 
       function formatPhoneInputByConfig(value, phoneFormat) {
         const fmt = (phoneFormat || "us").toLowerCase();
-        if (fmt === "mx" || fmt === "mexico") return formatPhoneInputMX(value);
+        if (fmt === "mx" || fmt === "mexico") return formatPhoneInputMXLocal(value);
         return formatPhoneInputUS(value);
       }
 
@@ -338,9 +341,9 @@
               inp.type = "tel";
               inp.id = kid;
               inp.name = k;
-              inp.placeholder = isMxPhone ? "+52 55 8107 3614" : "(555) 123-4567";
+              inp.placeholder = isMxPhone ? "(55) 8107-3614" : "(555) 123-4567";
               inp.className = "pod-input pod-input-phone";
-              inp.maxLength = isMxPhone ? 20 : 14;
+              inp.maxLength = 14;
               inp.inputMode = isMxPhone ? "numeric" : "numeric";
               const cb = () => {
                 inp.value = formatPhoneInputByConfig(inp.value, config.phoneFormat);
