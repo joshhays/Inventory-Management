@@ -154,7 +154,10 @@
     function initShipCountrySelect() {
       const sel = document.getElementById("shipCountry");
       if (!sel || sel.getAttribute("data-initialized") === "1") return;
-      const opts = window.STORE_COUNTRY_OPTIONS;
+      const opts =
+        typeof window.getStoreCountryOptions === "function"
+          ? window.getStoreCountryOptions()
+          : window.STORE_COUNTRY_OPTIONS;
       if (!Array.isArray(opts) || !opts.length) {
         sel.innerHTML = "<option value=\"US\">United States</option>";
       } else {
