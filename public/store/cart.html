@@ -8,6 +8,7 @@
   <script>var _b="__STORE_BASE__",_s="__STORE_SLUG__";if(!_b||_b.indexOf("__")===0){var m=location.pathname.match(/^\/store\/([^/]+)/);window.STORE_BASE=m?"/store/"+m[1]:"/store";window.STORE_SLUG=m?m[1]:null;}else{window.STORE_BASE=_b;window.STORE_SLUG=_s;}window.STORE_CART_KEY=window.STORE_SLUG?"storeCart_"+window.STORE_SLUG:"storeCart";</script>
   <script>window.STORE_CART_DISCLAIMER=__STORE_CART_DISCLAIMER_JS__;</script>
   <script>window.STORE_BILLING_OPTIONS=__STORE_BILLING_OPTIONS_JS__;</script>
+  <script src="/store/countries.js"></script>
 </head>
 <body>
   <div class="app-layout">
@@ -54,17 +55,21 @@
               <label for="shipAddress2">Address line 2 (optional)</label>
               <input type="text" id="shipAddress2" placeholder="Apt 4, Suite 100">
             </div>
+            <div class="store-form-row">
+              <label for="shipCountry">Country</label>
+              <select id="shipCountry"></select>
+            </div>
             <div class="store-form-row store-form-row-inline">
               <div>
-                <label for="shipCity">City</label>
+                <label for="shipCity" id="shipCityLabel">City</label>
                 <input type="text" id="shipCity" placeholder="Chicago">
               </div>
               <div>
-                <label for="shipState">State</label>
+                <label for="shipState" id="shipStateLabel">State / province</label>
                 <input type="text" id="shipState" placeholder="IL">
               </div>
               <div>
-                <label for="shipZip">ZIP</label>
+                <label for="shipZip" id="shipZipLabel">ZIP / postal code</label>
                 <input type="text" id="shipZip" placeholder="60601">
               </div>
             </div>
@@ -119,6 +124,53 @@
 
     function formatPrice(n) {
       return Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatMoneyAmount(amount, currencyCode) {
+      const c = (currencyCode || "USD").toString().toUpperCase();
+      const num = Number(amount) || 0;
+      try {
+        return new Intl.NumberFormat("en-US", { style: "currency", currency: c }).format(num);
+      } catch {
+        return c + " " + formatPrice(num);
+      }
+    }
+
+    function isShipUS() {
+      const sel = document.getElementById("shipCountry");
+      return !sel || (sel.value || "US") === "US";
+    }
+
+    function syncShipFormCountryHints() {
+      const us = isShipUS();
+      const st = document.getElementById("shipState");
+      const stLab = document.getElementById("shipStateLabel");
+      const zLab = document.getElementById("shipZipLabel");
+      if (stLab) stLab.textContent = us ? "State" : "State / province";
+      if (zLab) zLab.textContent = us ? "ZIP" : "Postal code";
+      if (st) st.placeholder = us ? "IL" : "Province (if required)";
+    }
+
+    function initShipCountrySelect() {
+      const sel = document.getElementById("shipCountry");
+      if (!sel || sel.getAttribute("data-initialized") === "1") return;
+      const opts = window.STORE_COUNTRY_OPTIONS;
+      if (!Array.isArray(opts) || !opts.length) {
+        sel.innerHTML = "<option value=\"US\">United States</option>";
+      } else {
+        sel.innerHTML = opts.map((o) => "<option value=\"" + escapeAttr(o.code) + "\">" + escape(o.name) + "</option>").join("");
+      }
+      sel.value = "US";
+      sel.setAttribute("data-initialized", "1");
+      sel.addEventListener("change", () => {
+        window.selectedShipping = null;
+        window.shippingRatesCache = null;
+        const listEl = document.getElementById("shippingRatesList");
+        if (listEl) listEl.innerHTML = "";
+        syncShipFormCountryHints();
+        render();
+      });
+      syncShipFormCountryHints();
     }
 
     function getCart() {
@@ -404,7 +456,12 @@
           <span>$${formatPrice(subtotal)}</span>
         </div>
         ${rushTotal > 0 ? `<div class="store-summary-row store-summary-rush"><span>Rush processing</span><span>$${formatPrice(rushTotal)}</span></div>` : ""}
-        ${shippingCost > 0 ? `<div class="store-summary-row"><span>Shipping (${escape(window.selectedShipping?.serviceName || "")})</span><span>$${formatPrice(shippingCost)}</span></div>` : ""}
+        ${shippingCost > 0
+          ? `<div class="store-summary-row"><span>Shipping (${escape(window.selectedShipping?.serviceName || "")})</span><span>${formatMoneyAmount(
+              shippingCost,
+              window.selectedShipping?.currencyCode || "USD"
+            )}</span></div>`
+          : ""}
         <div class="store-summary-row store-summary-total">
           <span>Order total</span>
           <span>$${formatPrice(total)}</span>
@@ -422,6 +479,7 @@
       if (placeOrderBtn) placeOrderBtn.textContent = hasPOD ? "Submit for Approval" : "Place your order";
 
       sidebar.style.display = "block";
+      initShipCountrySelect();
       loadSavedAddresses();
       setupBillingCheckoutUI();
 
@@ -555,8 +613,13 @@
       const city = document.getElementById("shipCity").value.trim();
       const state = document.getElementById("shipState").value.trim();
       const zip = document.getElementById("shipZip").value.trim();
-      if (!address1 || !city || !state || !zip) {
-        alert("Please enter address, city, state, and ZIP to get shipping rates.");
+      const country = (document.getElementById("shipCountry") && document.getElementById("shipCountry").value) || "US";
+      if (!address1 || !city || !zip) {
+        alert("Please enter address, city, and ZIP or postal code to get shipping rates.");
+        return;
+      }
+      if (country === "US" && !state) {
+        alert("Please enter your state for U.S. addresses.");
         return;
       }
       const btn = document.getElementById("getRatesBtn");
@@ -574,7 +637,15 @@
           credentials: "include",
           body: JSON.stringify({
             deploymentSlug: window.STORE_SLUG || undefined,
-            address: { name, address1, address2: document.getElementById("shipAddress2").value.trim() || null, city, state, zip },
+            address: {
+              name,
+              address1,
+              address2: document.getElementById("shipAddress2").value.trim() || null,
+              city,
+              state: state || undefined,
+              zip,
+              country,
+            },
             items: cart.map((i) => ({ productId: i.productId, quantity: i.quantity || 1 })),
           }),
         });
@@ -593,14 +664,17 @@
           return;
         }
         window.shippingRatesCache = rates;
-        listEl.innerHTML = rates.map((r, idx) => `
+        listEl.innerHTML = rates.map((r, idx) => {
+          const cur = r.currencyCode || "USD";
+          return `
           <label class="store-shipping-option">
             <input type="radio" name="shippingRate" value="${idx}" ${idx === 0 ? "checked" : ""}>
             <span class="store-shipping-option-name">${escape(r.serviceName)}</span>
-            <span class="store-shipping-option-price">$${formatPrice(r.totalCharges)}</span>
+            <span class="store-shipping-option-price">${formatMoneyAmount(r.totalCharges, cur)}</span>
             ${r.transitDays != null ? `<span class="store-shipping-option-days">${r.transitDays} business day${r.transitDays !== 1 ? "s" : ""}</span>` : ""}
           </label>
-        `).join("");
+        `;
+        }).join("");
         listEl.querySelectorAll('input[name="shippingRate"]').forEach((radio) => {
           radio.addEventListener("change", () => {
             const idx = parseInt(radio.value, 10);
@@ -627,6 +701,7 @@
     async function loadSavedAddresses() {
       const sel = document.getElementById("savedAddress");
       if (!sel) return;
+      const previous = sel.value;
       sel.innerHTML = '<option value="">-- Enter new or select --</option>';
       try {
         const res = await fetch("/api/customer/addresses", { credentials: "include" });
@@ -639,6 +714,9 @@
           opt.textContent = a.label + " - " + a.address1 + ", " + a.city;
           sel.appendChild(opt);
         });
+        if (previous && Array.from(sel.options).some((o) => o.value === previous)) {
+          sel.value = previous;
+        }
       } catch (_) {}
       if (!savedAddressesBound) {
         savedAddressesBound = true;
@@ -654,6 +732,16 @@
             document.getElementById("shipCity").value = a.city || "";
             document.getElementById("shipState").value = a.state || "";
             document.getElementById("shipZip").value = a.zip || "";
+            const sc = document.getElementById("shipCountry");
+            if (sc) {
+              sc.value = (a.country && String(a.country).toUpperCase()) || "US";
+              syncShipFormCountryHints();
+            }
+            window.selectedShipping = null;
+            window.shippingRatesCache = null;
+            const srl = document.getElementById("shippingRatesList");
+            if (srl) srl.innerHTML = "";
+            render();
           } catch (_) {}
         });
       }
@@ -690,8 +778,13 @@
       const city = document.getElementById("shipCity").value.trim();
       const state = document.getElementById("shipState").value.trim();
       const zip = document.getElementById("shipZip").value.trim();
-      if (!name || !address1 || !city || !state || !zip) {
-        alert("Please fill in name, address, city, state, and ZIP.");
+      const country = (document.getElementById("shipCountry") && document.getElementById("shipCountry").value) || "US";
+      if (!name || !address1 || !city || !zip) {
+        alert("Please fill in name, address, city, and ZIP or postal code.");
+        return;
+      }
+      if (country === "US" && !state) {
+        alert("Please enter your state for U.S. addresses.");
         return;
       }
       const btn = document.getElementById("placeOrderBtn");
@@ -708,11 +801,14 @@
               city,
               state,
               zip,
+              country,
             },
             customerPhone: document.getElementById("customerPhone").value.trim() || undefined,
             billingSelection: getBillingSelectionForOrder() || undefined,
             shippingCost: window.selectedShipping?.totalCharges ?? 0,
-            shippingMethod: window.selectedShipping ? `${window.selectedShipping.serviceName} (${window.selectedShipping.serviceCode})` : null,
+            shippingMethod: window.selectedShipping
+              ? `${window.selectedShipping.serviceName} (${window.selectedShipping.serviceCode}) [${(window.selectedShipping.currencyCode || "USD").toString().toUpperCase()}]`
+              : null,
             items: cart.map((i) => ({
               productId: i.productId,
               quantity: i.quantity || 1,

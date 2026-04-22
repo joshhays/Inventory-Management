@@ -443,7 +443,8 @@
       if (!addr) return "—";
       try {
         const o = typeof addr === "string" ? JSON.parse(addr) : addr;
-        const parts = [o.address1, o.address2, [o.city, o.state, o.zip].filter(Boolean).join(", ")].filter(Boolean);
+        const loc = [o.city, o.state, o.zip].filter(Boolean).join(", ");
+        const parts = [o.address1, o.address2, loc, o.country && o.country !== "US" ? o.country : ""].filter(Boolean);
         return parts.join(", ") || addr;
       } catch (_) {
         return addr;

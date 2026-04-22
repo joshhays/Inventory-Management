@@ -1,4 +1,5 @@
 const prisma = require("../lib/prisma");
+const { normalizeCountryCode } = require("../services/shipping.service");
 
 async function getProfile(req, res, next) {
   try {
@@ -96,11 +97,18 @@ async function createAddress(req, res, next) {
     if (!userId) {
       return res.status(401).json({ message: "Not authenticated." });
     }
-    const { label, name, company, address1, address2, city, state, zip } = req.body;
-    if (!label || !name || !address1 || !city || !state || !zip) {
+    const { label, name, company, address1, address2, city, state, zip, country, countryCode: ccIn } = req.body;
+    const countryNorm = normalizeCountryCode(
+      country != null && String(country).trim() !== "" ? country : ccIn
+    );
+    const stateStr = state != null ? String(state).trim() : "";
+    if (!label || !name || !address1 || !city || !zip) {
       return res.status(400).json({
-        message: "label, name, address1, city, state, and zip are required.",
+        message: "label, name, address1, city, and zip are required; state is required for U.S. addresses",
       });
+    }
+    if (countryNorm === "US" && !stateStr) {
+      return res.status(400).json({ message: "State is required for U.S. addresses" });
     }
     const address = await prisma.savedAddress.create({
       data: {
@@ -111,8 +119,9 @@ async function createAddress(req, res, next) {
         address1: String(address1).trim(),
         address2: address2 ? String(address2).trim() : null,
         city: String(city).trim(),
-        state: String(state).trim(),
+        state: stateStr,
         zip: String(zip).trim(),
+        country: countryNorm,
       },
     });
     return res.status(201).json(address);

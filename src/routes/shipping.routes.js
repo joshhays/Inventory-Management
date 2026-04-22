@@ -46,11 +46,20 @@ router.post("/rates", resolveDeploymentId, async (req, res, next) => {
     }
 
     if (!address || typeof address !== "object") {
-      return res.status(400).json({ message: "address (object with name, address1, city, state, zip) is required" });
+      return res.status(400).json({
+        message: "address (object with name, address1, city, zip, and country) is required; state is required for US",
+      });
     }
-    const { name, address1, address2, city, state, zip } = address;
-    if (!address1 || !city || !state || !zip) {
-      return res.status(400).json({ message: "address must include address1, city, state, and zip" });
+    const { name, address1, address2, city, state, zip, country, countryCode: ccFromAddr } = address;
+    const countryCode = shippingService.normalizeCountryCode(
+      country != null && String(country).trim() !== "" ? country : ccFromAddr
+    );
+    const stateStr = state != null ? String(state).trim() : "";
+    if (!address1 || !city || !zip) {
+      return res.status(400).json({ message: "address must include address1, city, and zip (postal) code" });
+    }
+    if (countryCode === "US" && !stateStr) {
+      return res.status(400).json({ message: "State is required for U.S. addresses" });
     }
 
     let itemCount = 0;
@@ -64,9 +73,9 @@ router.post("/rates", resolveDeploymentId, async (req, res, next) => {
       address1: String(address1).trim(),
       address2: address2 ? String(address2).trim() : null,
       city: String(city).trim(),
-      state: String(state).trim(),
+      state: stateStr,
       zip: String(zip).trim(),
-      countryCode: "US",
+      countryCode,
     };
 
     const rates = await shippingService.getRates(dest, itemCount, deploymentId);

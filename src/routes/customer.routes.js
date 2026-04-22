@@ -70,16 +70,24 @@ router.post("/orders", requireAuth, resolveDeploymentId, async (req, res, next) 
 
     let shippingStr = null;
     if (shipping && typeof shipping === "object") {
-      const { name, company, address1, address2, city, state, zip } = shipping;
-      if (name && address1 && city && state && zip) {
+      const { name, company, address1, address2, city, state, zip, country, countryCode: ccIn } = shipping;
+      const countryNorm = shippingService.normalizeCountryCode(
+        country != null && String(country).trim() !== "" ? country : ccIn
+      );
+      const stateStr = state != null ? String(state).trim() : "";
+      if (name && address1 && city && zip) {
+        if (countryNorm === "US" && !stateStr) {
+          return res.status(400).json({ message: "State is required for U.S. shipping addresses" });
+        }
         shippingStr = JSON.stringify({
           name: String(name).trim(),
           company: company ? String(company).trim() : null,
           address1: String(address1).trim(),
           address2: address2 ? String(address2).trim() : null,
           city: String(city).trim(),
-          state: String(state).trim(),
+          state: stateStr,
           zip: String(zip).trim(),
+          country: countryNorm,
         });
       }
     }

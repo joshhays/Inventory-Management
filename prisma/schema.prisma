@@ -61,6 +61,7 @@ model SavedAddress {
   city      String
   state     String
   zip       String
+  country   String   @default("US")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

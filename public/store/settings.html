@@ -6,6 +6,7 @@
   <title>Settings - Store</title>
   <link rel="stylesheet" href="/styles.css">
   <script>var _b="__STORE_BASE__",_s="__STORE_SLUG__";if(!_b||_b.indexOf("__")===0){var m=location.pathname.match(/^\/store\/([^/]+)/);window.STORE_BASE=m?"/store/"+m[1]:"/store";window.STORE_SLUG=m?m[1]:null;}else{window.STORE_BASE=_b;window.STORE_SLUG=_s;}window.STORE_CART_KEY=window.STORE_SLUG?"storeCart_"+window.STORE_SLUG:"storeCart";</script>
+  <script src="/store/countries.js"></script>
 </head>
 <body>
   <div class="app-layout">
@@ -68,17 +69,21 @@
             <label for="addrAddress2">Address line 2 (optional)</label>
             <input type="text" id="addrAddress2" placeholder="Apt 4, Suite 100">
           </div>
+          <div class="store-form-row">
+            <label for="addrCountry">Country</label>
+            <select id="addrCountry"></select>
+          </div>
           <div class="store-form-row store-form-row-inline">
             <div>
               <label for="addrCity">City</label>
               <input type="text" id="addrCity" placeholder="Chicago">
             </div>
             <div>
-              <label for="addrState">State</label>
+              <label for="addrState" id="addrStateLabel">State / province</label>
               <input type="text" id="addrState" placeholder="IL">
             </div>
             <div>
-              <label for="addrZip">ZIP</label>
+              <label for="addrZip" id="addrZipLabel">ZIP / postal code</label>
               <input type="text" id="addrZip" placeholder="60601">
             </div>
           </div>
@@ -96,6 +101,31 @@
       const div = document.createElement("div");
       div.textContent = s ?? "";
       return div.innerHTML;
+    }
+    function escapeAttr(s) {
+      return String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+    }
+    function initAddrCountrySelect() {
+      const sel = document.getElementById("addrCountry");
+      if (!sel || sel.getAttribute("data-initialized") === "1") return;
+      const opts = window.STORE_COUNTRY_OPTIONS;
+      if (!Array.isArray(opts) || !opts.length) {
+        sel.innerHTML = "<option value=\"US\">United States</option>";
+      } else {
+        sel.innerHTML = opts.map((o) => "<option value=\"" + escapeAttr(o.code) + "\">" + escape(o.name) + "</option>").join("");
+      }
+      sel.value = "US";
+      sel.setAttribute("data-initialized", "1");
+      sel.addEventListener("change", syncAddrFormCountryHints);
+    }
+    function syncAddrFormCountryHints() {
+      const us = (document.getElementById("addrCountry") && document.getElementById("addrCountry").value) === "US";
+      const sl = document.getElementById("addrStateLabel");
+      const zl = document.getElementById("addrZipLabel");
+      const st = document.getElementById("addrState");
+      if (sl) sl.textContent = us ? "State" : "State / province";
+      if (zl) zl.textContent = us ? "ZIP" : "Postal code";
+      if (st) st.placeholder = us ? "IL" : "Province (if required)";
     }
 
     function getCart() {
@@ -164,7 +194,7 @@
               <strong>${escape(a.label)}</strong>
               <p>${escape(a.name)}${a.company ? "<br>" + escape(a.company) : ""}</p>
               <p>${escape(a.address1)}${a.address2 ? "<br>" + escape(a.address2) : ""}</p>
-              <p>${escape(a.city)}, ${escape(a.state)} ${escape(a.zip)}</p>
+              <p>${(a.country && a.country !== "US") ? escape(a.country) + " — " : ""}${escape(a.city)}${a.state ? ", " + escape(a.state) : ""} ${escape(a.zip)}</p>
             </div>
             <button type="button" class="store-address-delete" data-id="${a.id}">Delete</button>
           </div>
@@ -220,14 +250,18 @@
     addAddressBtn.addEventListener("click", () => {
       addAddressForm.style.display = "block";
       addAddressBtn.style.display = "none";
+      initAddrCountrySelect();
       document.getElementById("addrLabel").value = "";
       document.getElementById("addrName").value = "";
       document.getElementById("addrCompany").value = "";
       document.getElementById("addrAddress1").value = "";
       document.getElementById("addrAddress2").value = "";
+      const ac = document.getElementById("addrCountry");
+      if (ac) ac.value = "US";
       document.getElementById("addrCity").value = "";
       document.getElementById("addrState").value = "";
       document.getElementById("addrZip").value = "";
+      syncAddrFormCountryHints();
     });
 
     cancelAddressBtn.addEventListener("click", () => {
@@ -242,8 +276,13 @@
       const city = document.getElementById("addrCity").value.trim();
       const state = document.getElementById("addrState").value.trim();
       const zip = document.getElementById("addrZip").value.trim();
-      if (!label || !name || !address1 || !city || !state || !zip) {
-        alert("Please fill in label, name, address, city, state, and ZIP.");
+      const country = (document.getElementById("addrCountry") && document.getElementById("addrCountry").value) || "US";
+      if (!label || !name || !address1 || !city || !zip) {
+        alert("Please fill in label, name, address, city, and ZIP or postal code. State is required for U.S. addresses.");
+        return;
+      }
+      if (country === "US" && !state) {
+        alert("State is required for U.S. addresses.");
         return;
       }
       saveAddressBtn.disabled = true;
@@ -260,8 +299,9 @@
             address1,
             address2: document.getElementById("addrAddress2").value.trim() || null,
             city,
-            state,
+            state: state || undefined,
             zip,
+            country,
           }),
         });
         if (!res.ok) throw new Error("Failed to save address");
