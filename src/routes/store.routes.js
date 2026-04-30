@@ -88,16 +88,6 @@ function serveStorePage(slug, page, dep, res, next) {
   });
 }
 
-// Shared JS under public/store/ — must be registered before /store/:slug or "countries.js" is treated as a slug.
-router.get("/store/countries.js", (req, res, next) => {
-  const fp = path.join(storeDir, "countries.js");
-  if (!fs.existsSync(fp)) return next();
-  res.type("application/javascript");
-  res.sendFile(path.resolve(fp), (err) => {
-    if (err) next(err);
-  });
-});
-
 // /store and /store/ - combined so /store/ is handled before /store/:slug can match
 router.get(["/store", "/store/"], async (req, res, next) => {
   if (req.path !== "/store/") return res.redirect(302, "/store/");

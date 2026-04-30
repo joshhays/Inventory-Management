@@ -8,7 +8,8 @@
   <script>var _b="__STORE_BASE__",_s="__STORE_SLUG__";if(!_b||_b.indexOf("__")===0){var m=location.pathname.match(/^\/store\/([^/]+)/);window.STORE_BASE=m?"/store/"+m[1]:"/store";window.STORE_SLUG=m?m[1]:null;}else{window.STORE_BASE=_b;window.STORE_SLUG=_s;}window.STORE_CART_KEY=window.STORE_SLUG?"storeCart_"+window.STORE_SLUG:"storeCart";</script>
   <script>window.STORE_CART_DISCLAIMER=__STORE_CART_DISCLAIMER_JS__;</script>
   <script>window.STORE_BILLING_OPTIONS=__STORE_BILLING_OPTIONS_JS__;</script>
-  <script src="/store/countries.js"></script>
+  <script src="../iso3166-slim-2.bundle.js"></script>
+  <script src="../countries.js"></script>
 </head>
 <body>
   <div class="app-layout">
@@ -151,28 +152,36 @@
       if (st) st.placeholder = us ? "IL" : "Province (if required)";
     }
 
+    var STORE_COUNTRY_UI_VER = "2";
+
     function initShipCountrySelect() {
       const sel = document.getElementById("shipCountry");
-      if (!sel || sel.getAttribute("data-initialized") === "1") return;
-      const opts =
-        typeof window.getStoreCountryOptions === "function"
-          ? window.getStoreCountryOptions()
-          : window.STORE_COUNTRY_OPTIONS;
-      if (!Array.isArray(opts) || !opts.length) {
-        sel.innerHTML = "<option value=\"US\">United States</option>";
-      } else {
-        sel.innerHTML = opts.map((o) => "<option value=\"" + escapeAttr(o.code) + "\">" + escape(o.name) + "</option>").join("");
+      if (!sel) return;
+      const alreadyPainted = sel.getAttribute("data-country-ver") === STORE_COUNTRY_UI_VER;
+      if (!alreadyPainted) {
+        const opts =
+          typeof window.getStoreCountryOptions === "function"
+            ? window.getStoreCountryOptions()
+            : window.STORE_COUNTRY_OPTIONS;
+        if (!Array.isArray(opts) || !opts.length) {
+          sel.innerHTML = "<option value=\"US\">United States</option>";
+        } else {
+          sel.innerHTML = opts.map((o) => "<option value=\"" + escapeAttr(o.code) + "\">" + escape(o.name) + "</option>").join("");
+        }
+        sel.value = "US";
+        sel.setAttribute("data-country-ver", STORE_COUNTRY_UI_VER);
       }
-      sel.value = "US";
-      sel.setAttribute("data-initialized", "1");
-      sel.addEventListener("change", () => {
-        window.selectedShipping = null;
-        window.shippingRatesCache = null;
-        const listEl = document.getElementById("shippingRatesList");
-        if (listEl) listEl.innerHTML = "";
-        syncShipFormCountryHints();
-        render();
-      });
+      if (!sel.getAttribute("data-country-bound")) {
+        sel.setAttribute("data-country-bound", "1");
+        sel.addEventListener("change", () => {
+          window.selectedShipping = null;
+          window.shippingRatesCache = null;
+          const listEl = document.getElementById("shippingRatesList");
+          if (listEl) listEl.innerHTML = "";
+          syncShipFormCountryHints();
+          render();
+        });
+      }
       syncShipFormCountryHints();
     }
 

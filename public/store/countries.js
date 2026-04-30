@@ -1,6 +1,7 @@
 /**
- * Full country list for store checkout (all ISO-3166-1 alpha-2 regions the runtime supports).
- * Default selection: United States (US).
+ * Country list for store checkout (full ISO 3166-1 alpha-2 set).
+ * Depends on ../iso3166-slim-2.bundle.js (must load before this file).
+ * Default: United States first in the list and selected (value US).
  */
 (function () {
   var MINIMAL_FALLBACK = [
@@ -10,41 +11,70 @@
     { code: "GB", name: "United Kingdom" },
   ];
 
-  function buildFromIntl() {
-    if (typeof Intl === "undefined" || typeof Intl.supportedValuesOf !== "function") return null;
-    var regions;
-    try {
-      regions = Intl.supportedValuesOf("region");
-    } catch (e) {
-      return null;
+  function friendlyName(code, name) {
+    if (!code) return name || "";
+    if (code.toUpperCase() === "US") return "United States";
+    return name || code;
+  }
+
+  /** Primary: static bundle from ISO 3166 slim-2 (see iso3166-slim-2.bundle.js). */
+  function buildFromStaticBundle() {
+    var raw = window.ISO3166_SLIM2;
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    var out = [];
+    for (var i = 0; i < raw.length; i++) {
+      var r = raw[i];
+      if (!r || !r.code) continue;
+      var code = String(r.code).toUpperCase();
+      if (!/^[A-Z]{2}$/.test(code)) continue;
+      out.push({ code: code, name: friendlyName(code, r.name) });
     }
+    out.sort(function (a, b) {
+      return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+    });
+    return out.length ? out : null;
+  }
+
+  /** Optional extra regions from Intl when supported (browser); merges unique codes. */
+  function mergeIntlExtras(base) {
+    if (typeof Intl === "undefined" || typeof Intl.supportedValuesOf !== "function") return base;
     var dn;
     try {
       dn = new Intl.DisplayNames(["en"], { type: "region" });
     } catch (e) {
-      return null;
+      return base;
     }
-    var out = [];
-    for (var i = 0; i < regions.length; i++) {
-      var r = regions[i];
+    var seen = {};
+    for (var i = 0; i < base.length; i++) seen[base[i].code] = true;
+    var regions;
+    try {
+      regions = Intl.supportedValuesOf("region");
+    } catch (e) {
+      return base;
+    }
+    var extra = [];
+    for (var j = 0; j < regions.length; j++) {
+      var r = regions[j];
       if (typeof r !== "string" || r.length !== 2) continue;
       var code = r.toUpperCase();
-      if (!/^[A-Z]{2}$/.test(code)) continue;
+      if (!/^[A-Z]{2}$/.test(code) || seen[code]) continue;
       var name;
       try {
         name = dn.of(code);
       } catch (e) {
         name = code;
       }
-      if (name) out.push({ code: code, name: name });
+      if (!name) continue;
+      seen[code] = true;
+      extra.push({ code: code, name: friendlyName(code, name) });
     }
-    out.sort(function (a, b) {
+    if (!extra.length) return base;
+    extra.sort(function (a, b) {
       return a.name.localeCompare(b.name, "en", { sensitivity: "base" });
     });
-    return out.length > 0 ? out : null;
+    return base.concat(extra);
   }
 
-  /** United States first, then all others A–Z (easier default + full list). */
   function pinUnitedStatesFirst(opts) {
     var us = null;
     var rest = [];
@@ -56,12 +86,10 @@
     return [us].concat(rest);
   }
 
-  /**
-   * @returns {Array<{ code: string, name: string }>}
-   */
   function getStoreCountryOptions() {
-    var built = buildFromIntl();
-    var list = built && built.length ? built : MINIMAL_FALLBACK;
+    var list = buildFromStaticBundle();
+    if (!list || !list.length) list = MINIMAL_FALLBACK.slice();
+    else list = mergeIntlExtras(list);
     return pinUnitedStatesFirst(list);
   }
 
